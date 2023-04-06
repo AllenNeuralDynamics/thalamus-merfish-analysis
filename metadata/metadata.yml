@@ -1,2 +1,4 @@
 metadata_version: 1
-name: demo capsule
+name: thalamus merfish analysis
+description: Code Ocean capsule for sharing analysis of thalamus MERFISH data, primarily
+  in jupyter notebook form.
