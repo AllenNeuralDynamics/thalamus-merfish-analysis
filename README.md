@@ -6,11 +6,13 @@ Code Ocean capsule for sharing analysis of thalamus MERFISH data, primarily in j
 
 To create your own working copy on Code Ocean, select **Duplicate** from the **Capsule** menu and use the default option ("Link to git repository"). You can then make your own changes and sync back and forth from our shared github repository (https://github.com/AllenNeuralDynamics/thalamus-merfish-analysis) via git. You can use git functions either in the **Reproducibility** panel on the right-hand side of the capsule view, or within the cloud workstation (more flexibility).
 
-Note: **do not** attempt to "force push" in git (`git push -f`), as this seems to be incompatible with how Code Ocean interfaces with git. 
-
 Feel free to make minor environment changes, but make sure they work by testing in a cloud workstation before you commit/push. If you're making a dramatic change (installing something with a ton of dependencies) that may be an indication you should create a separate capsule for that work.
 
 You can also work locally by cloning directly from github to your personal machine, although this is less ideal for sharing as you'll be working with a different environment and different data paths. These issues could perhaps be minimized in the future by using environment variables to store alternative paths etc for the local vs CO contexts if this functionality seems important.
+
+### Git details 
+
+We'll generally plan to use a single branch, but feel free to create branches as needed for your own work, and merge back to the master branch to share. **Do not** attempt to "force push" in git (`git push -f`), as this seems to be incompatible with how Code Ocean interfaces with git. 
 
 # Code Ocean basics
 
