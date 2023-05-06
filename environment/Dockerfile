@@ -1,4 +1,4 @@
-# hash:sha256:45bc22ac8d0c33607026d91e252c5b960f2b6ed6f638bff69cf5c90894917483
+# hash:sha256:34c89adcf0d6bcc51ae0276d5366eb9beac3c1116f4efb7d1163456d7f12c01b
 FROM registry.codeocean.allenneuraldynamics.org/codeocean/jupyterlab:3.4.4-miniconda4.12.0-python3.9-ubuntu20.04
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -16,7 +16,8 @@ RUN conda install -y \
 
 RUN pip install -U --no-cache-dir \
     anndata==0.8.0 \
+    colorcet \
     scanpy==1.9.3 \
     scikit-learn==1.2.2 \
-    shapely \
+    shapely==2.0.1 \
     squidpy==1.2.3
