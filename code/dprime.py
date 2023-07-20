@@ -1,17 +1,18 @@
 import numpy as np
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, StratifiedKFold
 import itertools
+from collections import defaultdict
 
 from scipy.cluster import hierarchy
 import seaborn as sns
 import matplotlib.pyplot as plt
     
-def plot_dprime(clf, data, features, cluster='t-type',  cluster_list=None, 
-                metric=dprime, method='predict_proba', cv=None):
-    dprime, _ = pairwise_cluster_distances(clf, data, features, cluster, 
-                                    fit_pairwise=True, details=False, 
-                                           metric=metric, method=method, cv=cv)
-    return plot_dprime_data(dprime, cluster_list)
+# def plot_dprime(clf, data, features, cluster='t-type',  cluster_list=None, 
+#                 metric=dprime, method='predict_proba', cv=None):
+#     dprime, _ = pairwise_cluster_distances(clf, data, features, cluster, 
+#                                     fit_pairwise=True, details=False, 
+#                                            metric=metric, method=method, cv=cv)
+#     return plot_dprime_data(dprime, cluster_list)
                      
 def plot_dprime_data(dprime, cluster_list=None):
     if cluster_list is not None:
@@ -198,59 +199,37 @@ def cv_dprime(data, type_list, type_labels, estimator, ll_ratio_func,
             ll_ratio_2: list of log-likelihood ratios for cells in type_2
     """
     results = {}
-    kf = KFold(n_splits=n_folds, random_state=0, shuffle=True)
+    kf = StratifiedKFold(n_splits=n_folds, random_state=0, shuffle=True)
+    ind = np.arange(data.shape[0])
 
-    for counter, (t1, t2) in enumerate(itertools.combinations(type_list, 2)):
-        if counter % 50 == 0:
-            print(counter)
-
-        t1_mask = type_labels == t1
-        ind1 = np.arange(data.shape[0])[t1_mask]
-
-        t2_mask = type_labels == t2
-        ind2 = np.arange(data.shape[0])[t2_mask]
-
-        # Cross-validated discriminant analysis
-        ll_ratio1 = []
-        ll_ratio2 = []
-        for (train1, test1), (train2, test2) in zip(kf.split(ind1), kf.split(ind2)):
-#             TODO: refactor to only train estimator once per group/split
-            train1_ind = ind1[train1]
-            train2_ind = ind2[train2]
-            test1_ind = ind1[test1]
-            test2_ind = ind2[test2]
-
-            est_out1 = estimator(data[train1_ind, :], **kwargs)
-            est_out2 = estimator(data[train2_ind, :], **kwargs)
-
-            x1 = data[test1_ind, :]
-            x2 = data[test2_ind, :]
+    llr = defaultdict(lambda : [list(), list()])
+    
+    for i, (train, test) in enumerate(kf.split(ind, type_labels)):
+        print(f"Split {i}/{n_folds}")
+        print("Fitting...")
+        data_train = data[train, :]
+        data_test = data[test, :]
+        estimators = []
+        for name in type_list:
+            type_mask = type_labels[train] == name
+            estimators[name] = estimator(data_train[type_mask,:], **kwargs)
             
-            ll_ratio1 += ll_ratio_func(x1, est_out1, est_out2, **kwargs)
-            ll_ratio2 += ll_ratio_func(x2, est_out1, est_out2, **kwargs)
+        print("Evaluating...")
+        for t1, t2 in itertools.combinations(type_list, 2):
+            est_out1 = estimators[t1]
+            est_out2 = estimators[t2]
 
-        # ll_ratio1 = [x for x in ll_ratio1 if x is not None]
-        # ll_ratio2 = [x for x in ll_ratio2 if x is not None]
-        # llr1_mean = np.mean(ll_ratio1)
-        # llr1_var = np.var(ll_ratio1)
-        # llr2_mean = np.mean(ll_ratio2)
-        # llr2_var = np.var(ll_ratio2)
-        # dprime = ((llr1_mean - llr2_mean) /
-        #     np.sqrt(0.5 * (llr1_var + llr2_var)))
-        
-        from scipy.stats import norm
-        from sklearn.metrics import roc_auc_score
-        y_true = np.concatenate([np.zeros_like(ll_ratio1), np.ones_like(ll_ratio2)])
-        y_score = np.concatenate([ll_ratio1, ll_ratio2])
-        area = roc_auc_score(y_true, y_score, average=None, multi_class='ovo')
-        n = len(y_true)
-        if area==1:
-            area = (n-1)/n
-        if area==0:
-            area = 1/n
-        dprime = np.sqrt(2) * norm.ppf(area)
-        
-        results[(t1, t2)] = {
+            x1 = data_test[type_labels[test] == t1, :]
+            x2 = data_test[type_labels[test] == t2, :]
+            
+            pair = (t1, t2)
+            llr[pair][0] += ll_ratio_func(x1, est_out1, est_out2, **kwargs)
+            llr[pair][1] += ll_ratio_func(x2, est_out1, est_out2, **kwargs)
+
+    for pair in itertools.combinations(type_list, 2):
+        ll_ratio1, ll_ratio2 = llr[pair]
+        area, dprime = dprime_from_llr(ll_ratio1, ll_ratio2)
+        results[pair] = {
             "ll_ratio1": ll_ratio1,
             "ll_ratio2": ll_ratio2,
             "dprime": dprime,
@@ -258,6 +237,19 @@ def cv_dprime(data, type_list, type_labels, estimator, ll_ratio_func,
         }
     return results
 
+from scipy.stats import norm
+from sklearn.metrics import roc_auc_score
+def dprime_from_llr(ll_ratio1, ll_ratio2):
+    y_true = np.concatenate([np.zeros_like(ll_ratio1), np.ones_like(ll_ratio2)])
+    y_score = np.concatenate([ll_ratio1, ll_ratio2])
+    area = roc_auc_score(y_true, y_score, average=None, multi_class='ovo')
+    n = len(y_true)
+    if area==1:
+        area = (n-1)/n
+    if area==0:
+        area = 1/n
+    dprime = np.sqrt(2) * norm.ppf(area)
+    return area, dprime
 
 def _regularized_nb_prob(train_data, reg_num, reg_den, r, **kwargs):
     """Negative binomial probability based on regularized mean expression"""
