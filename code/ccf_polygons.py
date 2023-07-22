@@ -10,6 +10,10 @@ from sklearn.cluster import k_means
 from shapely.ops import unary_union
 
 
+CCF_TH_NAMES = ['AD', 'AMd', 'AMv', 'AV', 'CL', 'CM', 'Eth', 'FF', 'IAD', 'IAM', 'IGL', 'IMD', 'IntG', 'LD', 'LGd-co', 'LGd-ip', 'LGd-sh', 
+                'LGv', 'LH', 'LP', 'MD', 'MGd', 'MGm', 'MGv', 'MH', 'PCN', 'PF', 'PIL', 'PO', 'POL', 'PP', 'PR', 'PT', 'PVT', 'PoT', 
+                'RE', 'RH', 'RT', 'SGN', 'SMT', 'SPA', 'SPFp', 'SubG', 'VAL', 'VM', 'VPL', 'VPLpc', 'VPM', 'VPMpc', 'Xi', 'ZI']
+
 def poly_from_points(X: np.ndarray, 
                      min_points: int=0, 
                      allow_holes: bool=False,
