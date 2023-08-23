@@ -80,7 +80,8 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, point_hue='CCF_acronym', 
             # make sure point palette matches shape palette
             point_palette = shape_palette.copy()
             extra_names = point_group_names.difference(ccf_names)
-            extra_palette = dict(zip(extra_names, sns.color_palette(glasbey, n_colors=len(point_group_names))[-len(extra_names):]))
+            extra_palette = {name: 'grey' for name in extra_names}
+            # extra_palette = dict(zip(extra_names, sns.color_palette(glasbey, n_colors=len(point_group_names))[-len(extra_names):]))
             point_palette.update(extra_palette)
         else:
             point_palette = dict(zip(point_group_names, sns.color_palette(glasbey, n_colors=len(point_group_names))))
@@ -141,7 +142,7 @@ def plot_section_outline(outline_polygons, sections, axes=False,
 def plot_nucleus_cluster_comparison_slices(obs, ccf_polygons, nuclei, bg_cells=None, bg_shapes=True, legend='cells', **kwargs):
     sections_points = obs['section'].value_counts().loc[lambda x: x>10].index
     nuclei = [nuclei] if type(nuclei) is str else nuclei
-    sections_nuclei = ccf_polygons.index.get_level_values('name')[ccf_polygons.index.isin(nuclei, level='name')].unique()
+    sections_nuclei = ccf_polygons.index.get_level_values('section')[ccf_polygons.index.isin(nuclei, level='name')].unique()
     sections = sorted(sections_nuclei.union(sections_points))
     plot_ccf_overlay(obs, ccf_polygons, sections, point_hue='cluster_label', legend=legend, 
                      highlight=nuclei, bg_cells=bg_cells, bg_shapes=bg_shapes, **kwargs)   
