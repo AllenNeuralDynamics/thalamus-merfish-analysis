@@ -144,7 +144,7 @@ def plot_nucleus_cluster_comparison_slices(obs, ccf_polygons, nuclei, bg_cells=N
     nuclei = [nuclei] if type(nuclei) is str else nuclei
     sections_nuclei = ccf_polygons.index.get_level_values('section')[ccf_polygons.index.isin(nuclei, level='name')].unique()
     sections = sorted(sections_nuclei.union(sections_points))
-    plot_ccf_overlay(obs, ccf_polygons, sections, point_hue='cluster_label', legend=legend, 
+    plot_ccf_overlay(obs, ccf_polygons, sections, point_hue='cluster', legend=legend, 
                      highlight=nuclei, bg_cells=bg_cells, bg_shapes=bg_shapes, **kwargs)   
 
 
@@ -157,7 +157,7 @@ def plot_expression_ccf(adata_neuronal, section, gene, polygons, nuclei=[], bg_s
     # plot_ccf_section(polygons, section, highlight=nuclei, bg_shapes=bg_shapes, ax=ax, palette='greyscale')
     
     # plot gene expression
-    x, y = subset.obsm['spatial_cirro'].T
+    x, y = subset.obs[['cirro_x', 'cirro_y']].values.T
     c = subset[:,gene].X.toarray().squeeze()
     im = plt.scatter(x=x, y=y, c=c, s=1, cmap=cmap)
     plt.colorbar(label="log2(CPM+1)", fraction=0.046, pad=0.01)
