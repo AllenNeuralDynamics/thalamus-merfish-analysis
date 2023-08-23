@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import shapely
 import seaborn as sns
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib
 from colorcet import glasbey
 from shapely.plotting import plot_polygon
 
@@ -41,6 +44,9 @@ def plot_ccf_section(ccf_polygons, section, highlight=[], palette=None, labels=T
     elif palette=='light_outline':
         palette = {x: 'none' for x in ccf_names}
         edgecolor = 'lightgrey'
+        alpha = 1
+    else:
+        edgecolor = 'grey'
         alpha = 1
         
     if highlight=='all':
@@ -185,4 +191,56 @@ def plot_expression_ccf(adata_neuronal, section, gene, polygons, nuclei=[], bg_s
     plt.gca().set_aspect('equal')
     plt.show()
     
-    return fig, ax         
+    return fig, ax
+
+
+def get_colormap_color(value, cmap='viridis', vmin=0, vmax=1):
+    # norm = plt.Normalize(vmin, vmax)
+    norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+    cmap = matplotlib.colormaps.get_cmap(cmap)  # PiYG
+    rgb = cmap(norm(abs(value)))[:3]  # will return rgba, we take only first 3 so we get rgb
+    color = matplotlib.colors.rgb2hex(rgb)
+    return color
+
+def plot_metrics_ccf(obs, ccf_polygons, metric_series, sections=None, 
+                     cmap='viridis', cb_label='metric',
+                     highlight=[], legend='cells', bg_shapes=True, s=2, axes=False):
+    obs = obs.copy()
+    if sections is None:
+        sections = obs['section'].unique()
+    else:
+        ccf_polygons = ccf_polygons[ccf_polygons.index.isin(sections, level="section")]
+    ccf_names = ccf_polygons.index.get_level_values('name')
+    
+    # convert metric to color palette
+    vmin = np.min(metric_series.values)
+    vmax = np.max(metric_series.values)
+    metric_colors = [get_colormap_color(value, cmap=cmap, vmin=vmin, vmax=vmax) 
+                     for (name, value) in pd.Series.items(metric_series)]
+    shape_palette = dict(zip(metric_series.index, metric_colors))
+    
+    for section in sections:
+        # secdata = obs.loc[lambda df: (df['section']==section)].copy()
+        # if len(secdata) < min_group_count:
+        #     continue
+        print(section)
+        fig, ax = plt.subplots(figsize=(8,4))
+        
+        patches = plot_ccf_section(ccf_polygons, section, highlight=highlight, palette=shape_palette, bg_shapes=bg_shapes,
+                                   labels=legend in ['ccf', 'both'], ax=ax)
+        # if legend:
+        #     plt.legend(ncols=2, loc='upper center', bbox_to_anchor=(0.5, 0))
+        #     # plt.legend(ncols=1, loc='center left', bbox_to_anchor=(0.98, 0.5), fontsize=16)
+        
+        plt.axis('image')
+        if not axes:
+            sns.despine(left=True, bottom=True)
+            plt.xticks([])
+            plt.yticks([])
+        plt.xlabel('')
+        plt.ylabel('')
+        
+        img = ax.imshow(np.array([[vmin,vmax]]), cmap=cmap)
+        img.set_visible(False)
+        plt.colorbar(img, orientation='vertical', label=cb_label, shrink=0.75)
+        plt.show()
