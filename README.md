@@ -2,6 +2,7 @@
 
 Code Ocean capsule for sharing analysis of thalamus MERFISH data, primarily in jupyter notebook form.
 
+
 ## Usage
 
 To create your own working copy on Code Ocean, select **Duplicate** from the **Capsule** menu and use the default option ("Link to git repository"). You can then make your own changes and sync back and forth from our shared github repository (https://github.com/AllenNeuralDynamics/thalamus-merfish-analysis) via git. You can use git functions either in the **Reproducibility** panel on the right-hand side of the capsule view, or within the cloud workstation (more flexibility).
