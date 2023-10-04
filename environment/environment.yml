@@ -9,4 +9,4 @@ credentials:
 - type: general
   id: GTQcxIKPIVX8BP
   description: DOTFILES_REPO
-  value: DOTFILES_REPO
+  value: CUSTOM_KEY

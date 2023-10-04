@@ -1,14 +1,17 @@
-# hash:sha256:565a1987a6dd5708b56f70ad3c4e03c90b5613df528d8dc339eccbf1f290f6fc
-FROM registry.codeocean.allenneuraldynamics.org/codeocean/jupyterlab:3.4.4-miniconda4.12.0-python3.9-ubuntu20.04
+# hash:sha256:58c441e9e5f2f5559aeccfb2b5b07983f1d98bcad81e5cbc2b8b4962e52326b4
+FROM registry.codeocean.allenneuraldynamics.org/codeocean/jupyterlab:3.6.1-miniconda4.12.0-python3.9-ubuntu20.04
 
 ARG DEBIAN_FRONTEND=noninteractive
+ARG AWS_ACCESS_KEY_ID
+ARG AWS_DEFAULT_REGION
+ARG AWS_SECRET_ACCESS_KEY
+ARG CUSTOM_KEY
 
 ARG GIT_ASKPASS
 ARG GIT_ACCESS_TOKEN
 COPY git-askpass /
 
 RUN conda install -y \
-        pandas==1.5.3 \
         scipy==1.9.1 \
         seaborn==0.12.2 \
     && conda clean -ya
@@ -20,6 +23,7 @@ RUN pip install -U --no-cache-dir \
     geojson==3.0.1 \
     geopandas==0.13.1 \
     hdbscan==0.8.33 \
+    nibabel==5.1.0 \
     scanpy==1.9.3 \
     scikit-learn==1.2.2 \
     shapely==2.0.1 \

@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -e
-if [ -n "$DOTFILES_REPO" ]; then
-    sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply $DOTFILES_REPO -b /usr/bin
-    # to manage in vscode:
-    ln -s .chezmoi ~/.local/share/chezmoi/
+if [ -n "$CUSTOM_KEY" ]; then
+    printf "Installing dotfiles from $CUSTOM_KEY"
+    sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/bin/ init $CUSTOM_KEY --apply
 fi
