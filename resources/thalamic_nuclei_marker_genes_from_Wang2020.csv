@@ -1,0 +1,605 @@
+structure abbreviation,full structure name,Major Brain Division,Reference,Dataset type,Transgenic Signal in CCF structure,gene symbol,is_in_brain1_gene_panel,is_in_brain3_gene_panel,is_expressed_Nagalski2016
+VAL,Ventral anterior-lateral complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Pvalb,True,True,True
+VAL,Ventral anterior-lateral complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Grp,True,True,False
+VAL,Ventral anterior-lateral complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Syt6,True,True,False
+VAL,Ventral anterior-lateral complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Dlg3,False,False,False
+VAL,Ventral anterior-lateral complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Fezf2,True,False,False
+VAL,Ventral anterior-lateral complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Kcng4,False,False,False
+VAL,Ventral anterior-lateral complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Rorb,True,True,True
+VAL,Ventral anterior-lateral complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Slc17a7,True,True,False
+VAL,Ventral anterior-lateral complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Htr1a,False,False,False
+VAL,Ventral anterior-lateral complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Etv1,True,False,False
+VAL,Ventral anterior-lateral complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Foxp2,True,False,False
+VAL,Ventral anterior-lateral complex of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Cbln2,True,True,False
+VAL,Ventral anterior-lateral complex of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Prkcd,True,False,False
+VAL,Ventral anterior-lateral complex of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Ntng1,False,True,True
+VAL,Ventral anterior-lateral complex of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Ptpn3,False,False,False
+VAL,Ventral anterior-lateral complex of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Rgs4,True,True,False
+VAL,Ventral anterior-lateral complex of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Nefh,False,False,False
+VM,Ventral medial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Sst,False,False,False
+VM,Ventral medial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Syt6,True,True,False
+VM,Ventral medial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Fezf2,True,False,False
+VM,Ventral medial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Kcng4,False,False,False
+VM,Ventral medial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Htr1a,False,False,False
+VM,Ventral medial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Etv1,True,False,False
+VM,Ventral medial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Grik4,False,False,False
+VM,Ventral medial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Cbln2,True,True,False
+VM,Ventral medial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Prkcd,True,False,False
+VM,Ventral medial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Stxbp6,True,True,False
+VM,Ventral medial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Nefh,False,False,False
+VPL,Ventral posterolateral nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Ntsr1,False,False,False
+VPL,Ventral posterolateral nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Chrna2,False,False,False
+VPL,Ventral posterolateral nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Chat,True,True,False
+VPL,Ventral posterolateral nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Pvalb,True,True,True
+VPL,Ventral posterolateral nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Sst,False,False,False
+VPL,Ventral posterolateral nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Gal,True,True,False
+VPL,Ventral posterolateral nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Grp,True,True,False
+VPL,Ventral posterolateral nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Syt6,True,True,False
+VPL,Ventral posterolateral nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Prkcd,True,False,False
+VPL,Ventral posterolateral nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Dlg3,False,False,False
+VPL,Ventral posterolateral nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Rorb,True,True,True
+VPL,Ventral posterolateral nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Foxp2,True,False,False
+VPL,Ventral posterolateral nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Prkcd,True,False,False
+VPL,Ventral posterolateral nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Slc17a6,True,True,False
+VPL,Ventral posterolateral nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Rgs4,True,True,False
+VPL,Ventral posterolateral nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Nefh,False,False,False
+VPL,Ventral posterolateral nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Tnnt1,False,True,False
+VPLpc,"Ventral posterolateral nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,Tg lines,xxx,Ntsr1,False,False,False
+VPLpc,"Ventral posterolateral nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,Tg lines,x,Crh,True,True,False
+VPLpc,"Ventral posterolateral nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,Tg lines,xx,Prkcd,True,False,False
+VPLpc,"Ventral posterolateral nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,Tg lines,xx,Dlg3,False,False,False
+VPLpc,"Ventral posterolateral nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,Tg lines,xx,Fezf2,True,False,False
+VPLpc,"Ventral posterolateral nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,Tg lines,xx,Rorb,True,True,True
+VPLpc,"Ventral posterolateral nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,Tg lines,xx,Htr1a,False,False,False
+VPLpc,"Ventral posterolateral nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,Tg lines,xx,Foxp2,True,False,False
+VPLpc,"Ventral posterolateral nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,ISH (ABA),,Plekhg1,False,False,False
+VPLpc,"Ventral posterolateral nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,ISH (ABA),,Ptpn3,False,False,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Rorb,True,True,True
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Slc17a8,True,True,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Ntsr1,False,False,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Chrna2,False,False,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Cux2,True,False,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Scnn1a,False,False,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Nos1,True,True,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Pvalb,True,True,True
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Gal,True,True,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Grp,True,True,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Prkcd,True,False,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Dlg3,False,False,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Fezf2,True,False,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Kcng4,False,False,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Rorb,True,True,True
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Vipr2,True,False,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Foxp2,True,False,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Prkcd,True,False,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Kcnc2,True,False,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Kcnab3,False,True,True
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Slc17a6,True,True,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Rgs4,True,True,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Nefh,False,False,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Tnnt1,False,True,False
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Rorb,True,True,True
+VPM,Ventral posteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Pvalb,True,True,True
+VPMpc,"Ventral posteromedial nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,Tg lines,xxx,Ntsr1,False,False,False
+VPMpc,"Ventral posteromedial nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,Tg lines,xx,Prkcd,True,False,False
+VPMpc,"Ventral posteromedial nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,Tg lines,xxx,Dlg3,False,False,False
+VPMpc,"Ventral posteromedial nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,Tg lines,xx,Rorb,True,True,True
+VPMpc,"Ventral posteromedial nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,Tg lines,xx,Htr1a,False,False,False
+VPMpc,"Ventral posteromedial nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,Tg lines,xx,Foxp2,True,False,False
+VPMpc,"Ventral posteromedial nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,ISH (ABA),,Prkcd,True,False,False
+VPMpc,"Ventral posteromedial nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,ISH (ABA),,Plekhg1,False,False,False
+VPMpc,"Ventral posteromedial nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,ISH (ABA),,Ptpn3,False,False,False
+VPMpc,"Ventral posteromedial nucleus of the thalamus, parvicellular part",Thalamus,Wang et al. 2020,ISH (ABA),,Rgs4,True,True,False
+PoT,Posterior triangular thalamic nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Slc17a6,True,True,False
+PoT,Posterior triangular thalamic nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Ptpn3,False,False,False
+SPFm,"Subparafascicular nucleus, magnocellular part",Thalamus,Wang et al. 2020,Tg lines,x,Chrna2,False,False,False
+SPFm,"Subparafascicular nucleus, magnocellular part",Thalamus,Wang et al. 2020,ISH (ABA),,Tcf7l2,True,True,True
+SPFm,"Subparafascicular nucleus, magnocellular part",Thalamus,Wang et al. 2020,ISH (ABA),,Astn2,False,False,False
+SPFm,"Subparafascicular nucleus, magnocellular part",Thalamus,Wang et al. 2020,ISH (ABA),,Satb1,False,False,False
+SPFp,"Subparafascicular nucleus, parvicellular part",Thalamus,Wang et al. 2020,Tg lines,x,Calb1,True,True,False
+SPFp,"Subparafascicular nucleus, parvicellular part",Thalamus,Wang et al. 2020,Tg lines,x,Sst,False,False,False
+SPFp,"Subparafascicular nucleus, parvicellular part",Thalamus,Wang et al. 2020,Tg lines,x,Calb1,True,True,False
+SPFp,"Subparafascicular nucleus, parvicellular part",Thalamus,Wang et al. 2020,ISH (ABA),,LOC381076,False,False,False
+SPFp,"Subparafascicular nucleus, parvicellular part",Thalamus,Wang et al. 2020,ISH (ABA),,Baiap3,False,True,True
+SPFp,"Subparafascicular nucleus, parvicellular part",Thalamus,Wang et al. 2020,ISH (ABA),,Ngb,True,True,True
+SPA,Subparafascicular area,Thalamus,Wang et al. 2020,Tg lines,x,Calb2,True,True,True
+SPA,Subparafascicular area,Thalamus,Wang et al. 2020,ISH (ABA),,Slc17a8,True,True,False
+SPA,Subparafascicular area,Thalamus,Wang et al. 2020,ISH (ABA),,Fxyd6,True,True,False
+SPA,Subparafascicular area,Thalamus,Wang et al. 2020,ISH (ABA),,Slitrk6,False,False,False
+PP,Peripeduncular nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Hap1,False,False,False
+PP,Peripeduncular nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,LOC381076,False,False,False
+PP,Peripeduncular nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Baiap3,False,True,True
+MGd,"Medial geniculate complex, dorsal part",Thalamus,Wang et al. 2020,Tg lines,xxx,Ntsr1,False,False,False
+MGd,"Medial geniculate complex, dorsal part",Thalamus,Wang et al. 2020,Tg lines,xxx,Pvalb,True,True,False
+MGd,"Medial geniculate complex, dorsal part",Thalamus,Wang et al. 2020,Tg lines,x,Gal,True,True,False
+MGd,"Medial geniculate complex, dorsal part",Thalamus,Wang et al. 2020,Tg lines,xx,Prkcd,True,False,False
+MGd,"Medial geniculate complex, dorsal part",Thalamus,Wang et al. 2020,Tg lines,x,Dlg3,False,False,False
+MGd,"Medial geniculate complex, dorsal part",Thalamus,Wang et al. 2020,Tg lines,xx,Rorb,True,True,True
+MGd,"Medial geniculate complex, dorsal part",Thalamus,Wang et al. 2020,Tg lines,x,Slc17a7,True,True,False
+MGd,"Medial geniculate complex, dorsal part",Thalamus,Wang et al. 2020,Tg lines,xxx,Foxp2,True,False,True
+MGd,"Medial geniculate complex, dorsal part",Thalamus,Wang et al. 2020,ISH (ABA),,Prkcd,True,False,False
+MGd,"Medial geniculate complex, dorsal part",Thalamus,Wang et al. 2020,ISH (ABA),,Plekhg1,False,False,False
+MGd,"Medial geniculate complex, dorsal part",Thalamus,Wang et al. 2020,ISH (ABA),,Kcnc2,True,False,False
+MGd,"Medial geniculate complex, dorsal part",Thalamus,Wang et al. 2020,ISH (ABA),,Tnnt1,False,True,False
+MGv,"Medial geniculate complex, ventral part",Thalamus,Wang et al. 2020,Tg lines,xxx,Ntsr1,False,False,False
+MGv,"Medial geniculate complex, ventral part",Thalamus,Wang et al. 2020,Tg lines,xxx,Pvalb,True,True,False
+MGv,"Medial geniculate complex, ventral part",Thalamus,Wang et al. 2020,Tg lines,x,Gal,True,True,False
+MGv,"Medial geniculate complex, ventral part",Thalamus,Wang et al. 2020,Tg lines,xx,Prkcd,True,False,False
+MGv,"Medial geniculate complex, ventral part",Thalamus,Wang et al. 2020,Tg lines,x,Dlg3,False,False,False
+MGv,"Medial geniculate complex, ventral part",Thalamus,Wang et al. 2020,Tg lines,xx,Rorb,True,True,True
+MGv,"Medial geniculate complex, ventral part",Thalamus,Wang et al. 2020,Tg lines,x,Slc17a7,True,True,False
+MGv,"Medial geniculate complex, ventral part",Thalamus,Wang et al. 2020,Tg lines,xxx,Foxp2,True,False,True
+MGv,"Medial geniculate complex, ventral part",Thalamus,Wang et al. 2020,ISH (ABA),,Prkcd,True,False,False
+MGv,"Medial geniculate complex, ventral part",Thalamus,Wang et al. 2020,ISH (ABA),,Plekhg1,False,False,False
+MGv,"Medial geniculate complex, ventral part",Thalamus,Wang et al. 2020,ISH (ABA),,Kcnc2,True,False,False
+MGv,"Medial geniculate complex, ventral part",Thalamus,Wang et al. 2020,ISH (ABA),,Tnnt1,False,True,False
+MGm,"Medial geniculate complex, medial part",Thalamus,Wang et al. 2020,Tg lines,xxx,Ntsr1,False,False,False
+MGm,"Medial geniculate complex, medial part",Thalamus,Wang et al. 2020,Tg lines,xxx,Pvalb,True,True,False
+MGm,"Medial geniculate complex, medial part",Thalamus,Wang et al. 2020,Tg lines,xx,Prkcd,True,False,False
+MGm,"Medial geniculate complex, medial part",Thalamus,Wang et al. 2020,Tg lines,x,Dlg3,False,False,False
+MGm,"Medial geniculate complex, medial part",Thalamus,Wang et al. 2020,Tg lines,xx,Rorb,True,True,True
+MGm,"Medial geniculate complex, medial part",Thalamus,Wang et al. 2020,Tg lines,x,Slc17a7,True,True,False
+MGm,"Medial geniculate complex, medial part",Thalamus,Wang et al. 2020,Tg lines,xxx,Foxp2,True,False,True
+MGm,"Medial geniculate complex, medial part",Thalamus,Wang et al. 2020,ISH (ABA),,Prkcd,True,False,False
+MGm,"Medial geniculate complex, medial part",Thalamus,Wang et al. 2020,ISH (ABA),,Kcnc2,True,False,False
+MGm,"Medial geniculate complex, medial part",Thalamus,Wang et al. 2020,ISH (ABA),,Rab37,False,False,False
+MGm,"Medial geniculate complex, medial part",Thalamus,Wang et al. 2020,ISH (ABA),,Nefh,False,False,False
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,Tg lines,xxx,Ntsr1,False,False,False
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,Tg lines,x,Scnn1a,False,False,False
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,Tg lines,x,Pvalb,True,True,True
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,Tg lines,xx,Gal,True,True,False
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,Tg lines,xx,Prkcd,True,False,False
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,Tg lines,x,Fezf2,True,False,False
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,Tg lines,x,Kcng4,False,False,False
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,Tg lines,x,Rorb,True,True,True
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,Tg lines,x,Gad2,True,True,False
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,Tg lines,x,Vipr2,True,False,False
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,Tg lines,xxx,Foxp2,True,False,False
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,ISH (ABA),,Prkcd,True,False,False
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,ISH (ABA),,Plekhg1,False,False,False
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,ISH (ABA),,Slc17a6,True,True,False
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,ISH (ABA),,Ptpn3,False,False,False
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,ISH (ABA),,Rgs4,True,True,False
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,ISH (ABA),,Nefh,False,False,False
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,ISH (ABA),,Tnnt1,False,True,False
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,ISH (ABA),,Lef1,False,False,True
+LGd-sh,"Dorsal part of the lateral geniculate complex, shell",Thalamus,Wang et al. 2020,ISH (ABA),,Rorb,True,True,True
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,Tg lines,xxx,Ntsr1,False,False,False
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,Tg lines,x,Scnn1a,False,False,False
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,Tg lines,x,Pvalb,True,True,True
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,Tg lines,xx,Gal,True,True,False
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,Tg lines,xx,Prkcd,True,False,False
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,Tg lines,x,Fezf2,True,False,False
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,Tg lines,x,Kcng4,False,False,False
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,Tg lines,x,Rorb,True,True,True
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,Tg lines,x,Gad2,True,True,False
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,Tg lines,x,Vipr2,True,False,False
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,Tg lines,xxx,Foxp2,True,False,False
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,ISH (ABA),,Prkcd,True,False,False
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,ISH (ABA),,Scnn1a,False,False,False
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,ISH (ABA),,Plekhg1,False,False,False
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,ISH (ABA),,Slc17a6,True,True,False
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,ISH (ABA),,Ptpn3,False,False,False
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,ISH (ABA),,Rgs4,True,True,False
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,ISH (ABA),,Nefh,False,False,False
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,ISH (ABA),,Tnnt1,False,True,False
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,ISH (ABA),,Lef1,False,False,True
+LGd-co,"Dorsal part of the lateral geniculate complex, core",Thalamus,Wang et al. 2020,ISH (ABA),,Rorb,True,True,True
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,Tg lines,xxx,Ntsr1,False,False,False
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,Tg lines,x,Scnn1a,False,False,False
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,Tg lines,x,Pvalb,True,True,True
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,Tg lines,xx,Gal,True,True,False
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,Tg lines,xx,Prkcd,True,False,False
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,Tg lines,x,Fezf2,True,False,False
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,Tg lines,x,Kcng4,False,False,False
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,Tg lines,x,Rorb,True,True,True
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,Tg lines,x,Gad2,True,True,False
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,Tg lines,x,Vipr2,True,False,False
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,Tg lines,xxx,Foxp2,True,False,False
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,ISH (ABA),,Prkcd,True,False,False
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,ISH (ABA),,Plekhg1,False,False,False
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,ISH (ABA),,Slc17a6,True,True,False
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,ISH (ABA),,Ptpn3,False,False,False
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,ISH (ABA),,Rgs4,True,True,False
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,ISH (ABA),,Nefh,False,False,False
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,ISH (ABA),,Tnnt1,False,True,False
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,ISH (ABA),,Lef1,False,False,True
+LGd-ip,"Dorsal part of the lateral geniculate complex, ipsilateral zone",Thalamus,Wang et al. 2020,ISH (ABA),,Rorb,True,True,True
+LP,Lateral posterior nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Calb1,True,True,False
+LP,Lateral posterior nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Ntsr1,False,False,False
+LP,Lateral posterior nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Crh,True,True,False
+LP,Lateral posterior nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Prkcd,True,False,False
+LP,Lateral posterior nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Dlg3,False,False,False
+LP,Lateral posterior nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Fezf2,True,False,False
+LP,Lateral posterior nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Htr1a,False,False,False
+LP,Lateral posterior nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Tacr1,False,True,False
+LP,Lateral posterior nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Grik4,False,False,False
+LP,Lateral posterior nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Calb1,True,True,False
+LP,Lateral posterior nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Foxp2,True,False,True
+LP,Lateral posterior nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Plekhg1,False,False,False
+LP,Lateral posterior nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,1810041L15Rik,False,False,False
+LP,Lateral posterior nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Kcnc2,True,False,False
+LP,Lateral posterior nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Tnnt1,False,True,False
+LP,Lateral posterior nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Calb2,True,True,True
+PO,Posterior complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Ntsr1,False,False,False
+PO,Posterior complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Syt6,True,True,False
+PO,Posterior complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Prkcd,True,False,False
+PO,Posterior complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Glt25d2,False,False,False
+PO,Posterior complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Dlg3,False,False,False
+PO,Posterior complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Fezf2,True,False,False
+PO,Posterior complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Rorb,True,True,True
+PO,Posterior complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Grik4,False,False,False
+PO,Posterior complex of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Foxp2,True,False,True
+PO,Posterior complex of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Prkcd,True,False,False
+PO,Posterior complex of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Plekhg1,False,False,False
+PO,Posterior complex of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Ptpn3,False,False,False
+PO,Posterior complex of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Synpo2,False,False,False
+PO,Posterior complex of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Tnnt1,False,True,False
+POL,Posterior limiting nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Tac1,True,False,False
+POL,Posterior limiting nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Sst,False,False,False
+POL,Posterior limiting nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Etv1,True,False,False
+POL,Posterior limiting nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Nov,True,False,False
+POL,Posterior limiting nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Fxyd6,True,True,False
+POL,Posterior limiting nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Baiap3,False,True,False
+SGN,Suprageniculate nucleus,Thalamus,Wang et al. 2020,Tg lines,x,Dlg3,False,False,False
+SGN,Suprageniculate nucleus,Thalamus,Wang et al. 2020,Tg lines,x,Fezf2,True,False,False
+SGN,Suprageniculate nucleus,Thalamus,Wang et al. 2020,Tg lines,xx,Rorb,True,True,True
+SGN,Suprageniculate nucleus,Thalamus,Wang et al. 2020,Tg lines,xxx,Foxp2,True,False,True
+SGN,Suprageniculate nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Necab2,False,False,False
+SGN,Suprageniculate nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Nts,True,True,False
+SGN,Suprageniculate nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Slc17a6,True,True,False
+SGN,Suprageniculate nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Adcyap1,False,True,True
+SGN,Suprageniculate nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Tnnt1,False,True,False
+SGN,Suprageniculate nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Pvalb,True,True,True
+Eth,Ethmoid nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Etv1,True,False,False
+Eth,Ethmoid nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Ptpn3,False,False,False
+Eth,Ethmoid nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Rgs4,True,True,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Rorb,True,True,True
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Slc17a8,True,True,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Calb1,True,True,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Chrna2,False,False,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Cux2,True,False,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Scnn1a,False,False,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Nos1,True,True,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Chat,True,True,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Trib2,False,False,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Pvalb,True,True,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Crh,True,True,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Gal,True,True,True
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Grp,True,True,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Dlg3,False,False,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Fezf2,True,False,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Kcng4,False,False,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Rorb,True,True,True
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Htr3a,False,True,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Htr1a,False,False,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Slc17a8,True,True,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Tcf7l2,True,True,True
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Kcnc2,True,False,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Igfbp5,False,False,False
+AV,Anteroventral nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Synpo2,False,False,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,Tg lines,xx,Slc17a8,True,True,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,Tg lines,x,Calb1,True,True,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,Tg lines,x,Ntsr1,False,False,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,Tg lines,x,Cux2,True,False,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,Tg lines,xx,Crh,True,True,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,Tg lines,xx,Grp,True,True,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,Tg lines,xxx,Syt6,True,True,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,Tg lines,xxx,Dlg3,False,False,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,Tg lines,xx,Fezf2,True,False,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,Tg lines,xxx,Kcng4,False,False,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,Tg lines,xx,Rorb,True,True,True
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,Tg lines,xx,Htr3a,False,True,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,Tg lines,xxx,Slc17a8,True,True,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,Tg lines,xx,Grik4,False,False,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,Tg lines,xxx,Foxp2,True,False,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,ISH (ABA),,LOC432748,False,False,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,ISH (ABA),,Kcnc2,True,False,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,ISH (ABA),,Sult1a1,False,False,False
+AMd,"Anteromedial nucleus, dorsal part",Thalamus,Wang et al. 2020,ISH (ABA),,Tnnt1,False,True,False
+AMv,"Anteromedial nucleus, ventral part",Thalamus,Wang et al. 2020,Tg lines,xx,Slc17a8,True,True,False
+AMv,"Anteromedial nucleus, ventral part",Thalamus,Wang et al. 2020,Tg lines,x,Ntsr1,False,False,False
+AMv,"Anteromedial nucleus, ventral part",Thalamus,Wang et al. 2020,Tg lines,xxx,Crh,True,True,False
+AMv,"Anteromedial nucleus, ventral part",Thalamus,Wang et al. 2020,Tg lines,xx,Grp,True,True,False
+AMv,"Anteromedial nucleus, ventral part",Thalamus,Wang et al. 2020,Tg lines,xxx,Syt6,True,True,False
+AMv,"Anteromedial nucleus, ventral part",Thalamus,Wang et al. 2020,Tg lines,xxx,Dlg3,False,False,False
+AMv,"Anteromedial nucleus, ventral part",Thalamus,Wang et al. 2020,Tg lines,xx,Fezf2,True,False,False
+AMv,"Anteromedial nucleus, ventral part",Thalamus,Wang et al. 2020,Tg lines,xxx,Kcng4,False,False,False
+AMv,"Anteromedial nucleus, ventral part",Thalamus,Wang et al. 2020,Tg lines,xx,Rorb,True,True,True
+AMv,"Anteromedial nucleus, ventral part",Thalamus,Wang et al. 2020,Tg lines,xxx,Slc17a8,True,True,False
+AMv,"Anteromedial nucleus, ventral part",Thalamus,Wang et al. 2020,Tg lines,xx,Grik4,False,False,False
+AMv,"Anteromedial nucleus, ventral part",Thalamus,Wang et al. 2020,Tg lines,xxx,Foxp2,True,False,False
+AMv,"Anteromedial nucleus, ventral part",Thalamus,Wang et al. 2020,ISH (ABA),,LOC432748,False,False,False
+AMv,"Anteromedial nucleus, ventral part",Thalamus,Wang et al. 2020,ISH (ABA),,Kcnc2,True,False,False
+AMv,"Anteromedial nucleus, ventral part",Thalamus,Wang et al. 2020,ISH (ABA),,Sult1a1,False,False,False
+AMv,"Anteromedial nucleus, ventral part",Thalamus,Wang et al. 2020,ISH (ABA),,Tnnt1,False,True,False
+AD,Anterodorsal nucleus,Thalamus,Wang et al. 2020,Tg lines,x,Rorb,True,True,True
+AD,Anterodorsal nucleus,Thalamus,Wang et al. 2020,Tg lines,xx,Chrna2,False,False,False
+AD,Anterodorsal nucleus,Thalamus,Wang et al. 2020,Tg lines,xx,Scnn1a,False,False,False
+AD,Anterodorsal nucleus,Thalamus,Wang et al. 2020,Tg lines,xx,Gal,True,True,True
+AD,Anterodorsal nucleus,Thalamus,Wang et al. 2020,Tg lines,xxx,Kcng4,False,False,False
+AD,Anterodorsal nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Tesc,False,False,False
+AD,Anterodorsal nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,C1ql2,True,False,True
+AD,Anterodorsal nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Kcnc2,True,False,False
+AD,Anterodorsal nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Igfbp5,False,False,False
+AD,Anterodorsal nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Kcnab3,False,True,True
+AD,Anterodorsal nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Nefh,False,False,False
+AD,Anterodorsal nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Synpo2,False,False,False
+AD,Anterodorsal nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Nlk,False,False,False
+IAM,Interanteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Calb1,True,True,False
+IAM,Interanteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Scnn1a,False,False,False
+IAM,Interanteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Tac1,True,False,False
+IAM,Interanteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Calb2,True,True,False
+IAM,Interanteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Crh,True,True,False
+IAM,Interanteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Grp,True,True,False
+IAM,Interanteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Syt6,True,True,False
+IAM,Interanteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Fezf2,True,False,False
+IAM,Interanteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Kcng4,False,False,False
+IAM,Interanteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Rorb,True,True,False
+IAM,Interanteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Htr3a,False,True,False
+IAM,Interanteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Calb1,True,True,False
+IAM,Interanteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Epha1,False,False,False
+IAM,Interanteromedial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Nmbr,True,False,False
+IAD,Interanterodorsal nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Calb1,True,True,False
+IAD,Interanterodorsal nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Scnn1a,False,False,False
+IAD,Interanterodorsal nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Tac1,True,False,False
+IAD,Interanterodorsal nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Crh,True,True,False
+IAD,Interanterodorsal nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Calb1,True,True,False
+IAD,Interanterodorsal nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Fxyd6,True,True,False
+IAD,Interanterodorsal nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Synpo2,False,False,False
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Ntsr1,False,False,False
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Trib2,False,False,False
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Syt6,True,True,False
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Prkcd,True,False,False
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Dlg3,False,False,False
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Fezf2,True,False,False
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Htr1a,False,False,False
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Slc17a8,True,True,False
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,PB,False,False,False
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Foxp2,True,False,False
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Prkcd,True,False,False
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Lypd1,True,True,True
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Kcnc2,True,False,False
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Pnkd,False,False,False
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Slit1,False,False,False
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Nefh,False,False,False
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Synpo2,False,False,False
+LD,Lateral dorsal nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Calb2,True,True,True
+IMD,Intermediodorsal nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Calb1,True,True,False
+IMD,Intermediodorsal nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Tac1,True,False,False
+IMD,Intermediodorsal nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Calb2,True,True,True
+IMD,Intermediodorsal nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Crh,True,True,False
+IMD,Intermediodorsal nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Rorb,True,True,True
+IMD,Intermediodorsal nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Calb1,True,True,False
+IMD,Intermediodorsal nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Slc17a8,True,True,False
+IMD,Intermediodorsal nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Maob,True,False,True
+IMD,Intermediodorsal nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Htr2c,True,False,False
+IMD,Intermediodorsal nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Ptpn3,False,False,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Calb1,True,True,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Chrna2,False,False,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Syt6,True,True,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Prkcd,True,False,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Dlg3,False,False,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Fezf2,True,False,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Kcng4,False,False,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Rorb,True,True,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Slc17a7,True,True,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Htr1a,False,False,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Etv1,True,False,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Grik4,False,False,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Calb1,True,True,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Prkcd,True,False,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Plekhg1,False,False,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Gabra4,False,False,True
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Nefh,False,False,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Synpo2,False,False,False
+MD,Mediodorsal nucleus of thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Tnnt1,False,True,False
+SMT,Submedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Rorb,True,True,True
+SMT,Submedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Slc17a8,True,True,False
+SMT,Submedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Scnn1a,False,False,False
+SMT,Submedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Syt6,True,True,False
+SMT,Submedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Dlg3,False,False,False
+SMT,Submedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Fezf2,True,False,False
+SMT,Submedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Kcng4,False,False,False
+SMT,Submedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Rorb,True,True,True
+SMT,Submedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Slc17a7,True,True,False
+SMT,Submedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Htr1a,False,False,False
+SMT,Submedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Grik4,False,False,False
+SMT,Submedial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Foxp2,True,False,False
+SMT,Submedial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Prkcd,True,False,False
+SMT,Submedial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Tnnt1,False,True,False
+PR,Perireunensis nucleus,Thalamus,Wang et al. 2020,Tg lines,xx,Calb2,True,True,False
+PR,Perireunensis nucleus,Thalamus,Wang et al. 2020,Tg lines,xx,Grik4,False,False,False
+PR,Perireunensis nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Grid2ip,False,False,False
+PR,Perireunensis nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Tcf7l2,True,True,False
+PR,Perireunensis nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Tnnt1,False,True,False
+PVT,Paraventricular nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Slc17a8,True,True,False
+PVT,Paraventricular nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Calb1,True,True,False
+PVT,Paraventricular nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Tac1,True,False,False
+PVT,Paraventricular nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Nos1,True,True,False
+PVT,Paraventricular nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Sst,False,False,False
+PVT,Paraventricular nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Calb2,True,True,True
+PVT,Paraventricular nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Calb1,True,True,False
+PVT,Paraventricular nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Hap1,False,False,False
+PVT,Paraventricular nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Maob,True,False,True
+PVT,Paraventricular nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Tcf7l2,True,True,True
+PVT,Paraventricular nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Fxyd6,True,True,False
+PVT,Paraventricular nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Nrn1,True,True,False
+PVT,Paraventricular nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Chn2,True,True,False
+PVT,Paraventricular nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Calb2,True,True,True
+PT,Parataenial nucleus,Thalamus,Wang et al. 2020,Tg lines,xx,Nos1,True,True,False
+PT,Parataenial nucleus,Thalamus,Wang et al. 2020,Tg lines,xxx,Crh,True,True,False
+PT,Parataenial nucleus,Thalamus,Wang et al. 2020,Tg lines,xxx,Syt6,True,True,False
+PT,Parataenial nucleus,Thalamus,Wang et al. 2020,Tg lines,xx,Dlg3,False,False,False
+PT,Parataenial nucleus,Thalamus,Wang et al. 2020,Tg lines,x,Kcng4,False,False,False
+PT,Parataenial nucleus,Thalamus,Wang et al. 2020,Tg lines,x,Rorb,True,True,True
+PT,Parataenial nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Prkcd,True,False,False
+PT,Parataenial nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Htr2c,True,False,False
+PT,Parataenial nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Nefh,False,False,False
+PT,Parataenial nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Sphkap,False,False,False
+PT,Parataenial nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Psme1,False,False,False
+PT,Parataenial nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Tnnt1,False,True,False
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,Tg lines,xx,Calb1,True,True,False
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,Tg lines,xx,Chrna2,False,False,False
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,Tg lines,xx,Cux2,True,False,False
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,Tg lines,xx,Scnn1a,False,False,False
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,Tg lines,xx,Calb2,True,True,True
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,Tg lines,xx,Kcng4,False,False,False
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,Tg lines,x,Grik4,False,False,False
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,Tg lines,xx,Calb1,True,True,False
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,ISH (ABA),,Cdh24,False,False,False
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,ISH (ABA),,Spock3,True,True,False
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,ISH (ABA),,Calb1,True,True,False
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,ISH (ABA),,Ntng1,False,True,True
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,ISH (ABA),,Lypd1,True,True,True
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,ISH (ABA),,1810041L15Rik,False,False,False
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,ISH (ABA),,Kcnc2,True,False,False
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,ISH (ABA),,Gpr12,False,False,True
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,ISH (ABA),,Cpne7,True,False,False
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,ISH (ABA),,Slc17a6,True,True,False
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,ISH (ABA),,Inpp5a,False,False,True
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,ISH (ABA),,Nefh,False,False,False
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,ISH (ABA),,Plcb1,False,False,False
+RE,Nucleus of reuniens,Thalamus,Wang et al. 2020,ISH (ABA),,Calb2,True,True,True
+Xi,Xiphoid thalamic nucleus,Thalamus,Wang et al. 2020,Tg lines,x,Rorb,True,True,False
+Xi,Xiphoid thalamic nucleus,Thalamus,Wang et al. 2020,Tg lines,x,Tac1,True,False,False
+Xi,Xiphoid thalamic nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Stxbp6,True,True,False
+Xi,Xiphoid thalamic nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Zmat4,False,False,False
+Xi,Xiphoid thalamic nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Maob,True,False,False
+Xi,Xiphoid thalamic nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Tcf7l2,True,True,False
+Xi,Xiphoid thalamic nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Necab2,False,False,False
+Xi,Xiphoid thalamic nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Cpne7,True,False,False
+Xi,Xiphoid thalamic nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Ptpn3,False,False,False
+Xi,Xiphoid thalamic nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Nrn1,True,True,False
+RH,Rhomboid nucleus,Thalamus,Wang et al. 2020,Tg lines,xx,Chrna2,False,False,False
+RH,Rhomboid nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Zmat4,False,False,False
+RH,Rhomboid nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Slc17a8,True,True,False
+RH,Rhomboid nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Ntng1,False,True,True
+RH,Rhomboid nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Tcf7l2,True,True,True
+RH,Rhomboid nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,1810041L15Rik,False,False,False
+RH,Rhomboid nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Slitrk6,False,False,False
+RH,Rhomboid nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Calb2,True,True,True
+CM,Central medial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Scnn1a,False,False,False
+CM,Central medial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Sst,False,False,False
+CM,Central medial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Crh,True,True,False
+CM,Central medial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Gal,True,True,True
+CM,Central medial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Dlg3,False,False,False
+CM,Central medial nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Kcng4,False,False,False
+CM,Central medial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Stxbp6,True,True,False
+CM,Central medial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Fxyd6,True,True,False
+CM,Central medial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Htr2c,True,False,False
+CM,Central medial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Slitrk6,False,False,False
+CM,Central medial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Epha1,False,False,True
+CM,Central medial nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Nmbr,True,False,True
+PCN,Paracentral nucleus,Thalamus,Wang et al. 2020,Tg lines,xx,Scnn1a,False,False,False
+PCN,Paracentral nucleus,Thalamus,Wang et al. 2020,Tg lines,xx,Crh,True,True,False
+PCN,Paracentral nucleus,Thalamus,Wang et al. 2020,Tg lines,x,Gal,True,True,True
+PCN,Paracentral nucleus,Thalamus,Wang et al. 2020,Tg lines,x,Grp,True,True,False
+PCN,Paracentral nucleus,Thalamus,Wang et al. 2020,Tg lines,x,Kcng4,False,False,False
+PCN,Paracentral nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Limk1,False,False,False
+PCN,Paracentral nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Pamr1,True,False,False
+PCN,Paracentral nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Creg1,False,False,False
+PCN,Paracentral nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Calb2,True,True,True
+CL,Central lateral nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Scnn1a,False,False,False
+CL,Central lateral nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Gal,True,True,True
+CL,Central lateral nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Grp,True,True,False
+CL,Central lateral nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Kcng4,False,False,False
+CL,Central lateral nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Pamr1,True,False,False
+CL,Central lateral nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,LOC432748,False,False,False
+CL,Central lateral nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Igfbp5,False,False,False
+CL,Central lateral nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Htr2c,True,False,False
+CL,Central lateral nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Col12a1,False,False,False
+CL,Central lateral nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Nmbr,True,False,True
+CL,Central lateral nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Calb2,True,True,True
+PF,Parafascicular nucleus,Thalamus,Wang et al. 2020,Tg lines,xxx,Chrna2,False,False,False
+PF,Parafascicular nucleus,Thalamus,Wang et al. 2020,Tg lines,xx,Scnn1a,False,False,False
+PF,Parafascicular nucleus,Thalamus,Wang et al. 2020,Tg lines,xxx,Syt6,True,True,False
+PF,Parafascicular nucleus,Thalamus,Wang et al. 2020,Tg lines,x,Kcng4,False,False,False
+PF,Parafascicular nucleus,Thalamus,Wang et al. 2020,Tg lines,x,Etv1,True,False,False
+PF,Parafascicular nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Ache,False,False,False
+PF,Parafascicular nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,3632451O06Rik,False,False,False
+PF,Parafascicular nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Cbln4,True,True,False
+PF,Parafascicular nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,BC100451,False,False,False
+PF,Parafascicular nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Lypd6b,True,False,True
+PF,Parafascicular nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Rgs4,True,True,False
+PF,Parafascicular nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Epha1,False,False,True
+PF,Parafascicular nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Crtac1,False,False,False
+PF,Parafascicular nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Efr3a,False,False,False
+PIL,Posterior intralaminar thalamic nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Fxyd6,True,True,False
+PIL,Posterior intralaminar thalamic nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Ngb,True,True,True
+RT,Reticular nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Ntsr1,False,False,False
+RT,Reticular nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Scnn1a,False,False,False
+RT,Reticular nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xxx,Pvalb,True,True,True
+RT,Reticular nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,xx,Sst,False,False,False
+RT,Reticular nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Kcng4,False,False,True
+RT,Reticular nucleus of the thalamus,Thalamus,Wang et al. 2020,Tg lines,x,Gad2,True,True,True
+RT,Reticular nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Gad1,True,False,True
+RT,Reticular nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Pvalb,True,True,True
+RT,Reticular nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Lgi2,False,False,True
+RT,Reticular nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Nefh,False,False,False
+RT,Reticular nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Ubash3b,True,False,True
+RT,Reticular nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Spp1,True,False,True
+RT,Reticular nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Cdh13,True,False,True
+RT,Reticular nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Pvalb,True,True,True
+RT,Reticular nucleus of the thalamus,Thalamus,Wang et al. 2020,ISH (ABA),,Gad2,True,True,True
+IGL,Intergeniculate leaflet of the lateral geniculate complex,Thalamus,Wang et al. 2020,ISH (ABA),,Hap1,False,False,False
+IGL,Intergeniculate leaflet of the lateral geniculate complex,Thalamus,Wang et al. 2020,ISH (ABA),,Ache,False,False,False
+IGL,Intergeniculate leaflet of the lateral geniculate complex,Thalamus,Wang et al. 2020,ISH (ABA),,LOC381076,False,False,False
+IGL,Intergeniculate leaflet of the lateral geniculate complex,Thalamus,Wang et al. 2020,ISH (ABA),,Fxyd6,True,True,False
+IGL,Intergeniculate leaflet of the lateral geniculate complex,Thalamus,Wang et al. 2020,ISH (ABA),,Baiap3,False,True,True
+IntG,Intermediate geniculate nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Hap1,False,False,False
+IntG,Intermediate geniculate nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Fxyd6,True,True,False
+IntG,Intermediate geniculate nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Zcchc12,True,False,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,Tg lines,x,Cux2,True,False,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,Tg lines,x,Rbp4,False,True,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,Tg lines,x,Scnn1a,False,False,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,Tg lines,xx,Tac1,True,False,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,Tg lines,x,Nos1,True,True,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,Tg lines,x,Trib2,False,False,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,Tg lines,xx,Gal,True,True,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,Tg lines,x,Kcng4,False,False,True
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,Tg lines,x,Ndnf,True,True,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,Tg lines,x,Gad2,True,True,True
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,Tg lines,xx,Etv1,True,False,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,Tg lines,x,Grik4,False,False,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,ISH (ABA),,Ache,False,False,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,ISH (ABA),,Hap1,False,False,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,ISH (ABA),,Lypd1,True,True,True
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,ISH (ABA),,Anxa3,False,False,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,ISH (ABA),,Zcchc12,True,False,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,ISH (ABA),,Zfhx4,True,True,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,ISH (ABA),,Nos1,True,True,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,ISH (ABA),,Reln,True,True,False
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,ISH (ABA),,Pvalb,True,True,True
+LGv,Ventral part of the lateral geniculate complex,Thalamus,Wang et al. 2020,ISH (ABA),,Gad2,True,True,True
+SubG,Subgeniculate nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Cib2,False,False,False
+SubG,Subgeniculate nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Fxyd6,True,True,False
+SubG,Subgeniculate nucleus,Thalamus,Wang et al. 2020,ISH (ABA),,Zfhx4,True,True,False
+MH,Medial habenula,Thalamus,Wang et al. 2020,Tg lines,x,Slc17a8,True,True,False
+MH,Medial habenula,Thalamus,Wang et al. 2020,Tg lines,x,Tac1,True,False,False
+MH,Medial habenula,Thalamus,Wang et al. 2020,Tg lines,x,Chat,True,True,False
+MH,Medial habenula,Thalamus,Wang et al. 2020,Tg lines,x,Calb2,True,True,True
+MH,Medial habenula,Thalamus,Wang et al. 2020,ISH (ABA),,Cbln2,True,True,False
+MH,Medial habenula,Thalamus,Wang et al. 2020,ISH (ABA),,Tesc,False,False,False
+MH,Medial habenula,Thalamus,Wang et al. 2020,ISH (ABA),,3632451O06Rik,False,False,False
+MH,Medial habenula,Thalamus,Wang et al. 2020,ISH (ABA),,Tac2,False,True,True
+MH,Medial habenula,Thalamus,Wang et al. 2020,ISH (ABA),,Msi2,False,False,False
+MH,Medial habenula,Thalamus,Wang et al. 2020,ISH (ABA),,Plch2,False,False,False
+MH,Medial habenula,Thalamus,Wang et al. 2020,ISH (ABA),,Sphkap,False,False,False
+LH,Lateral habenula,Thalamus,Wang et al. 2020,Tg lines,x,Tac1,True,False,False
+LH,Lateral habenula,Thalamus,Wang et al. 2020,Tg lines,x,Nos1,True,True,False
+LH,Lateral habenula,Thalamus,Wang et al. 2020,Tg lines,x,Sst,False,False,False
+LH,Lateral habenula,Thalamus,Wang et al. 2020,ISH (ABA),,Cbln2,True,True,False
+LH,Lateral habenula,Thalamus,Wang et al. 2020,ISH (ABA),,1810041L15Rik,False,False,False
+LH,Lateral habenula,Thalamus,Wang et al. 2020,ISH (ABA),,Nwd2,False,True,False
+LH,Lateral habenula,Thalamus,Wang et al. 2020,ISH (ABA),,Gpr151,False,False,True
+LH,Lateral habenula,Thalamus,Wang et al. 2020,ISH (ABA),,Ddc,True,True,False
+ZI,Zona incerta,Hypothalamus,Wang et al. 2020,Tg lines,x,Scnn1a,False,False,False
+ZI,Zona incerta,Hypothalamus,Wang et al. 2020,ISH (ABA),,Gad1,True,False,True
+ZI,Zona incerta,Hypothalamus,Wang et al. 2020,ISH (ABA),,Limk1,False,False,False
+ZI,Zona incerta,Hypothalamus,Wang et al. 2020,ISH (ABA),,Cdh24,False,False,False
+ZI,Zona incerta,Hypothalamus,Wang et al. 2020,ISH (ABA),,Gfra1,False,True,True
+ZI,Zona incerta,Hypothalamus,Wang et al. 2020,ISH (ABA),,Glra1,False,False,False
+ZI,Zona incerta,Hypothalamus,Wang et al. 2020,ISH (ABA),,Kcnab3,False,True,True
+ZI,Zona incerta,Hypothalamus,Wang et al. 2020,ISH (ABA),,Sphkap,False,False,False
+ZI,Zona incerta,Hypothalamus,Wang et al. 2020,ISH (ABA),,Pvalb,True,True,True
