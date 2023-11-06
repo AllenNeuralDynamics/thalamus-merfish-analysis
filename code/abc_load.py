@@ -97,3 +97,48 @@ def load_adata(with_metadata=True, transform='log2', cirro_names=False, version=
         cells_df = get_combined_metadata(cirro_names=cirro_names)
         adata.obs = adata.obs.join(cells_df[cells_df.columns.difference(adata.obs.columns)])
     return adata
+
+def label_thalamus_spatial_subset(cells_df, distance_px=10, filter=False):
+    coords = ['x_reconstructed','y_reconstructed','z_reconstructed']
+    resolutions = np.array([10e-3, 10e-3, 200e-3])
+    field_name='thalamus_dataset'
+    
+    ccf_df = pd.read_csv(
+            ABC_ROOT/"metadata/Allen-CCF-2020/20230630/parcellation_to_parcellation_term_membership.csv"
+            )
+    th_zi_ind = np.hstack(
+            (ccf_df.loc[ccf_df['parcellation_term_acronym']=='TH', 
+                        'parcellation_index'].unique(),
+                ccf_df.loc[ccf_df['parcellation_term_acronym']=='ZI', 
+                        'parcellation_index'].unique())
+    )
+    ## resampled ccf (z resolution limited to merscope slices)
+    ccf_img = get_ccf_labels_image(resampled=True)
+    ccf_img.shape
+    # takes about 5 sec
+    th_mask = np.isin(ccf_img, th_zi_ind)
+    mask_img = sectionwise_dilation(th_mask, distance_px, true_radius=False)
+    cells_df = label_thalamus_masked_cells(cells_df, mask_img, coords, resolutions, field_name=field_name)
+    if filter:
+        return cells_df[cells_df[field_name]]
+
+from scipy.ndimage import binary_dilation
+def sectionwise_dilation(mask_img, distance_px, true_radius=False):
+    out = np.zeros_like(mask_img)
+    coords = np.mgrid[-distance_px:distance_px+1, -distance_px:distance_px+1]
+    struct = np.linalg.norm(coords, axis=0) <= distance_px
+    for i in range(mask_img.shape[2]):
+        if true_radius:
+            out[:,:,i] = binary_dilation(mask_img[:,:,i], structure=struct)
+        else:
+            out[:,:,i] = binary_dilation(mask_img[:,:,i], iterations=distance_px)
+    return out
+
+def label_thalamus_masked_cells(cells_df, mask_img, coords, resolutions, 
+                                field_name='thalamus_dataset', drop_end_sections=True):
+    coords_index = np.rint(cells_df[coords].values / resolutions).astype(int)
+    # tuple() makes this like calling mask_img[coords_index[:,0], coords_index[:,1], coords_index[:,2]]
+    cells_df[field_name] = mask_img[tuple(coords_index.T)]
+    if drop_end_sections:
+        cells_df[field_name] = cells_df[field_name] & (4.81 < cells_df['z_reconstructed']) & (cells_df['z_reconstructed'] < 8.39)
+    return cells_df
