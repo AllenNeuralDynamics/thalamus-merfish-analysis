@@ -20,7 +20,7 @@ _THALAMUS_ANNDATA_PATH = "/data/merfish_638850_AIT17.custom_CCF_annotated_TH_ZI_
 
 def get_thalamus_reference_ids():
     adata_ref = ad.read_h5ad(_THALAMUS_ANNDATA_PATH, backed='r')
-    ref_ids = adata_ref.obs_names
+    ref_ids = adata_ref.obs_names.astype('string')
     return ref_ids
 
 ABC_ROOT = Path("/data/abc_atlas/")
@@ -70,18 +70,23 @@ def get_combined_metadata(drop_unused=True, cirro_names=False, flip_y=False, ver
         'parcellation_structure', 'parcellation_substructure'
         # 'parcellation_organ', 'parcellation_category',
         ]
-    dtype = dict(cell_label=str, 
+    dtype = dict(cell_label='string', 
                 **{x: 'float' for x in float_columns}, 
                 **{x: 'category' for x in cat_columns})
     usecols = list(dtype.keys()) if drop_unused else None
 
+    # if as_dask:
+    #     cells_df = dd.read_csv(
+    #         ABC_ROOT/f"metadata/MERFISH-C57BL6J-638850-CCF/{version}/views/cell_metadata_with_parcellation_annotation.csv", 
+    #                         dtype=dtype, usecols=usecols, blocksize=100e6)
+    # else:
     cells_df = pd.read_csv(
             ABC_ROOT/f"metadata/MERFISH-C57BL6J-638850-CCF/{version}/views/cell_metadata_with_parcellation_annotation.csv", 
                             dtype=dtype, usecols=usecols, index_col='cell_label', engine='c')
     if flip_y:
         cells_df[['y_section', 'y_reconstructed']] *= -1
     if cirro_names:
-        cells_df.rename(columns=_CIRRO_COLUMNS, inplace=True)
+        cells_df = cells_df.rename(columns=_CIRRO_COLUMNS)
     return cells_df
 
 
@@ -98,7 +103,7 @@ def load_adata(with_metadata=True, transform='log2', cirro_names=False, version=
         adata.obs = adata.obs.join(cells_df[cells_df.columns.difference(adata.obs.columns)])
     return adata
 
-def label_thalamus_spatial_subset(cells_df, distance_px=10, filter=False):
+def label_thalamus_spatial_subset(cells_df, distance_px=10, filter=False, drop_end_sections=True):
     coords = ['x_reconstructed','y_reconstructed','z_reconstructed']
     resolutions = np.array([10e-3, 10e-3, 200e-3])
     field_name='thalamus_dataset'
@@ -118,9 +123,11 @@ def label_thalamus_spatial_subset(cells_df, distance_px=10, filter=False):
     # takes about 5 sec
     th_mask = np.isin(ccf_img, th_zi_ind)
     mask_img = sectionwise_dilation(th_mask, distance_px, true_radius=False)
-    cells_df = label_thalamus_masked_cells(cells_df, mask_img, coords, resolutions, field_name=field_name)
+    cells_df = label_masked_cells(cells_df, mask_img, coords, resolutions, field_name=field_name)
+    if drop_end_sections:
+        cells_df[field_name] = cells_df[field_name] & (4.81 < cells_df['z_reconstructed']) & (cells_df['z_reconstructed'] < 8.39)
     if filter:
-        return cells_df[cells_df[field_name]]
+        return cells_df[cells_df[field_name]].copy().drop(columns=[field_name])
 
 from scipy.ndimage import binary_dilation
 def sectionwise_dilation(mask_img, distance_px, true_radius=False):
@@ -134,11 +141,9 @@ def sectionwise_dilation(mask_img, distance_px, true_radius=False):
             out[:,:,i] = binary_dilation(mask_img[:,:,i], iterations=distance_px)
     return out
 
-def label_thalamus_masked_cells(cells_df, mask_img, coords, resolutions, 
-                                field_name='thalamus_dataset', drop_end_sections=True):
+def label_masked_cells(cells_df, mask_img, coords, resolutions, 
+                                field_name='thalamus_dataset'):
     coords_index = np.rint(cells_df[coords].values / resolutions).astype(int)
     # tuple() makes this like calling mask_img[coords_index[:,0], coords_index[:,1], coords_index[:,2]]
     cells_df[field_name] = mask_img[tuple(coords_index.T)]
-    if drop_end_sections:
-        cells_df[field_name] = cells_df[field_name] & (4.81 < cells_df['z_reconstructed']) & (cells_df['z_reconstructed'] < 8.39)
     return cells_df
