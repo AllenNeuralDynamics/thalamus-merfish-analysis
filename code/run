@@ -5,14 +5,19 @@ set -e
 # verbose output
 set -x
 
+# needed to fix C library loading issue (caused by pyarrow?)
+export LD_LIBRARY_PATH=/opt/conda/lib/
+
 # The following command will find all *.ipynb files (recursively) in the code directory
 # and then pass them to the jupyter nbconvert command to execute and convert to html
 # This could be changed to simply save an executed .ipynb file (--to notebook), 
 # or other formats (markdown etc).
-find . -name "ccf*.ipynb" -print0 | xargs -0 --verbose -I % --max-procs=$(nproc) \
-jupyter nbconvert \
-	--to html \
-	--ExecutePreprocessor.allow_errors=True \
-	--ExecutePreprocessor.timeout=-1 \
-	--FilesWriter.build_directory=../results \
-	--execute %
+
+# find . -name "$1" -print0 | xargs -0 --verbose -I % --max-procs=$(nproc) \
+# jupyter nbconvert \
+# 	--to html \
+# 	--ExecutePreprocessor.allow_errors=True \
+# 	--ExecutePreprocessor.timeout=-1 \
+# 	--FilesWriter.build_directory=../results \
+# 	--execute %
+python -u "$@"
