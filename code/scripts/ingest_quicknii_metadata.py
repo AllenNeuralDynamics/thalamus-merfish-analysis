@@ -1,6 +1,6 @@
 import sys
 sys.path.append('/code/')
-from pathlib import Path
+import os.path
 from spatialdata import SpatialData
 import pandas as pd
 import abc_load as abc
@@ -16,7 +16,7 @@ df = ccf.subset_to_ref_bounds(df_full, coords, ref_subset)
 df[slice_label] = df['z_section'].apply(lambda x: int(x*10))
 
 transforms_by_section = ccf.read_quicknii_file(
-    Path(__file__).parent/"../../resources/adjusted_10-10_final.json", scale=25)
+    os.path.expanduser("/code/resources/adjusted_10-10_final.json"), scale=25)
 
 # load to spatialdata
 norm_transform = get_normalizing_transform(df, coords)
