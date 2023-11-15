@@ -14,14 +14,21 @@ def lighten(hex):
     rgb = 1 - 0.25*(1 - np.array(rgb))
     return tuple(rgb)
 
-def cmap_with_emphasis(n_focus, n_secondary=0, dark_background=False):
+def cmap_with_emphasis(n_focus=0, n_secondary=0, dark_background=False):
     secondary = list(np.outer(np.linspace(0.25, 0.75, n_secondary), np.ones(3)))
-    glasbey = glasbey_warm[:n_focus] + secondary + glasbey_cool
+    colors = glasbey_warm[:n_focus] + secondary + (glasbey_cool if n_focus>0 else glasbey)
     if not dark_background:
-        cmap = ['white'] + glasbey
+        cmap = ['white'] + colors
     else:
-        cmap = ['black'] + glasbey
+        cmap = ['black'] + colors
     return [to_rgb(x) for x in cmap]
+
+def subset_to_ref_bounds(df, coords, ref_subset):
+    ref_subset = df.index.intersection(ref_subset)
+    df = df.loc[lambda df: 
+        (df[coords] <= df.loc[ref_subset, coords].max()).all(axis=1) &
+        (df[coords] >= df.loc[ref_subset, coords].min()).all(axis=1)]
+    return df.copy()
 
 def add_rescaled_coords(df, coords_xy, xy_res=0.0025):
     # in mm
@@ -33,22 +40,6 @@ def add_rescaled_coords(df, coords_xy, xy_res=0.0025):
     df[coords_int] = df[coords_scaled].round().astype(int)
     df[coords_scaled] = df[coords_scaled] / df[coords_scaled].max()
     return coords_scaled, coords_int
-
-def subset_to_ref_bounds(df, coords, ref_subset):
-    ref_subset = df.index.intersection(ref_subset)
-    df = df.loc[lambda df: 
-        (df[coords] <= df.loc[ref_subset, coords].max()).all(axis=1) &
-        (df[coords] >= df.loc[ref_subset, coords].min()).all(axis=1)]
-    return df.copy()
-    
-def rasterized_image_stack(data, x, y, z, label, dilate=1):
-    shape = data[[y,x]].max().values + 1
-    images = []
-    for _, df in data.groupby(z):
-        img = rasterize_by_dilation(data, x, y, label, shape=shape, dilate=dilate)
-        images.append(img)
-    stack = np.stack(images)
-    return stack
 
 def rasterize_by_dilation(df, coords, label, shape=None, dilate=1):
     if shape is None:
@@ -73,43 +64,48 @@ def from_hom(x):
 def apply_affine_left(M, x):
     return from_hom(to_hom(x.T) @ M.T).T
 
-# to mm not um
-def get_qn_transform(scale=25):
+def image_index_from_coords(coord_values, res=10e-3):
+    coords_index = np.rint(np.array(coord_values) / res).astype(int)
+    return tuple(coords_index.T)
+
+def calculate_quicknii_transform(scale=25):
+    """Get affine matrix for transformation from quicknii pixel coordinates
+    to CCF (in mm).
+    scale: mm resolution of quicknii CCF template
+    """
     s = scale/1000
     qn_to_ccf = np.array([[0,0,s,0], [-s,0,0,0], [0,-s,0,0], [13.175,7.975,0,1]])
     ccf_to_qn = np.linalg.inv(qn_to_ccf)
     return ccf_to_qn
 
-def get_ccf_transform(df, coords_from, coords_to, n_sample=1000):
+def calculate_affine_transform(df, coords_from, coords_to, n_sample=1000):
     samples = np.random.randint(0, len(df), n_sample)
-    # samples = range(4)
     # intent is for x, y here to be normalized coords from add_rescaled_coords
     # coords_from = ['x', 'y', 'z_reconstructed']
-    to_ccf = np.matmul(np.linalg.pinv(to_hom(df[coords_from].iloc[samples].values)), to_hom(df[coords_to].iloc[samples].values))
-    assert all(np.isclose(0, to_ccf[:3,-1]))
-    return to_ccf
+    affine = np.matmul(np.linalg.pinv(to_hom(df[coords_from].iloc[samples].values)), to_hom(df[coords_to].iloc[samples].values))
+    # these entries must be zero for a valid affine transform in homogeneous coordinates
+    assert all(np.isclose(0, affine[:3,-1]))
+    affine[:3,-1] = 0
+    return affine
 
-def get_anchor_entry(z, to_ccf, ccf_to_qn):
-    # xyo = to_hom(np.array([[1, 0, z], [0, 1, z], [0, 0, z]]))
+def calculate_anchor_entry(z, to_ccf, ccf_to_qn):
     xyo_base = to_hom(np.array([[1, 1, z], [0, 0, z], [0, 1, z]]))
     xyo_qn = from_hom(xyo_base @ to_ccf @ ccf_to_qn)
     ouv_qn = np.array([[0, 0, 1], [1, 0, -1], [0, 1, -1]]) @ xyo_qn
-    anchoring = list(ouv_qn.flatten())
-    return anchoring
+    anchor_list = list(ouv_qn.flatten())
+    return anchor_list
 
 def process_anchor_entry(anchor_list, z, ccf_to_qn):
     ouv_qn = np.array(anchor_list).reshape((3, 3))
     xyo_qn = np.linalg.inv(np.array([[0, 0, 1], [1, 0, -1], [0, 1, -1]])) @ ouv_qn
     xyo_base = np.array([[1, 1, z], [0, 0, z], [0, 1, z]])
-    # this to_hom should be a matrix one (ie only adding one on diag)
+    # like to_hom() but for matrix (ie only adding one on diag)
     to_ccf = block_diag(np.linalg.inv(xyo_base) @ xyo_qn, [1]) @ np.linalg.inv(ccf_to_qn)
-    # correct for flipped y?
-    # to_ccf[1, :] *= -1
     return to_ccf
 
 def read_quicknii_file(path, scale=25):
     z_from_name = lambda x: float(x)/10
-    ccf_to_qn = get_qn_transform(scale)
+    ccf_to_qn = calculate_quicknii_transform(scale)
     transforms = dict()
     with open(path, 'r') as f:
         alignment = json.load(f)
@@ -133,8 +129,8 @@ def export_to_quicknii(df, base_filename, img_label, img_coords,
     else:
         coords_from = coords_scaled + [img_coords[2]]
     coords_to = ['x_ccf', 'y_ccf', 'z_ccf']
-    ccf_to_qn = get_qn_transform(scale)
-    to_ccf = get_ccf_transform(df, coords_from, coords_to)
+    ccf_to_qn = calculate_quicknii_transform(scale)
+    to_ccf = calculate_affine_transform(df, coords_from, coords_to)
     
     path = Path(path)
     if save_images or save_json:
@@ -151,7 +147,7 @@ def export_to_quicknii(df, base_filename, img_label, img_coords,
             # plt.imsave(path/filename, img, cmap=cmap)
             plt.imsave(path/filename, np.array(cmap)[img])
         
-        anchoring = get_anchor_entry(zval, to_ccf, ccf_to_qn)
+        anchoring = calculate_anchor_entry(zval, to_ccf, ccf_to_qn)
         slices.append(dict(anchoring=anchoring, 
                      filename=filename, 
                      height=ny,
@@ -162,3 +158,31 @@ def export_to_quicknii(df, base_filename, img_label, img_coords,
         with open(path/f'{base_filename}.json', 'w') as f:
             json.dump(data, f, indent=4)
     return data
+
+def preprocess_for_qn_export(df, nn_classes, img_coords, spatial_ref_index, 
+                             subset_for_fine_labels=None,
+                             slice_label='slice_int',
+                             img_label='subclass_int'):
+    """Process cell dataframe for export by subsetting to spatial bounds
+    of reference dataset
+    """
+    df = subset_to_ref_bounds(df, img_coords, spatial_ref_index)
+    subset_for_fine_labels = df.index.intersection(subset_for_fine_labels)
+    
+    working_label = "thal_class"
+    df[slice_label] = df['z_section'].apply(lambda x: str(int(x*10)))
+
+    df[working_label] = df["class"].astype('string')
+    df.loc[subset_for_fine_labels, working_label] = df.loc[subset_for_fine_labels, "subclass"].astype('string')
+
+    all_labels = df[working_label].unique()
+    # ordering by counts prioritizes separation of larger groups
+    focus_labels = df.loc[subset_for_fine_labels, working_label].value_counts().index
+    other_labels = df.loc[df.index.difference(subset_for_fine_labels)].loc[
+        lambda df: ~df['class'].isin(nn_classes), working_label].value_counts().index
+
+    label_order = ["background"] + list(focus_labels) + nn_classes + list(other_labels)
+    label_map = {x: label_order.index(x) for x in all_labels}
+    df[img_label] = df[working_label].map(label_map)
+    cmap = cmap_with_emphasis(len(focus_labels), n_secondary=len(nn_classes))
+    return df, cmap

@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -e
+
+pip install -U --upgrade-strategy=only-if-needed \
+git+https://github.com/scverse/spatialdata@v0.0.15 \
+git+https://github.com/scverse/spatialdata-plot@v0.0.6
+
 if [ -n "$CUSTOM_KEY" ]; then
-    printf "Installing dotfiles from $CUSTOM_KEY"
+    printf "Installing dotfiles via chezmoi, from $CUSTOM_KEY"
     sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/bin/ init $CUSTOM_KEY --apply
 fi
