@@ -419,12 +419,8 @@ def cleanup_mask_regions(mask_img, area_ratio_thresh=0.1):
     return new_mask_img
 
 
-def label_thalamus_masked_cells(cells_df, mask_img, 
-                                coords=['x_reconstructed','y_reconstructed',
-                                        'z_reconstructed'],
-                                resolutions = np.array([10e-3, 10e-3, 200e-3]),
-                                field_name='TH_ZI_dataset', 
-                                drop_end_sections=True):
+def label_thalamus_masked_cells(cells_df, mask_img, coords, resolutions,
+                                field_name='TH_ZI_dataset'):
     '''Labels cells that are inside the TH+ZI mask from the CCF parcellation.
     
     Parameters
@@ -433,10 +429,10 @@ def label_thalamus_masked_cells(cells_df, mask_img,
         dataframe of cell metadata
     mask_img : array_like
         stack of 2D binary masks, shape (x, y, n_sections)
-    coords : list, optional
+    coords : list
         column names in cells_df that contain the cells xyz coordinates, 
         list of strings of length 3
-    resolutions : array, optional
+    resolutions : array
         xyz resolutions used to compare coords to mask_img positions
     field_name : str
         name for column containing the thalamus dataset boolean flag
