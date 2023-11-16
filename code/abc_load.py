@@ -45,8 +45,7 @@ _CIRRO_COLUMNS = {
         
 
 def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
-               with_metadata=True, flip_y=True,
-               cirro_names=False, 
+               with_metadata=True, flip_y=True, cirro_names=False, 
                with_colors=False):
     '''Load ABC Atlas MERFISH dataset as an anndata object.
     
@@ -327,8 +326,8 @@ def label_thalamus_spatial_subset(cells_df, flip_y=False, distance_px=20,
     if cleanup_mask:
         mask_img = cleanup_mask_regions(mask_img, area_ratio_thresh=0.1)
     # label cells that fall within dilated TH+ZI mask; by default, 
-    cells_df = label_masked_cells(cells_df, mask_img, coords, resolutions, 
-                                  field_name=field_name)
+    cells_df = label_thalamus_masked_cells(cells_df, mask_img, coords,  
+                                           resolutions, field_name=field_name)
     # exclude the 1 anterior-most and 1 posterior-most thalamus sections due to
     # poor overlap between mask & thalamic cells
     if drop_end_sections:
