@@ -98,11 +98,12 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, point_hue='CCF_acronym', 
         secdata = obs.loc[lambda df: (df['section']==section)].copy()
         if len(secdata) < min_group_count:
             continue
-        print(section)
+        # print(section)
         fig, ax = plt.subplots(figsize=(8,4))
         
         patches = plot_ccf_section(ccf_polygons, section, highlight=highlight, palette=shape_palette, bg_shapes=bg_shapes,
                                    labels=legend in ['ccf', 'both'], ax=ax)
+        ax.set_title(section)
         
         if bg_cells is not None:
             sns.scatterplot(bg_cells.loc[lambda df: (df['section']==section)], x='cirro_x', y='cirro_y', c='grey', s=2, alpha=0.5)
@@ -149,7 +150,12 @@ def plot_nucleus_cluster_comparison_slices(obs, ccf_polygons, nuclei, bg_cells=N
     nuclei = [nuclei] if type(nuclei) is str else nuclei
     sections_nuclei = ccf_polygons.index.get_level_values('name')[ccf_polygons.index.isin(nuclei, level='name')].unique()
     sections = sorted(sections_nuclei.union(sections_points))
-    plot_ccf_overlay(obs, ccf_polygons, sections, point_hue='cluster_label', legend=legend, 
+    # ABC dataset uses 'cluster', internal datasets used 'cluster_label'
+    if 'cluster' in obs.columns:
+        hue_column = 'cluster'
+    else:
+        hue_column = 'cluster_label'
+    plot_ccf_overlay(obs, ccf_polygons, sections, point_hue=hue_column, legend=legend, 
                      highlight=nuclei, bg_cells=bg_cells, bg_shapes=bg_shapes, **kwargs)   
 
 

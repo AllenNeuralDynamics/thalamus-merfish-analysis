@@ -47,6 +47,9 @@ def poly_from_points(X: np.ndarray,
         return poly
     else:
         return None
+    
+# def poly_from_binary_mask(mask_img,):
+    
 
 def split_cells_hdbscan(X):
     """Split a point array into separate arrays for every separate 'island' of points
@@ -63,7 +66,7 @@ def split_cells_hdbscan(X):
     clusters = hdbscan.HDBSCAN(min_samples=10).fit_predict(X)
     return [X[clusters==i, :] for i in set(clusters) if not i==-1]
 
-def split_cells_midline(X, midline_gap=100):
+def split_cells_midline(X, midline_gap=0.5):
     """Split a point array into separate arrays for each hemisphere, if there is a midline gap
 
     Parameters
@@ -108,7 +111,7 @@ def get_polygon_from_obs(obs_df, strategy='hdbscan',
     """
     X = obs_df[[x_field, y_field]].values
     if strategy=='hdbscan':
-        allow_holes = True
+        allow_holes = False
         groups = split_cells_hdbscan(X)
     elif strategy=='midline':
         allow_holes = False

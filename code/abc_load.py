@@ -102,9 +102,12 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
         cells_md_df = get_combined_metadata(cirro_names=cirro_names, 
                                             flip_y=flip_y,
                                             drop_unused=(not with_colors))
-        cells_md_df = label_thalamus_spatial_subset(cells_md_df, 
-                                                    filter_cells=True,
-                                                    flip_y=flip_y)
+        cells_md_df = label_thalamus_spatial_subset(cells_md_df,
+                                                    flip_y=flip_y,
+                                                    distance_px=20,
+                                                    cleanup_mask=True,
+                                                    drop_end_sections=True,
+                                                    filter_cells=True)
         cell_labels = cells_md_df.index
         adata = adata[adata.obs_names.intersection(cell_labels)]
     
@@ -205,11 +208,16 @@ def get_combined_metadata(drop_unused=True, cirro_names=False, flip_y=False,
         'parcellation_structure', 'parcellation_substructure'
         # 'parcellation_organ', 'parcellation_category',
         ]
-    dtype = dict(cell_label=str, 
+    dtype = dict(cell_label='string', 
                 **{x: 'float' for x in float_columns}, 
                 **{x: 'category' for x in cat_columns})
     usecols = list(dtype.keys()) if drop_unused else None
 
+    # if as_dask:
+    #     cells_df = dd.read_csv(
+    #         ABC_ROOT/f"metadata/MERFISH-C57BL6J-638850-CCF/{version}/views/cell_metadata_with_parcellation_annotation.csv", 
+    #                         dtype=dtype, usecols=usecols, blocksize=100e6)
+    # else:
     cells_df = pd.read_csv(
             ABC_ROOT/f"metadata/MERFISH-C57BL6J-638850-CCF/{version}/views/cell_metadata_with_parcellation_annotation.csv", 
                            dtype=dtype, usecols=usecols, index_col='cell_label', 
@@ -217,7 +225,7 @@ def get_combined_metadata(drop_unused=True, cirro_names=False, flip_y=False,
     if flip_y:
         cells_df[['y_section', 'y_reconstructed']] *= -1
     if cirro_names:
-        cells_df.rename(columns=_CIRRO_COLUMNS, inplace=True)
+        cells_df = cells_df.rename(columns=_CIRRO_COLUMNS)
     return cells_df
 
 
@@ -244,7 +252,7 @@ def get_ccf_labels_image(resampled=True):
     Returns
     -------
     imdata
-        numpy array containing rasterized image volumes of the CCF parcellation
+        numpy array containing rasterized image volumes of CCF parcellation
     '''
     if resampled:
         path = "image_volumes/MERFISH-C57BL6J-638850-CCF/20230630/resampled_annotation.nii.gz"
@@ -256,8 +264,9 @@ def get_ccf_labels_image(resampled=True):
     return imdata
 
 
-def label_thalamus_spatial_subset(cells_df, distance_px=20, filter_cells=False,
-                                  flip_y=False, cleanup_mask=True):
+def label_thalamus_spatial_subset(cells_df, flip_y=False, distance_px=20, 
+                                  cleanup_mask=True, drop_end_sections=True,
+                                  filter_cells=False):
     '''Labels cells that are in the thalamus spatial subset of the ABC atlas.
     
     Turns a rasterized image volume that includes all thalamus (TH) and zona
@@ -313,25 +322,27 @@ def label_thalamus_spatial_subset(cells_df, distance_px=20, filter_cells=False,
     if flip_y:
         th_mask = np.flip(th_mask, axis=1)
     # dilate by 200um to try to capture more TH/ZI cells
-    mask_img = sectionwise_dilation(th_mask, distance_px, 
-                                    dilation_method='by_iteration')
+    mask_img = sectionwise_dilation(th_mask, distance_px, true_radius=False)
     # remove too-small mask regions that are likely mistaken parcellations
     if cleanup_mask:
         mask_img = cleanup_mask_regions(mask_img, area_ratio_thresh=0.1)
-    # label cells that fall within dilated TH+ZI mask; by default, excludes the
-    # 1 anterior-most and 1 posterior-most thalamus sections due to poor overlap
-    # bewteen mask & manually annotated thalamic cells
-    cells_df = label_thalamus_masked_cells(cells_df, mask_img, coords, 
-                                           resolutions, field_name=field_name,
-                                           drop_end_sections=True)
+    # label cells that fall within dilated TH+ZI mask; by default, 
+    cells_df = label_masked_cells(cells_df, mask_img, coords, resolutions, 
+                                  field_name=field_name)
+    # exclude the 1 anterior-most and 1 posterior-most thalamus sections due to
+    # poor overlap between mask & thalamic cells
+    if drop_end_sections:
+        cells_df[field_name] = (cells_df[field_name] 
+                                & (4.81 < cells_df[coords[2]]) 
+                                & (cells_df[coords[2]] < 8.39))
     # optionally, remove non-TH+ZI cells from df
     if filter_cells:
-        return cells_df[cells_df[field_name]]
+        return cells_df[cells_df[field_name]].copy().drop(columns=[field_name])
     else:
         return cells_df
 
 
-def sectionwise_dilation(mask_img, distance_px, dilation_method='by_iteration'):
+def sectionwise_dilation(mask_img, distance_px, true_radius=False):
     '''Dilates a stack of 2D binary masks by a specified radius (in px).
     
     Parameters
@@ -340,31 +351,30 @@ def sectionwise_dilation(mask_img, distance_px, dilation_method='by_iteration'):
         stack of 2D binary mask, shape (x, y, n_sections)
     distance_px : int
         dilation radius in pixels
-    dilation_method : {'by_iteration', 'by_radius'}, default='by_iteration'
-        specifies the method used by ndimage's binary_dilation to dilate; both
-        methods give similar results but 'by_iteration' is significantly faster
-          - 'by_iteration': dilates by 1 px for iterations=distance_px
-          - 'by_radius': dilates once using a structure of radius of distance_px
+    true_radius : bool, default=False
+        specifies the method used by ndimage's binary_dilation to dilate
+          - False: dilates by 1 px per iteration for iterations=distance_px
+          - True: dilates once using a structure of radius=distance_px
+        both return similar results but true_radius=False is significantly faster
 
     Returns
     -------
     dilated_mask_img 
         3D np array, stack of dilated 2D binary masks
     '''
-    dilation_methods = ['by_iteration', 'by_radius']
     dilated_mask_img = np.zeros_like(mask_img)
     
-    if dilation_method=='by_radius':
-        # generate a roughly circular 2D structure for dilation
+    if true_radius:
+        # generate a circular structure for dilation
         coords = np.mgrid[-distance_px:distance_px+1, -distance_px:distance_px+1]
         struct = np.linalg.norm(coords, axis=0) <= distance_px
         
     for i in range(mask_img.shape[2]):
-        if dilation_method=='by_radius':
+        if true_radius:
             dilated_mask_img[:,:,i] = ndi.binary_dilation(mask_img[:,:,i], 
                                                           structure=struct)
-        elif dilation_method=='by_iteration':
-            dilated_mask_img[:,:,i] = ndi. binary_dilation(mask_img[:,:,i], 
+        else:
+            dilated_mask_img[:,:,i] = ndi.binary_dilation(mask_img[:,:,i], 
                                                            iterations=distance_px)
     return dilated_mask_img
 
@@ -443,8 +453,4 @@ def label_thalamus_masked_cells(cells_df, mask_img,
     coords_index = np.rint(cells_df[coords].values / resolutions).astype(int)
     # tuple() makes this like calling mask_img[coords_index[:,0], coords_index[:,1], coords_index[:,2]]
     cells_df[field_name] = mask_img[tuple(coords_index.T)]
-    if drop_end_sections:
-        cells_df[field_name] = (cells_df[field_name] 
-                               & (4.81 < cells_df[coords[2]]) 
-                               & (cells_df[coords[2]] < 8.39))
     return cells_df
