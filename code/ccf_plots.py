@@ -168,9 +168,10 @@ def plot_expression_ccf(adata_neuronal, section, gene, polygons, nuclei=[], bg_s
     # plot_ccf_section(polygons, section, highlight=nuclei, bg_shapes=bg_shapes, ax=ax, palette='greyscale')
     
     # plot gene expression
-    x, y = subset.obsm['spatial_cirro'].T
+    # x, y = subset.obsm['spatial_cirro'].T
     c = subset[:,gene].X.toarray().squeeze()
-    im = plt.scatter(x=x, y=y, c=c, s=1, cmap=cmap)
+    im = plt.scatter(x=subset.obs['cirro_x'], y=subset.obs['cirro_y'], c=c, 
+                     s=1, cmap=cmap)
     plt.colorbar(label="log2(CPM+1)", fraction=0.046, pad=0.01)
     plt.axis('image')
     plt.title(gene)
