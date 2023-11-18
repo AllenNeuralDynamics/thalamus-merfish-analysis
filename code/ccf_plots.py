@@ -9,7 +9,10 @@ import matplotlib.cm as cm
 import matplotlib
 from colorcet import glasbey
 from shapely.plotting import plot_polygon
+from matplotlib.colors import ListedColormap
+from scipy.ndimage import binary_dilation
 
+# TODO: get rid of this import
 from ccf_polygons import get_outline_polygon
 
 
@@ -118,15 +121,17 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, point_hue='CCF_acronym', 
         if legend:
             plt.legend(ncols=2, loc='upper center', bbox_to_anchor=(0.5, 0))
             # plt.legend(ncols=1, loc='center left', bbox_to_anchor=(0.98, 0.5), fontsize=16)
-        
-        plt.axis('image')
-        if not axes:
-            sns.despine(left=True, bottom=True)
-            plt.xticks([])
-            plt.yticks([])
-        plt.xlabel('')
-        plt.ylabel('')
+        format_image_axes(axes)
         plt.show()
+
+def format_image_axes(axes=False):
+    plt.axis('image')
+    if not axes:
+        sns.despine(left=True, bottom=True)
+        plt.xticks([])
+        plt.yticks([])
+    plt.xlabel('')
+    plt.ylabel('')
         
 def plot_section_outline(outline_polygons, sections, axes=False, 
                          facecolor='none', edgecolor='black', alpha=0.05):
@@ -226,9 +231,6 @@ def plot_metrics_ccf(obs, ccf_polygons, metric_series, sections=None,
     shape_palette = dict(zip(metric_series.index, metric_colors))
     
     for section in sections:
-        # secdata = obs.loc[lambda df: (df['section']==section)].copy()
-        # if len(secdata) < min_group_count:
-        #     continue
         print(section)
         fig, ax = plt.subplots(figsize=(8,4))
         
@@ -238,15 +240,57 @@ def plot_metrics_ccf(obs, ccf_polygons, metric_series, sections=None,
         #     plt.legend(ncols=2, loc='upper center', bbox_to_anchor=(0.5, 0))
         #     # plt.legend(ncols=1, loc='center left', bbox_to_anchor=(0.98, 0.5), fontsize=16)
         
-        plt.axis('image')
-        if not axes:
-            sns.despine(left=True, bottom=True)
-            plt.xticks([])
-            plt.yticks([])
-        plt.xlabel('')
-        plt.ylabel('')
-        
+        format_image_axes(axes)
+        # hidden image just to generate colorbar
         img = ax.imshow(np.array([[vmin,vmax]]), cmap=cmap)
         img.set_visible(False)
         plt.colorbar(img, orientation='vertical', label=cb_label, shrink=0.75)
+        plt.show()
+
+def plot_ccf_section_raster(img, structure_index, palette, legend=True, ax=None):
+    names = []
+    # could do in single image, but looping allows selecting highlight set etc...
+    for i in np.unique(img):
+        name = structure_index[i]
+        if name in palette:
+            names.append(name)
+            plot_raster_region(img, i, resolution=10e-3, facecolor=palette[name], ax=ax)
+    if legend:
+        handles = [plt.plot([], marker="o", ls="", color=color)[0] for name, color in palette.items() if name in names]
+        plt.legend(names)
+    return
+
+def fill_nan(img):
+    return np.where(img, 1, np.nan)
+
+def plot_raster_region(imdata, region_val, resolution=10e-3, facecolor='grey', edgecolor='black', 
+                    edge_width=2, alpha=1, ax=None):
+    extent = (np.array([0, imdata.shape[1], imdata.shape[0], 0]) - 0.5) * resolution
+    kwargs = dict(extent=extent, interpolation="none")
+    im_region = imdata==region_val
+    # transpose for x,y oriented image
+    ax.imshow(fill_nan(im_region).T, cmap=ListedColormap([facecolor]), **kwargs)
+    im_bound = binary_dilation(im_region, iterations=edge_width) & ~im_region
+    ax.imshow(fill_nan(im_bound).T, cmap=ListedColormap([edgecolor]), **kwargs)
+
+def plot_metrics_ccf_raster(ccf_img, metric_series, sections, structure_index, z_resolution=200e-3,
+                     cmap='viridis', cb_label='metric', axes=False):
+    vmin, vmax = (metric_series.min(), metric_series.max())
+    norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+    cmap = matplotlib.colormaps.get_cmap(cmap)
+    palette = metric_series.apply(lambda x: cmap(norm(x))).to_dict()
+    
+    for sec_z in sections:
+        print(sec_z)
+        fig, ax = plt.subplots(figsize=(8, 5))
+        # hidden image just to generate colorbar
+        img = ax.imshow(np.array([[vmin, vmax]]), cmap=cmap)
+        img.set_visible(False)
+        plt.colorbar(img, orientation='vertical', label=cb_label, shrink=0.75)
+        
+        section_img = ccf_img[:,:, int(sec_z/z_resolution)]
+        plot_ccf_section_raster(section_img, structure_index, palette, legend=False, ax=ax)
+        format_image_axes(axes)
+        ax.set_xlim([2.5, 8.5])
+        ax.set_ylim([7, 4])
         plt.show()
