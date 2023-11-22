@@ -100,7 +100,8 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
     if subset_to_TH_ZI:
         cells_md_df = get_combined_metadata(cirro_names=cirro_names, 
                                             flip_y=flip_y,
-                                            drop_unused=(not with_colors))
+                                            drop_unused=(not with_colors),
+                                            version=version)
         cells_md_df = label_thalamus_spatial_subset(cells_md_df,
                                                     flip_y=flip_y,
                                                     distance_px=20,
@@ -121,7 +122,8 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
         if 'cells_md_df' not in locals():
             cells_md_df = get_combined_metadata(cirro_names=cirro_names, 
                                                 flip_y=flip_y,
-                                                drop_unused=~with_colors)
+                                                drop_unused=~with_colors,
+                                                version=version)
         # add metadata to obs
         adata.obs = adata.obs.join(cells_md_df[cells_md_df.columns.difference(adata.obs.columns)])
 
@@ -449,3 +451,28 @@ def label_thalamus_masked_cells(cells_df, mask_img, coords, resolutions,
     # tuple() makes this like calling mask_img[coords_index[:,0], coords_index[:,1], coords_index[:,2]]
     cells_df[field_name] = mask_img[tuple(coords_index.T)]
     return cells_df
+
+def get_ccf_metadata():
+    ccf_df = pd.read_csv(
+            ABC_ROOT/"metadata/Allen-CCF-2020/20230630/parcellation_to_parcellation_term_membership.csv"
+            )
+    return ccf_df
+
+def get_thalamus_substructure_names():
+    ccf_df = get_ccf_metadata()
+    th_zi_ind = np.hstack(
+            (ccf_df.loc[ccf_df['parcellation_term_acronym']=='TH', 
+                        'parcellation_index'].unique(),
+                ccf_df.loc[ccf_df['parcellation_term_acronym']=='ZI', 
+                        'parcellation_index'].unique())
+    )
+
+    ccf_labels = ccf_df.pivot(index='parcellation_index', values='parcellation_term_acronym', columns='parcellation_term_set_name')
+    th_names = ccf_labels.loc[th_zi_ind, 'substructure']
+    return th_names
+
+def get_thalamus_substructure_names():
+    ccf_df = get_ccf_metadata()
+    # parcellation_index to acronym
+    substructure_index = ccf_df.query("parcellation_term_set_name=='substructure'").set_index('parcellation_index')['parcellation_term_acronym'].to_dict()
+    return substructure_index
