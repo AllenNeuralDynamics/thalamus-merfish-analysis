@@ -17,20 +17,17 @@ def get_target_grid_center(source, target, inv_transform):
     target_center[2] = target_z
     return target_center
 
-def map_image_to_slice(imdata, source, target, scale=None):
-    # expand to diagonal dimension to allow arbitrary rotation
-    ngrid = int(np.linalg.norm(np.array(source.shape)))
+def get_sample_points_centered(sdata, source, target, scale=None, ngrid=1100):
 
     # xyz grid (pixel centers)
     grid = np.stack((*np.mgrid[0:ngrid, 0:ngrid][::-1], np.zeros((ngrid, ngrid))), axis=0) + 0.5
     grid_points = sd.models.PointsModel.parse(grid.reshape(3, -1).T)
-
+    
     inv_transform = sd.transformations.get_transformation_between_coordinate_systems(sdata, target, source)
-    target_center = get_target_grid_center(source, target, inv_transform)
-
     if scale is None:
         scale = np.linalg.det(inv_transform.inverse().to_affine_matrix('xyz', 'xyz'))**(1/3)
         
+    target_center = get_target_grid_center(source, target, inv_transform)
     target_grid_transform = sd.transformations.Sequence([
         sd.transformations.Translation(np.array([-ngrid/2, -ngrid/2, 0]) - 0.5, 'xyz'),
         sd.transformations.Scale(scale*np.array([1, 1, 1]), 'xyz'),
@@ -40,6 +37,33 @@ def map_image_to_slice(imdata, source, target, scale=None):
         grid_points,
         sd.transformations.Sequence([target_grid_transform, inv_transform]),
         )
+    return source_points, target_grid_transform
+
+def get_sample_points_square(sdata, source, target, scale=None, ngrid=1100):
+    inv_transform = sd.transformations.get_transformation_between_coordinate_systems(sdata, target, source)
+    target_z = target['z'].max().compute()
+    # xyz grid (pixel centers)
+    grid = np.stack((*np.mgrid[0:ngrid, 0:ngrid][::-1], np.zeros((ngrid, ngrid))), axis=0)
+    if scale is None:
+        scale = np.linalg.det(inv_transform.inverse().to_affine_matrix('xyz', 'xyz'))**(1/3)
+    target_grid_transform = sd.transformations.Sequence([
+        sd.transformations.Scale(scale*np.array([1, 1, 1]), 'xyz'),
+        sd.transformations.Translation(np.array([0, 0, target_z]), 'xyz'),
+    ])
+    source_points = sd.transform(
+        grid_points,
+        sd.transformations.Sequence([target_grid_transform, inv_transform]),
+        )
+    return source_points, target_grid_transform
+
+def map_image_to_slice(sdata, imdata, source, target, centered=True, scale=None, ngrid=None):
+    # expand to diagonal dimension to allow arbitrary rotation
+    if ngrid is None:
+        ngrid = int(np.linalg.norm(np.array(source.shape)))
+    if centered:
+        source_points, target_grid_transform = get_sample_points_centered(sdata, source, target, scale, ngrid)
+    else:
+        source_points, target_grid_transform = get_sample_points_square(sdata, source, target, scale, ngrid)
     # scipy.ndimage evaluates at integers not pixel centers
     points = source_points[['z','y','x']].values.T - 0.5
     target_img = map_coordinates(imdata, points, prefilter=False, order=0).reshape(ngrid, ngrid)

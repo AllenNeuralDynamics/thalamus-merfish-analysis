@@ -36,6 +36,31 @@ def get_ccf_labels_image(resampled=False):
     imdata = np.array(img.dataobj)
     return imdata
 
+def get_ccf_metadata():
+    ccf_df = pd.read_csv(
+            ABC_ROOT/"metadata/Allen-CCF-2020/20230630/parcellation_to_parcellation_term_membership.csv"
+            )
+    return ccf_df
+
+def get_thalamus_substructure_names():
+    ccf_df = get_ccf_metadata()
+    th_zi_ind = np.hstack(
+            (ccf_df.loc[ccf_df['parcellation_term_acronym']=='TH', 
+                        'parcellation_index'].unique(),
+                ccf_df.loc[ccf_df['parcellation_term_acronym']=='ZI', 
+                        'parcellation_index'].unique())
+    )
+
+    ccf_labels = ccf_df.pivot(index='parcellation_index', values='parcellation_term_acronym', columns='parcellation_term_set_name')
+    th_names = ccf_labels.loc[th_zi_ind, 'substructure']
+    return th_names
+
+def get_thalamus_substructure_names():
+    ccf_df = get_ccf_metadata()
+    # parcellation_index to acronym
+    substructure_index = ccf_df.query("parcellation_term_set_name=='substructure'").set_index('parcellation_index')['parcellation_term_acronym'].to_dict()
+    return substructure_index
+
 def get_combined_metadata(drop_unused=True, cirro_names=False, flip_y=False, version=CURRENT_VERSION):
     """Load the cell metadata csv, with memory/speed improvements
     Selects correct dtypes and optionally renames and drops columns

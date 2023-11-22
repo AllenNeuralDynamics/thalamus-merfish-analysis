@@ -13,7 +13,8 @@ from matplotlib.colors import ListedColormap
 from scipy.ndimage import binary_dilation
 
 # TODO: get rid of this import
-from ccf_polygons import get_outline_polygon
+# from ccf_polygons import get_outline_polygon, CCF_TH_NAMES
+from abc_load import get_thalamus_substructure_names, get_substructure_index
 
 
 def plot_shape(shape: shapely.Polygon | shapely.GeometryCollection, edgecolor='black', **kwargs):    
@@ -30,8 +31,7 @@ def plot_shape(shape: shapely.Polygon | shapely.GeometryCollection, edgecolor='b
         patch = plot_polygon(shape, add_points=False, edgecolor=edgecolor, **kwargs)
     return shape
 
-def plot_ccf_section(ccf_polygons, section, highlight=[], palette=None, labels=True, bg_shapes=True, ax=None):
-    ccf_names = ccf_polygons.index.get_level_values('name')
+def expand_palette(palette, ccf_names):
     edgecolor = None
     alpha = 0.6
     if palette is None:
@@ -51,7 +51,11 @@ def plot_ccf_section(ccf_polygons, section, highlight=[], palette=None, labels=T
     else:
         edgecolor = 'grey'
         alpha = 1
-        
+    return palette, edgecolor, alpha
+
+def plot_ccf_section(ccf_polygons, section, highlight=[], palette=None, labels=True, bg_shapes=True, ax=None):
+    ccf_names = ccf_polygons.index.get_level_values('name')
+    palette, edgecolor, alpha = expand_palette(palette, ccf_names)
     if highlight=='all':
         highlight = ccf_names
     patches = []
@@ -67,17 +71,22 @@ def plot_ccf_section(ccf_polygons, section, highlight=[], palette=None, labels=T
                            alpha=alpha, edgecolor=edgecolor, label=name if labels else None))
     return patches
 
-def plot_ccf_overlay(obs, ccf_polygons, sections=None, point_hue='CCF_acronym', legend='cells', min_group_count=10, highlight=[], 
-                     shape_palette=None, point_palette=None, bg_cells=None, bg_shapes=True, s=2, axes=False):
+def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None, point_hue='CCF_acronym', legend='cells', min_group_count=10, highlight=[], 
+                     shape_palette=None, point_palette=None, bg_cells=None, bg_shapes=True, s=2, axes=False,
+                     section_col='section'):
     obs = obs.copy()
     if sections is None:
-        sections = obs['section'].unique()
-    else:
-        ccf_polygons = ccf_polygons[ccf_polygons.index.isin(sections, level="section")]
-    ccf_names = ccf_polygons.index.get_level_values('name')
+        sections = obs[section_col].unique()
+    # else:
+    #     ccf_polygons = ccf_polygons[ccf_polygons.index.isin(sections, level="section")]
+    # ccf_names = ccf_polygons.index.get_level_values('name')
+    if ccf_names is None:
+        ccf_names = get_thalamus_substructure_names()
     if shape_palette is None:
         shape_palette = dict(zip(ccf_names, sns.color_palette(glasbey, n_colors=len(ccf_names))))
-    
+    raster_regions = type(ccf_polygons) is np.ndarray
+    if raster_regions:
+        substructure_index = get_substructure_index()
     # string type allows adding 'other' to data slice by slice
     obs[point_hue] = obs[point_hue].astype(str)
     # drop groups below min_group_count 
@@ -98,17 +107,19 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, point_hue='CCF_acronym', 
     point_palette.update(other='grey')
     
     for section in sections:
-        secdata = obs.loc[lambda df: (df['section']==section)].copy()
+        secdata = obs.loc[lambda df: (df[section_col]==section)].copy()
         if len(secdata) < min_group_count:
             continue
         print(section)
         fig, ax = plt.subplots(figsize=(8,4))
-        
-        patches = plot_ccf_section(ccf_polygons, section, highlight=highlight, palette=shape_palette, bg_shapes=bg_shapes,
+        if raster_regions:
+            plot_ccf_section_raster(ccf_polygons, section, substructure_index, regions=ccf_names, palette=shape_palette, legend=(legend=='ccf'), ax=ax)
+        else:
+            plot_ccf_section(ccf_polygons, section, highlight=highlight, palette=shape_palette, bg_shapes=bg_shapes,
                                    labels=legend in ['ccf', 'both'], ax=ax)
         
         if bg_cells is not None:
-            sns.scatterplot(bg_cells.loc[lambda df: (df['section']==section)], x='cirro_x', y='cirro_y', c='grey', s=2, alpha=0.5)
+            sns.scatterplot(bg_cells.loc[lambda df: (df[section_col]==section)], x='cirro_x', y='cirro_y', c='grey', s=2, alpha=0.5)
         # lump small groups if legend list is too long
         sec_group_counts = secdata[point_hue].value_counts(ascending=True)
         if len(sec_group_counts) > 10:
@@ -123,7 +134,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, point_hue='CCF_acronym', 
         format_image_axes(axes)
         plt.show()
 
-def format_image_axes(axes=False):
+def format_image_axes(axes=False, set_lims=False):
     plt.axis('image')
     if not axes:
         sns.despine(left=True, bottom=True)
@@ -131,6 +142,9 @@ def format_image_axes(axes=False):
         plt.yticks([])
     plt.xlabel('')
     plt.ylabel('')
+    # if set_lims:
+        # plt.gca().set_xlim([2.5, 8.5])
+        # plt.gca().set_ylim([7, 4])
         
 def plot_section_outline(outline_polygons, sections, axes=False, 
                          facecolor='none', edgecolor='black', alpha=0.05):
@@ -149,12 +163,12 @@ def plot_section_outline(outline_polygons, sections, axes=False,
             plt.yticks([])
             
             
-def plot_nucleus_cluster_comparison_slices(obs, ccf_polygons, nuclei, bg_cells=None, bg_shapes=True, legend='cells', **kwargs):
+def plot_nucleus_cluster_comparison_slices(obs, ccf_polygons, nuclei, bg_cells=None, bg_shapes=True, legend='cells', point_hue='cluster', **kwargs):
     sections_points = obs['section'].value_counts().loc[lambda x: x>10].index
     nuclei = [nuclei] if type(nuclei) is str else nuclei
     sections_nuclei = ccf_polygons.index.get_level_values('name')[ccf_polygons.index.isin(nuclei, level='name')].unique()
     sections = sorted(sections_nuclei.union(sections_points))
-    plot_ccf_overlay(obs, ccf_polygons, sections, point_hue='cluster_label', legend=legend, 
+    plot_ccf_overlay(obs, ccf_polygons, sections, point_hue=point_hue, legend=legend, 
                      highlight=nuclei, bg_cells=bg_cells, bg_shapes=bg_shapes, **kwargs)   
 
 
@@ -240,17 +254,21 @@ def plot_metrics_ccf(obs, ccf_polygons, metric_series, sections=None,
         plt.colorbar(img, orientation='vertical', label=cb_label, shrink=0.75)
         plt.show()
 
-def plot_ccf_section_raster(img, structure_index, palette, legend=True, ax=None):
-    names = []
+def plot_ccf_section_raster(ccf_img, section_z, structure_index, palette, regions=None, z_resolution=200e-3, legend=True, ax=None):
+    img = ccf_img[:,:, int(section_z/z_resolution)]
+    region_nums = np.unique(img)
+    if regions is None:
+        regions = [structure_index[i] for i in region_nums]
+    palette, edgecolor, alpha = expand_palette(palette, regions)
     # could do in single image, but looping allows selecting highlight set etc...
-    for i in np.unique(img):
+    
+    for i in region_nums:
         name = structure_index[i]
         if name in palette:
-            names.append(name)
-            plot_raster_region(img, i, resolution=10e-3, facecolor=palette[name], ax=ax)
+            plot_raster_region(img, i, resolution=10e-3, facecolor=palette[name], edgecolor=edgecolor, alpha=alpha, ax=ax)
     if legend:
-        handles = [plt.plot([], marker="o", ls="", color=color)[0] for name, color in palette.items() if name in names]
-        plt.legend(names)
+        handles = [plt.plot([], marker="o", ls="", color=color)[0] for name, color in palette.items() if name in regions]
+        plt.legend(regions)
     return
 
 def fill_nan(img):
@@ -266,24 +284,21 @@ def plot_raster_region(imdata, region_val, resolution=10e-3, facecolor='grey', e
     im_bound = binary_dilation(im_region, iterations=edge_width) & ~im_region
     ax.imshow(fill_nan(im_bound).T, cmap=ListedColormap([edgecolor]), **kwargs)
 
-def plot_metrics_ccf_raster(ccf_img, metric_series, sections, structure_index, z_resolution=200e-3,
+def plot_metrics_ccf_raster(ccf_img, metric_series, sections, structure_index,
                      cmap='viridis', cb_label='metric', axes=False):
     vmin, vmax = (metric_series.min(), metric_series.max())
     norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
     cmap = matplotlib.colormaps.get_cmap(cmap)
     palette = metric_series.apply(lambda x: cmap(norm(x))).to_dict()
     
-    for sec_z in sections:
-        print(sec_z)
+    for section_z in sections:
+        print(section_z)
         fig, ax = plt.subplots(figsize=(8, 5))
         # hidden image just to generate colorbar
         img = ax.imshow(np.array([[vmin, vmax]]), cmap=cmap)
         img.set_visible(False)
         plt.colorbar(img, orientation='vertical', label=cb_label, shrink=0.75)
         
-        section_img = ccf_img[:,:, int(sec_z/z_resolution)]
-        plot_ccf_section_raster(section_img, structure_index, palette, legend=False, ax=ax)
+        plot_ccf_section_raster(ccf_img, section_z, structure_index, palette, legend=False, ax=ax)
         format_image_axes(axes)
-        ax.set_xlim([2.5, 8.5])
-        ax.set_ylim([7, 4])
         plt.show()

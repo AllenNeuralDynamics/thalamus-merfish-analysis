@@ -35,7 +35,7 @@ df = df.join(transformed_points[list('xyz')].rename(columns=lambda x: f"{x}_ccf{
 
 # add parcellation index
 imdata = abc.get_ccf_labels_image()
-new_coords = [f"{x}_ccf{suffix}" for x in 'xyz']
+new_coords = [f"{x}_ccf{suffix}" for x in 'zyx'] # zyx order 
 df['parcellation_index'+suffix] = imdata[ccf.image_index_from_coords(df[new_coords])]
 
 # add parcellation metadata
@@ -46,19 +46,26 @@ df = df.join(ccf_df[['division','structure','substructure']].rename(columns=lamb
 
 df.to_parquet("/results/abc_realigned_metadata_thalamus-boundingbox.parquet")
 
-# only if saving to spatialdata
+# saving resampled images
 # img_transform = sd.transformations.Scale(10e-3*np.ones(3), 'xyz')
 # labels = sd.models.Labels3DModel.parse(imdata, dims='zyx', transformations={'ccf': img_transform})
-# regions = [f"{section}_ccf" for section in cells_by_section.keys()]
-# ccf_annotation = load_ccf_metadata_table(regions)
-# sdata = sd.SpatialData.from_elements_dict(dict(ccf_regions=labels, table=ccf_annotation, **cells_by_section))
+# sdata.add_labels('ccf_regions', labels)
 
-# imdata = abc.get_ccf_labels_image()
+# ngrid = 1100
+# nz = 76
+# z_res = 2
+# img_stack = np.zeros((ngrid, ngrid, nz))
 # for section in sdata.points.keys():
+#     i = int(section)/z_res
 #     target = sdata[section]
 #     source = sdata['ccf_regions']
 #     scale = 10e-3
-#     target_img, target_grid_transform = map_image_to_slice(imdata, source, target, scale=scale)
-#     section_labels = sd.models.Labels2DModel.parse(target_img, dims='yx', 
-#                              transformations={section: target_grid_transform})
-#     sdata.add_labels(f"{section}_ccf", section_labels)
+#     target_img, target_grid_transform = ccft.map_image_to_slice(
+#         sdata, imdata, source, target, scale=scale, ngrid=ngrid
+#         )
+#     img_stack[:,:,i] = target_img.T
+
+# import nibabel
+# nifti_img = nibabel.Nifti1Image(img_stack, affine=np.eye(4))
+# nibabel.save(nifti_img, '/data/labels.nii.gz')
+
