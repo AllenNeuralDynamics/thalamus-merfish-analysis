@@ -99,7 +99,7 @@ def load_adata(with_metadata=True, transform='log2', cirro_names=False, version=
     # access genes by short symbol vs longer names
     adata.var_names = adata.var['gene_symbol']
     if with_metadata:
-        cells_df = get_combined_metadata(cirro_names=cirro_names)
+        cells_df = get_combined_metadata(cirro_names=cirro_names, flip_y=cirro_names, version=version)
         adata.obs = adata.obs.join(cells_df[cells_df.columns.difference(adata.obs.columns)])
     return adata
 
