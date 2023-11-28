@@ -39,7 +39,7 @@ suffix = "_realigned"
 df = df.join(transformed_points[list('xyz')].rename(columns=lambda x: f"{x}_ccf{suffix}"))
 
 # add parcellation index
-imdata = abc.get_ccf_labels_image()
+imdata = abc.get_ccf_labels_image(resampled=False)
 new_coords = [f"{x}_ccf{suffix}" for x in 'zyx'] # zyx order 
 df['parcellation_index'+suffix] = imdata[ccf.image_index_from_coords(df[new_coords])]
 
