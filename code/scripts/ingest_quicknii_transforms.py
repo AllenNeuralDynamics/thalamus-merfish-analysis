@@ -64,13 +64,11 @@ nz = 76
 z_res = 2
 img_stack = np.zeros((ngrid, ngrid, nz))
 for section in sdata.points.keys():
-    i = int(section)/z_res
+    i = int(section)//z_res
     target = sdata[section]
     source = sdata['ccf_regions']
     scale = 10e-3
-    target_img, target_grid_transform = ccft.map_image_to_slice(
-        sdata, imdata, source, target, scale=scale, ngrid=ngrid
-        )
+    target_img, target_grid_transform = ccft.map_image_to_slice(sdata, imdata, source, target, scale=scale, ngrid=ngrid)
     img_stack[:,:,i] = target_img.T
 
 import nibabel
