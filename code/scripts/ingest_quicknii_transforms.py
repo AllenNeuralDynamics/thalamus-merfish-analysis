@@ -1,6 +1,7 @@
 import sys
 sys.path.append('/code/')
 import os.path
+import spatialdata as sd
 from spatialdata import SpatialData
 import pandas as pd
 import abc_load as abc
