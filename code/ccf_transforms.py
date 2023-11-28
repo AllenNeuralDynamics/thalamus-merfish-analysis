@@ -70,17 +70,18 @@ def map_image_to_slice(sdata, imdata, source, target, centered=True, scale=None,
     # target_img = np.flipud(target_img)
     return target_img, target_grid_transform
 
-def get_normalizing_transform(df, coords, flip_y=True):
+def get_normalizing_transform(df, coords, min_xy=None, max_xy=None, flip_y=True):
     xy = df[coords[:2]]
-    df_min = xy.min()
-    df_max = xy.max()
-    norm_transform = sd.transformations.Sequence([
-        sd.transformations.Translation(np.array([-1*df_min[0], -1*df_max[1]]), 'xy'),
-        sd.transformations.Scale(1/(df_max-df_min) * np.array([1, -1]), 'xy')
-        # above is compensating for inverted y in quicknii template, should be:
-        # sd.transformations.Translation(-1*df_min, 'xy'),
-        # sd.transformations.Scale(1/(df_max-df_min), 'xy')
-        ])
+    min_xy = xy.min()
+    max_xy = xy.max()
+    if flip_y:
+        norm_transform = sd.transformations.Sequence([
+            sd.transformations.Translation(np.array([-1*min_xy[0], -1*max_xy[1]]), 'xy'),
+            sd.transformations.Scale(1/(max_xy-min_xy) * np.array([1, -1]), 'xy')
+            ])
+    else:
+        sd.transformations.Translation(-1*min_xy, 'xy'),
+        sd.transformations.Scale(1/(max_xy-min_xy), 'xy')
     return norm_transform
 
 def parse_cells_by_section(df, transforms_by_section, norm_transform, coords, slice_label='slice_int'):
