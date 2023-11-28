@@ -592,7 +592,7 @@ def get_thalamus_substructure_names():
     th_names = ccf_labels.loc[th_zi_ind, 'substructure']
     return th_names
 
-def get_thalamus_substructure_names():
+def get_ccf_substructure_index():
     ccf_df = get_ccf_metadata()
     # parcellation_index to acronym
     substructure_index = ccf_df.query("parcellation_term_set_name=='substructure'").set_index('parcellation_index')['parcellation_term_acronym'].to_dict()

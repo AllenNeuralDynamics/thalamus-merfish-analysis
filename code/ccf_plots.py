@@ -14,7 +14,7 @@ from scipy.ndimage import binary_dilation
 
 # TODO: get rid of this import
 # from ccf_polygons import get_outline_polygon, CCF_TH_NAMES
-from abc_load import get_thalamus_substructure_names, get_substructure_index
+from abc_load import get_thalamus_substructure_names, get_ccf_substructure_index
 
 
 def plot_shape(shape: shapely.Polygon | shapely.GeometryCollection, edgecolor='black', **kwargs):    
@@ -86,7 +86,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None, point_hue
         shape_palette = dict(zip(ccf_names, sns.color_palette(glasbey, n_colors=len(ccf_names))))
     raster_regions = type(ccf_polygons) is np.ndarray
     if raster_regions:
-        substructure_index = get_substructure_index()
+        substructure_index = get_ccf_substructure_index()
     # string type allows adding 'other' to data slice by slice
     obs[point_hue] = obs[point_hue].astype(str)
     # drop groups below min_group_count 
