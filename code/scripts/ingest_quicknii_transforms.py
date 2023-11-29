@@ -1,11 +1,11 @@
 import sys
 sys.path.append('/code/')
-import os.path
-from spatialdata import SpatialData
+import spatialdata as sd
 import pandas as pd
+import numpy as np
 import abc_load as abc
 import ccf_registration as ccf
-from ccf_transforms import get_normalizing_transform, parse_cells_by_section
+import ccf_transforms as ccft
 
 df_full = abc.get_combined_metadata()
 df = abc.label_thalamus_spatial_subset(df_full, flip_y=False, distance_px=20, 
@@ -16,17 +16,16 @@ coords = ['x_section', 'y_section', 'z_section']
 slice_label = 'slice_int'
 df[slice_label] = df['z_section'].apply(lambda x: int(x*10))
 
-transforms_by_section = ccf.read_quicknii_file(
-    os.path.expanduser("/code/resources/adjusted_10-10_final.json"), scale=25)
+transforms_by_section = ccf.read_quicknii_file("/code/resources/adjusted_10-10_final.json", scale=25)
 minmax = pd.read_csv("/code/resources/brain3_thalamus_coordinate_bounds.csv", index_col=0)
 
 # load to spatialdata
-norm_transform = get_normalizing_transform(df, coords, 
+norm_transform = ccft.get_normalizing_transform(df, coords, 
                                            min_xy=minmax.loc['min'].values, 
                                            max_xy=minmax.loc['min'].values, 
                                            flip_y=True)
-cells_by_section = parse_cells_by_section(df, transforms_by_section, norm_transform, coords, slice_label=slice_label)
-sdata = SpatialData.from_elements_dict(cells_by_section)
+cells_by_section = ccft.parse_cells_by_section(df, transforms_by_section, norm_transform, coords, slice_label=slice_label)
+sdata = sd.SpatialData.from_elements_dict(cells_by_section)
 
 # transform
 transformed_points = pd.concat((
@@ -39,7 +38,7 @@ suffix = "_realigned"
 df = df.join(transformed_points[list('xyz')].rename(columns=lambda x: f"{x}_ccf{suffix}"))
 
 # add parcellation index
-imdata = abc.get_ccf_labels_image()
+imdata = abc.get_ccf_labels_image(resampled=False)
 new_coords = [f"{x}_ccf{suffix}" for x in 'zyx'] # zyx order 
 df['parcellation_index'+suffix] = imdata[ccf.image_index_from_coords(df[new_coords])]
 
@@ -61,13 +60,11 @@ nz = 76
 z_res = 2
 img_stack = np.zeros((ngrid, ngrid, nz))
 for section in sdata.points.keys():
-    i = int(section)/z_res
+    i = int(section)//z_res
     target = sdata[section]
     source = sdata['ccf_regions']
     scale = 10e-3
-    target_img, target_grid_transform = ccft.map_image_to_slice(
-        sdata, imdata, source, target, scale=scale, ngrid=ngrid
-        )
+    target_img, target_grid_transform = ccft.map_image_to_slice(sdata, imdata, source, target, scale=scale, ngrid=ngrid)
     img_stack[:,:,i] = target_img.T
 
 import nibabel

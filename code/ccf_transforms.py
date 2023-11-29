@@ -44,6 +44,7 @@ def get_sample_points_square(sdata, source, target, scale=None, ngrid=1100):
     target_z = target['z'].max().compute()
     # xyz grid (pixel centers)
     grid = np.stack((*np.mgrid[0:ngrid, 0:ngrid][::-1], np.zeros((ngrid, ngrid))), axis=0)
+    grid_points = sd.models.PointsModel.parse(grid.reshape(3, -1).T)
     if scale is None:
         scale = np.linalg.det(inv_transform.inverse().to_affine_matrix('xyz', 'xyz'))**(1/3)
     target_grid_transform = sd.transformations.Sequence([
