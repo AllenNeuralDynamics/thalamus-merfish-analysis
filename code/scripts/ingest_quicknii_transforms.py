@@ -1,14 +1,11 @@
 import sys
 sys.path.append('/code/')
-import os.path
 import spatialdata as sd
-from spatialdata import SpatialData
 import pandas as pd
 import numpy as np
-import ccf_transforms as ccft
 import abc_load as abc
 import ccf_registration as ccf
-from ccf_transforms import get_normalizing_transform, parse_cells_by_section
+import ccf_transforms as ccft
 
 df_full = abc.get_combined_metadata()
 df = abc.label_thalamus_spatial_subset(df_full, flip_y=False, distance_px=20, 
@@ -19,17 +16,16 @@ coords = ['x_section', 'y_section', 'z_section']
 slice_label = 'slice_int'
 df[slice_label] = df['z_section'].apply(lambda x: int(x*10))
 
-transforms_by_section = ccf.read_quicknii_file(
-    os.path.expanduser("/code/resources/adjusted_10-10_final.json"), scale=25)
+transforms_by_section = ccf.read_quicknii_file("/code/resources/adjusted_10-10_final.json", scale=25)
 minmax = pd.read_csv("/code/resources/brain3_thalamus_coordinate_bounds.csv", index_col=0)
 
 # load to spatialdata
-norm_transform = get_normalizing_transform(df, coords, 
+norm_transform = ccft.get_normalizing_transform(df, coords, 
                                            min_xy=minmax.loc['min'].values, 
                                            max_xy=minmax.loc['min'].values, 
                                            flip_y=True)
-cells_by_section = parse_cells_by_section(df, transforms_by_section, norm_transform, coords, slice_label=slice_label)
-sdata = SpatialData.from_elements_dict(cells_by_section)
+cells_by_section = ccft.parse_cells_by_section(df, transforms_by_section, norm_transform, coords, slice_label=slice_label)
+sdata = sd.SpatialData.from_elements_dict(cells_by_section)
 
 # transform
 transformed_points = pd.concat((
