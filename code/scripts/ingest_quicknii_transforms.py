@@ -22,7 +22,7 @@ minmax = pd.read_csv("/code/resources/brain3_thalamus_coordinate_bounds.csv", in
 # load to spatialdata
 norm_transform = ccft.get_normalizing_transform(
                                            min_xy=minmax.loc['min'].values, 
-                                           max_xy=minmax.loc['min'].values, 
+                                           max_xy=minmax.loc['max'].values, 
                                            flip_y=True)
 cells_by_section = ccft.parse_cells_by_section(df, transforms_by_section, norm_transform, coords, slice_label=slice_label)
 sdata = sd.SpatialData.from_elements_dict(cells_by_section)
