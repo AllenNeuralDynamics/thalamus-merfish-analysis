@@ -135,7 +135,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None, point_hue
         format_image_axes(axes)
         plt.show()
 
-def format_image_axes(axes=False, set_lims=False):
+def format_image_axes(axes=False, set_lims=True):
     plt.axis('image')
     if not axes:
         sns.despine(left=True, bottom=True)
@@ -143,9 +143,9 @@ def format_image_axes(axes=False, set_lims=False):
         plt.yticks([])
     plt.xlabel('')
     plt.ylabel('')
-    # if set_lims:
-        # plt.gca().set_xlim([2.5, 8.5])
-        # plt.gca().set_ylim([7, 4])
+    if set_lims:
+        plt.gca().set_xlim([2.5, 8.5])
+        plt.gca().set_ylim([7, 4])
         
 def plot_section_outline(outline_polygons, sections, axes=False, 
                          facecolor='none', edgecolor='black', alpha=0.05):
@@ -164,8 +164,8 @@ def plot_section_outline(outline_polygons, sections, axes=False,
             plt.yticks([])
             
             
-def plot_nucleus_cluster_comparison_slices(obs, ccf_polygons, nuclei, bg_cells=None, bg_shapes=True, legend='cells', **kwargs):
-    sections_points = obs['section'].value_counts().loc[lambda x: x>10].index
+def plot_nucleus_cluster_comparison_slices(obs, ccf_polygons, nuclei, bg_cells=None, bg_shapes=True, legend='cells', section_col='section', **kwargs):
+    sections_points = obs[section_col].value_counts().loc[lambda x: x>10].index
     nuclei = [nuclei] if type(nuclei) is str else nuclei
     sections_nuclei = ccf_polygons.index.get_level_values('name')[ccf_polygons.index.isin(nuclei, level='name')].unique()
     sections = sorted(sections_nuclei.union(sections_points))
@@ -175,7 +175,7 @@ def plot_nucleus_cluster_comparison_slices(obs, ccf_polygons, nuclei, bg_cells=N
     else:
         hue_column = 'cluster_label'
     plot_ccf_overlay(obs, ccf_polygons, sections, point_hue=hue_column, legend=legend, 
-                     highlight=nuclei, bg_cells=bg_cells, bg_shapes=bg_shapes, **kwargs)   
+                     highlight=nuclei, bg_cells=bg_cells, bg_shapes=bg_shapes, section_col=section_col, **kwargs)   
 
 
 def plot_expression_ccf(adata_neuronal, section, gene, polygons, nuclei=[], bg_shapes=False, axes=False, 
@@ -262,7 +262,8 @@ def plot_metrics_ccf(obs, ccf_polygons, metric_series, sections=None,
         plt.show()
 
 def plot_ccf_section_raster(ccf_img, section_z, structure_index, palette, regions=None, z_resolution=200e-3, legend=True, ax=None):
-    img = ccf_img[:,:, int(section_z/z_resolution)]
+    index_z = int(np.rint(section_z/z_resolution))
+    img = ccf_img[:,:, index_z]
     region_nums = np.unique(img)
     if regions is None:
         regions = [structure_index[i] for i in region_nums]

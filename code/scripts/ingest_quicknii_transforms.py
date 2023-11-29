@@ -8,7 +8,7 @@ import ccf_registration as ccf
 import ccf_transforms as ccft
 
 df_full = abc.get_combined_metadata()
-df = abc.label_thalamus_spatial_subset(df_full, flip_y=False, distance_px=20, 
+df = abc.label_thalamus_spatial_subset(df_full, flip_y=False, distance_px=25, 
                                   cleanup_mask=True, drop_end_sections=True,
                                   filter_cells=True)
 
@@ -20,7 +20,7 @@ transforms_by_section = ccf.read_quicknii_file("/code/resources/adjusted_10-10_f
 minmax = pd.read_csv("/code/resources/brain3_thalamus_coordinate_bounds.csv", index_col=0)
 
 # load to spatialdata
-norm_transform = ccft.get_normalizing_transform(df, coords, 
+norm_transform = ccft.get_normalizing_transform(
                                            min_xy=minmax.loc['min'].values, 
                                            max_xy=minmax.loc['min'].values, 
                                            flip_y=True)
@@ -60,11 +60,11 @@ nz = 76
 z_res = 2
 img_stack = np.zeros((ngrid, ngrid, nz))
 for section in sdata.points.keys():
-    i = int(section)//z_res
+    i = int(np.rint(int(section)/z_res))
     target = sdata[section]
     source = sdata['ccf_regions']
     scale = 10e-3
-    target_img, target_grid_transform = ccft.map_image_to_slice(sdata, imdata, source, target, scale=scale, ngrid=ngrid)
+    target_img, target_grid_transform = ccft.map_image_to_slice(sdata, imdata, source, target, scale=scale, ngrid=ngrid, centered=False)
     img_stack[:,:,i] = target_img.T
 
 import nibabel

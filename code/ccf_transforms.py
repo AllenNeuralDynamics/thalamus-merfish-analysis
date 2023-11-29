@@ -71,10 +71,8 @@ def map_image_to_slice(sdata, imdata, source, target, centered=True, scale=None,
     # target_img = np.flipud(target_img)
     return target_img, target_grid_transform
 
-def get_normalizing_transform(df, coords, min_xy=None, max_xy=None, flip_y=True):
-    xy = df[coords[:2]]
-    min_xy = xy.min()
-    max_xy = xy.max()
+def get_normalizing_transform(min_xy, max_xy, flip_y=True):
+    min_xy, max_xy = min_xy[:2], max_xy[:2]
     if flip_y:
         norm_transform = sd.transformations.Sequence([
             sd.transformations.Translation(np.array([-1*min_xy[0], -1*max_xy[1]]), 'xy'),
