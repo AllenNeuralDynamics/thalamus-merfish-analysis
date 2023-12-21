@@ -1,7 +1,9 @@
-# hash:sha256:58c441e9e5f2f5559aeccfb2b5b07983f1d98bcad81e5cbc2b8b4962e52326b4
+# hash:sha256:4083d7eda692b2db4b233d351bb5bb84604d59ca151f4a8d8536138501f52b18
 FROM registry.codeocean.allenneuraldynamics.org/codeocean/jupyterlab:3.6.1-miniconda4.12.0-python3.9-ubuntu20.04
 
 ARG DEBIAN_FRONTEND=noninteractive
+ARG API_KEY
+ARG API_SECRET
 ARG AWS_ACCESS_KEY_ID
 ARG AWS_DEFAULT_REGION
 ARG AWS_SECRET_ACCESS_KEY
