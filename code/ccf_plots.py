@@ -71,9 +71,11 @@ def plot_ccf_section(ccf_polygons, section, highlight=[], palette=None, labels=T
                            alpha=alpha, edgecolor=edgecolor, label=name if labels else None))
     return patches
 
-def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None, point_hue='CCF_acronym', legend='cells', min_group_count=10, highlight=[], 
-                     shape_palette=None, point_palette=None, bg_cells=None, bg_shapes=True, s=2, axes=False,
-                     section_col='section'):
+def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None, 
+                     point_hue='CCF_acronym', legend='cells', 
+                     min_group_count=10, highlight=[], shape_palette=None, 
+                     point_palette=None, bg_cells=None, bg_shapes=True, s=2,
+                     axes=False, section_col='section'):
     obs = obs.copy()
     if sections is None:
         sections = obs[section_col].unique()
@@ -113,14 +115,19 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None, point_hue
         # print(section)
         fig, ax = plt.subplots(figsize=(8,4))
         if raster_regions:
-            plot_ccf_section_raster(ccf_polygons, section, substructure_index, regions=ccf_names, palette=shape_palette, legend=(legend=='ccf'), ax=ax)
+            plot_ccf_section_raster(ccf_polygons, section, substructure_index, 
+                                    regions=ccf_names, palette=shape_palette, 
+                                    legend=(legend=='ccf'), ax=ax)
         else:
-            plot_ccf_section(ccf_polygons, section, highlight=highlight, palette=shape_palette, bg_shapes=bg_shapes,
-                                   labels=legend in ['ccf', 'both'], ax=ax)
-        ax.set_title(section)
+            plot_ccf_section(ccf_polygons, section, highlight=highlight, 
+                             palette=shape_palette, bg_shapes=bg_shapes,
+                             labels=legend in ['ccf', 'both'], ax=ax)
+        ax.set_title('z='+str(section)+'\n'+point_hue)
         
         if bg_cells is not None:
-            sns.scatterplot(bg_cells.loc[lambda df: (df[section_col]==section)], x='cirro_x', y='cirro_y', c='grey', s=2, alpha=0.5)
+            sns.scatterplot(bg_cells.loc[lambda df: (df[section_col]==section)], 
+                            x='cirro_x', y='cirro_y', c='grey', 
+                            s=2, alpha=0.5, linewidth=0)
         # lump small groups if legend list is too long
         sec_group_counts = secdata[point_hue].value_counts(ascending=True)
         if len(sec_group_counts) > 10:
@@ -128,9 +135,12 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None, point_hue
             secdata.loc[lambda df: ~df[point_hue].isin(point_groups_section), point_hue] = 'other'
         secdata[point_hue] = pd.Categorical(secdata[point_hue])
         if len(secdata) > 0:
-            sns.scatterplot(secdata, x='cirro_x', y='cirro_y', hue=point_hue, s=s, palette=point_palette, legend=legend in ['cells', 'both'])
+            sns.scatterplot(secdata, x='cirro_x', y='cirro_y', hue=point_hue,
+                            s=s, palette=point_palette, linewidth=0,
+                            legend=legend in ['cells', 'both'])
         if legend:
-            plt.legend(ncols=2, loc='upper center', bbox_to_anchor=(0.5, 0))
+            plt.legend(ncols=2, loc='upper center', bbox_to_anchor=(0.5, 0),
+                       frameon=False)
             # plt.legend(ncols=1, loc='center left', bbox_to_anchor=(0.98, 0.5), fontsize=16)
         format_image_axes(axes)
         plt.show()

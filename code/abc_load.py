@@ -44,13 +44,12 @@ _CIRRO_COLUMNS = {
     'x_section':'cirro_x',
     'y_section':'cirro_y',
     'brain_section_label':'section',
-    # 'cluster':'cluster_label',
     'parcellation_substructure':'CCF_acronym'
 }
         
 
 def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
-               with_metadata=True, flip_y=True, cirro_names=False, 
+               with_metadata=True, flip_y=True, round_z=True, cirro_names=False, 
                with_colors=False):
     '''Load ABC Atlas MERFISH dataset as an anndata object.
     
@@ -71,6 +70,9 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
     flip_y : bool, default=True
         flip y-axis coordinates so positive is up (coronal section appears 
         right-side up as expected)
+    round_z : bool, default=True
+        rounds z_section, z_reconstructed coords to nearest 10ths place to
+        correct for overprecision in a handful of z coords
     cirro_names : bool, default=False
         changes metadata field names according to _CIRRO_COLUMNS dictionary
     with_colors : bool, default=False
@@ -105,6 +107,7 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
     if subset_to_TH_ZI:
         cells_md_df = get_combined_metadata(cirro_names=cirro_names, 
                                             flip_y=flip_y,
+                                            round_z=round_z,
                                             drop_unused=(not with_colors),
                                             version=version)
         cells_md_df = label_thalamus_spatial_subset(cells_md_df,
@@ -126,7 +129,8 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
         # need to check whether we already loaded metadata for subset_to_TH_ZI
         if 'cells_md_df' not in locals():
             cells_md_df = get_combined_metadata(cirro_names=cirro_names, 
-                                                flip_y=flip_y,
+                                                flip_y=flip_y, 
+                                                round_z=round_z,
                                                 drop_unused=~with_colors,
                                                 version=version)
         # add metadata to obs
@@ -159,28 +163,27 @@ def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
         the anndata object, filtered to only include cells from specific 
         thalamic & zona incerta + optional (midbrain & nonneuronal) classes
     '''
-    # hardcoded class categories
+    # hardcoded class categories for v20230830
     th_zi_dataset_classes = ['12 HY GABA', '17 MH-LH Glut', '18 TH Glut']
     midbrain_classes = ['19 MB Glut', '20 MB GABA']
     nonneuronal_classes = ['30 Astro-Epen', '31 OPC-Oligo', '33 Vascular',
                            '34 Immune']
-    
-    # handle various options for which classes to keep after filtering
-    if filter_nonneuronal & (not filter_midbrain):
-        classes_to_keep = th_zi_dataset_classes+midbrain_classes
-    elif (not filter_nonneuronal) & filter_midbrain:
-        classes_to_keep = th_zi_dataset_classes+nonneuronal_classes
-    elif (not filter_nonneuronal) & (not filter_midbrain):
-        classes_to_keep = th_zi_dataset_classes+nonneuronal_classes+midbrain_classes
-    else:
-        classes_to_keep = th_zi_dataset_classes
-        
+
+    # always keep th_zi_dataset_classes
+    classes_to_keep = th_zi_dataset_classes.copy()
+
+    # optionally include midbrain and/or nonneuronal classes
+    if not filter_midbrain:
+        classes_to_keep += midbrain_classes
+    if not filter_nonneuronal:
+        classes_to_keep += nonneuronal_classes
+
     th_zi_adata = th_zi_adata[th_zi_adata.obs['class'].isin(classes_to_keep)]
     return th_zi_adata
 
 
 def get_combined_metadata(drop_unused=True, cirro_names=False, flip_y=False, 
-                          version=CURRENT_VERSION):
+                          round_z=True, version=CURRENT_VERSION):
     '''Load the cell metadata csv, with memory/speed improvements.
     Selects correct dtypes and optionally renames and drops columns
     
@@ -192,6 +195,9 @@ def get_combined_metadata(drop_unused=True, cirro_names=False, flip_y=False,
         rename columns to match older cirro anndata names
     flip_y : bool, default=True
         flip section and reconstructed y coords so up is positive
+    round_z : bool, default=True
+        rounds z_section, z_reconstructed coords to nearest 10ths place to
+        correct for overprecision in a handful of z coords
     version : str, optional
         version to load, by default=CURRENT_VERSION
 
@@ -230,6 +236,9 @@ def get_combined_metadata(drop_unused=True, cirro_names=False, flip_y=False,
                            engine='c')
     if flip_y:
         cells_df[['y_section', 'y_reconstructed']] *= -1
+    if round_z:
+        cells_df['z_section'] = cells_df['z_section'].round(1)
+        cells_df['z_reconstructed'] = cells_df['z_reconstructed'].round(1)
     if cirro_names:
         cells_df = cells_df.rename(columns=_CIRRO_COLUMNS)
     return cells_df
