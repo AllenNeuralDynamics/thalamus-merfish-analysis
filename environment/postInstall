@@ -4,3 +4,4 @@ if [ -n "$CUSTOM_KEY" ]; then
     printf "Installing dotfiles from $CUSTOM_KEY"
     sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/bin/ init $CUSTOM_KEY --apply
 fi
+ln -s /root/capsule/code/.vscode/ /.vscode
