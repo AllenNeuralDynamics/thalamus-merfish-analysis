@@ -25,8 +25,6 @@ functions:
         dilates a stack of 2D binary masks by a specified radius (in px)
     cleanup_mask_regions:
         removes too-small, mistaken parcellation regions from TH/ZI binary masks
-    label_thalamus_masked_cells:
-        labels cells that are inside the TH+ZI mask from the CCF parcellation
     convert_taxonomy_labels:
         converts cell type labels between different taxonomy versions
     get_color_dictionary:
@@ -342,7 +340,7 @@ def label_thalamus_spatial_subset(cells_df, flip_y=False, distance_px=20,
     if cleanup_mask:
         mask_img = cleanup_mask_regions(mask_img, area_ratio_thresh=0.1)
     # label cells that fall within dilated TH+ZI mask; by default, 
-    cells_df = label_thalamus_masked_cells(cells_df, mask_img, coords,  
+    cells_df = label_masked_cells(cells_df, mask_img, coords,  
                                            resolutions, field_name=field_name)
     # exclude the 1 anterior-most and 1 posterior-most thalamus sections due to
     # poor overlap between mask & thalamic cells
@@ -434,9 +432,9 @@ def cleanup_mask_regions(mask_img, area_ratio_thresh=0.1):
     return new_mask_img
 
 
-def label_thalamus_masked_cells(cells_df, mask_img, coords, resolutions,
+def label_masked_cells(cells_df, mask_img, coords, resolutions,
                                 field_name='TH_ZI_dataset'):
-    '''Labels cells that are inside the TH+ZI mask from the CCF parcellation.
+    '''Labels cells with coordinates inside a binary masked image region
     
     Parameters
     ----------
@@ -451,10 +449,6 @@ def label_thalamus_masked_cells(cells_df, mask_img, coords, resolutions,
         xyz resolutions used to compare coords to mask_img positions
     field_name : str
         name for column containing the thalamus dataset boolean flag
-    drop_end_sections : bool, default=True
-        drops the anterior-most section and posterior-most section, which
-        contain CCF thalamus parcellation labels but have poor overlap with
-        thalamic cell types
 
     Returns
     -------
