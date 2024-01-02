@@ -9,7 +9,16 @@ To create your own working copy on Code Ocean, select **Duplicate** from the **C
 
 Feel free to make minor environment changes, but make sure they work by testing in a cloud workstation before you commit/push. If you're making a dramatic change (installing something with a ton of dependencies) that may be an indication you should create a separate capsule for that work.
 
-You can also work locally by cloning directly from github to your personal machine, although this is less ideal for sharing as you'll be working with a different environment and different data paths. These issues could perhaps be minimized in the future by using environment variables to store alternative paths etc for the local vs CO contexts if this functionality seems important.
+You can also work locally by cloning directly from github to your personal machine, but data assets will not be available.
+
+### Data assets
+
+We are documenting the data assets used by the capsule by including their name and ID in `environment/data_assets.yml`. If a data asset is not broadly used, but required for a specific notebook or use case, include the entry commented out with an explanatory comment above. The listed data assets can then be attached from a cloud workstation using the API, by running `python environment/attach_data_assets.py` (ideally this could run in postInstall, but that's not currently possible). 
+
+To use this API call though, you'll need to generate and attach a CO API key (one time only): 
+1. Go to https://codeocean.allenneuraldynamics.org/account/apiKeys to create an access token with capsule read/write permissions.
+2. Copy the token and switch to the capsule environment manager, where you'll find "Add New API Credentials" under the "Codeocean API" entry.
+3. Paste the token in the "API Secret" field. The "Short Description" and "API Key" won't matter here, but you may want to use the key name from step 1 so you can refer back to it later
 
 ### Git details 
 
