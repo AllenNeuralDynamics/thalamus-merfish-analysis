@@ -1,4 +1,4 @@
-# hash:sha256:4083d7eda692b2db4b233d351bb5bb84604d59ca151f4a8d8536138501f52b18
+# hash:sha256:70c0bca0815906c46a9c74abaa795030b6709db4840ad2bc2a8769a020a76610
 FROM registry.codeocean.allenneuraldynamics.org/codeocean/jupyterlab:3.6.1-miniconda4.12.0-python3.9-ubuntu20.04
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -22,6 +22,7 @@ RUN pip install -U --no-cache-dir \
     anndata==0.8.0 \
     bg-atlasapi==1.0.2 \
     colorcet==3.0.1 \
+    fastparquet==2023.10.1 \
     geojson==3.0.1 \
     geopandas==0.13.1 \
     hdbscan==0.8.33 \
@@ -30,13 +31,6 @@ RUN pip install -U --no-cache-dir \
     scikit-learn==1.2.2 \
     shapely==2.0.1 \
     squidpy==1.2.3
-
-ADD "https://github.com/coder/code-server/releases/download/v4.9.0/code-server-4.9.0-linux-amd64.tar.gz" /.code-server/code-server.tar.gz
-	
-RUN cd /.code-server \
-	&& tar -xvf code-server.tar.gz \
-	&& rm code-server.tar.gz \
-	&& ln -s /.code-server/code-server-4.9.0-linux-amd64/bin/code-server  /usr/bin/code-server
 
 COPY postInstall /
 RUN /postInstall
