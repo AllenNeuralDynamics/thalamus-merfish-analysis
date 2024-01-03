@@ -48,7 +48,9 @@ _CIRRO_COLUMNS = {
 
 def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
                with_metadata=True, flip_y=True, round_z=True, cirro_names=False, 
-               with_colors=False):
+               with_colors=False,
+               realigned=False,
+               subset_to_left_hemi=False):
     '''Load ABC Atlas MERFISH dataset as an anndata object.
     
     Parameters
@@ -74,7 +76,12 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
     cirro_names : bool, default=False
         changes metadata field names according to _CIRRO_COLUMNS dictionary
     with_colors : bool, default=False
-        imports all colors with the metatdata (will take up more space)
+        imports all colors with the metadata (will take up more space)
+    realigned : bool, default=False
+        load and use for subsetting the metadata from realignment results data asset,
+        containing 'ccf_realigned' coordinates 
+    subset_to_left_hemi : bool, default=False
+        include only cells in left hemisphere, according to CCF coordinates
         
     Results
     -------
@@ -100,39 +107,35 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
         # takes ~2 min + ~3 GB of memory to load just one set of counts
         adata = ad.read_h5ad(ABC_ROOT/f"expression_matrices/MERFISH-{BRAIN_LABEL}/{version}/{BRAIN_LABEL}-{transform}.h5ad", 
                              backed='r')
-   
-    # subset to TH+ZI dataset
-    if subset_to_TH_ZI:
+    if with_metadata or subset_to_TH_ZI or subset_to_left_hemi:
         cells_md_df = get_combined_metadata(cirro_names=cirro_names, 
-                                            flip_y=flip_y,
-                                            round_z=round_z,
-                                            drop_unused=(not with_colors),
-                                            version=version)
-        cells_md_df = label_thalamus_spatial_subset(cells_md_df,
-                                                    flip_y=flip_y,
-                                                    distance_px=20,
-                                                    cleanup_mask=True,
-                                                    drop_end_sections=True,
-                                                    filter_cells=True)
-        cell_labels = cells_md_df.index
-        adata = adata[adata.obs_names.intersection(cell_labels)]
+                                        flip_y=flip_y,
+                                        round_z=round_z,
+                                        drop_unused=(not with_colors),
+                                        version=version,
+                                        realigned=realigned)
+        # subset to TH+ZI dataset
+        if subset_to_TH_ZI:
+            cells_md_df = label_thalamus_spatial_subset(cells_md_df,
+                                                        flip_y=flip_y,
+                                                        distance_px=20,
+                                                        cleanup_mask=True,
+                                                        drop_end_sections=True,
+                                                        filter_cells=True,
+                                                        realigned=realigned)
+        if subset_to_left_hemi:
+            flag = "left_hemisphere_realigned" if realigned else "left_hemisphere"
+            cells_md_df = cells_md_df[flag]
+        cell_labels = adata.obs_names.intersection(cells_md_df.index)
+        adata = adata[cell_labels]
+        # add metadata to obs
+        adata.obs = adata.obs.join(cells_md_df.loc[cell_labels, cells_md_df.columns.difference(adata.obs.columns)])
     
     if transform!='both':
         adata = adata.to_memory()
         
     # access genes by short symbol vs longer names
     adata.var_names = adata.var['gene_symbol']
-    
-    if with_metadata:
-        # need to check whether we already loaded metadata for subset_to_TH_ZI
-        if 'cells_md_df' not in locals():
-            cells_md_df = get_combined_metadata(cirro_names=cirro_names, 
-                                                flip_y=flip_y, 
-                                                round_z=round_z,
-                                                drop_unused=~with_colors,
-                                                version=version)
-        # add metadata to obs
-        adata.obs = adata.obs.join(cells_md_df[cells_md_df.columns.difference(adata.obs.columns)])
 
     # note what counts transform is in X
     adata.uns['counts_transform'] = transform
@@ -181,7 +184,8 @@ def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
 
 
 def get_combined_metadata(drop_unused=True, cirro_names=False, flip_y=False, 
-                          round_z=True, version=CURRENT_VERSION):
+                          round_z=True, version=CURRENT_VERSION,
+                          realigned=False):
     '''Load the cell metadata csv, with memory/speed improvements.
     Selects correct dtypes and optionally renames and drops columns
     
@@ -198,6 +202,9 @@ def get_combined_metadata(drop_unused=True, cirro_names=False, flip_y=False,
         correct for overprecision in a handful of z coords
     version : str, optional
         version to load, by default=CURRENT_VERSION
+    realigned : bool, default=False
+        if True, load metadata from realignment results data asset,
+        containing 'ccf_realigned' coordinates 
 
     Returns
     -------
@@ -223,12 +230,12 @@ def get_combined_metadata(drop_unused=True, cirro_names=False, flip_y=False,
                 **{x: 'category' for x in cat_columns})
     usecols = list(dtype.keys()) if drop_unused else None
 
-    # if as_dask:
-    #     cells_df = dd.read_csv(
-    #         ABC_ROOT/f"metadata/MERFISH-C57BL6J-638850-CCF/{version}/views/cell_metadata_with_parcellation_annotation.csv", 
-    #                         dtype=dtype, usecols=usecols, blocksize=100e6)
-    # else:
-    cells_df = pd.read_csv(
+    if realigned:
+        if version != CURRENT_VERSION:
+            raise UserWarning("Realigned coordinates only saved for current version.")
+        cells_df = pd.read_parquet("/data/realigned/abc_realigned_metadata_thalamus-boundingbox.parquet")
+    else:
+        cells_df = pd.read_csv(
             ABC_ROOT/f"metadata/MERFISH-C57BL6J-638850-CCF/{version}/views/cell_metadata_with_parcellation_annotation.csv", 
                            dtype=dtype, usecols=usecols, index_col='cell_label', 
                            engine='c')
@@ -239,10 +246,14 @@ def get_combined_metadata(drop_unused=True, cirro_names=False, flip_y=False,
         cells_df['z_reconstructed'] = cells_df['z_reconstructed'].round(1)
     if cirro_names:
         cells_df = cells_df.rename(columns=_CIRRO_COLUMNS)
+        
+    cells_df["left_hemisphere"] = ccf_df["z_ccf"] < 5.5
+    if realigned:
+        cells_df["left_hemisphere_realigned"] = ccf_df["z_ccf_realigned"] < 5.5
     return cells_df
 
 
-def get_ccf_labels_image(resampled=True):
+def get_ccf_labels_image(resampled=True, realigned=False):
     '''Loads rasterized image volumes of the CCF parcellation as 3D numpy array.
     
     Voxels are labelled with assigned brain structure parcellation ID #.
@@ -261,17 +272,25 @@ def get_ccf_labels_image(resampled=True):
         if True, loads the "resampled CCF" labels, which have been aligned into
         the MERFISH space/coordinates
         if False, loads CCF labels that are in AllenCCFv3 average template space
+    realigned : bool, default=False
+        if resampled and realigned are both True, loads CCF labels from manual realignment, 
+        which have been aligned into the MERFISH space/coordinates
+        (incompatible with resampled=False as these haven't been calculated)
     
     Returns
     -------
     imdata
         numpy array containing rasterized image volumes of CCF parcellation
     '''
-    if resampled:
-        path = "image_volumes/MERFISH-C57BL6J-638850-CCF/20230630/resampled_annotation.nii.gz"
+    if resampled and not realigned:
+        path = ABC_ROOT/"image_volumes/MERFISH-C57BL6J-638850-CCF/20230630/resampled_annotation.nii.gz"
+    elif not resampled and not realigned:
+        path = ABC_ROOT/"image_volumes/Allen-CCF-2020/20230630/annotation_10.nii.gz"
+    elif resampled and realigned:
+        path = "/data/realigned/abc_realigned_ccf_labels.nii.gz"
     else:
-        path = "image_volumes/Allen-CCF-2020/20230630/annotation_10.nii.gz"
-    img = nibabel.load(ABC_ROOT/path)
+        raise UserWarning("This label image is not available")
+    img = nibabel.load(path)
     # could maybe keep the lazy dataobj and not convert to numpy?
     imdata = np.array(img.dataobj)
     return imdata
@@ -279,7 +298,8 @@ def get_ccf_labels_image(resampled=True):
 
 def label_thalamus_spatial_subset(cells_df, flip_y=False, distance_px=20, 
                                   cleanup_mask=True, drop_end_sections=True,
-                                  filter_cells=False):
+                                  filter_cells=False,
+                                  realigned=False):
     '''Labels cells that are in the thalamus spatial subset of the ABC atlas.
     
     Turns a rasterized image volume that includes all thalamus (TH) and zona
@@ -310,12 +330,15 @@ def label_thalamus_spatial_subset(cells_df, flip_y=False, distance_px=20,
     '''
     field_name='TH_ZI_dataset'
     # use reconstructed (in MERFISH space) coordinates from cells_df
-    coords = ['x_reconstructed','y_reconstructed','z_reconstructed']
+    if realigned:
+        coords = ['x_section','y_section','z_section']
+    else:
+        coords = ['x_reconstructed','y_reconstructed','z_reconstructed']
     resolutions = np.array([10e-3, 10e-3, 200e-3])
     
     # load 'resampled CCF' (rasterized, in MERFISH space) image volumes from the
     # ABC Atlas dataset (z resolution limited to merscope slices)
-    ccf_img = get_ccf_labels_image(resampled=True)
+    ccf_img = get_ccf_labels_image(resampled=True, realigned=realigned)
     
     # ccf_img voxels are labelled by brain structure parcellation_index, so need
     # to get a list of all indices that correspond to TH or ZI (sub)structures
