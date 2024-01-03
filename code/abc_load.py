@@ -102,11 +102,11 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
         # clean up to reduce memory usage
         del adata_log2
         del adata_raw
-    
     else:
-        # takes ~2 min + ~3 GB of memory to load just one set of counts
-        adata = ad.read_h5ad(ABC_ROOT/f"expression_matrices/MERFISH-{BRAIN_LABEL}/{version}/{BRAIN_LABEL}-{transform}.h5ad", 
+        # takes ~2 min + ~3 GB of memory to load one set of counts
+        adata = ad.read_h5ad(ABC_ROOT/f"expression_matrices/MERFISH-{BRAIN_LABEL}/{version}/{BRAIN_LABEL}-{transform}.h5ad",
                              backed='r')
+        
     if with_metadata or subset_to_TH_ZI or subset_to_left_hemi:
         cells_md_df = get_combined_metadata(cirro_names=cirro_names, 
                                         flip_y=flip_y,
@@ -128,10 +128,11 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
             cells_md_df = cells_md_df[flag]
         cell_labels = adata.obs_names.intersection(cells_md_df.index)
         adata = adata[cell_labels]
+        adata = adata.to_memory()
         # add metadata to obs
         adata.obs = adata.obs.join(cells_md_df.loc[cell_labels, cells_md_df.columns.difference(adata.obs.columns)])
     
-    if transform!='both':
+    if adata.isbacked():
         adata = adata.to_memory()
         
     # access genes by short symbol vs longer names
@@ -247,9 +248,9 @@ def get_combined_metadata(drop_unused=True, cirro_names=False, flip_y=False,
     if cirro_names:
         cells_df = cells_df.rename(columns=_CIRRO_COLUMNS)
         
-    cells_df["left_hemisphere"] = ccf_df["z_ccf"] < 5.5
+    cells_df["left_hemisphere"] = cells_df["z_ccf"] < 5.5
     if realigned:
-        cells_df["left_hemisphere_realigned"] = ccf_df["z_ccf_realigned"] < 5.5
+        cells_df["left_hemisphere_realigned"] = cells_df["z_ccf_realigned"] < 5.5
     return cells_df
 
 
