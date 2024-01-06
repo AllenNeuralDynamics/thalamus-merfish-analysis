@@ -232,14 +232,16 @@ def get_combined_metadata(drop_unused=True, cirro_names=False, flip_y=False,
     usecols = list(dtype.keys()) if drop_unused else None
 
     if realigned:
-        if version != CURRENT_VERSION:
-            raise UserWarning("Realigned coordinates only saved for current version.")
         cells_df = pd.read_parquet("/data/realigned/abc_realigned_metadata_thalamus-boundingbox.parquet")
+        if version != CURRENT_VERSION:
+            old_df = pd.read_csv(
+                ABC_ROOT/f"metadata/MERFISH-C57BL6J-638850-CCF/{version}/views/cell_metadata_with_parcellation_annotation.csv", 
+                dtype=dtype, usecols=usecols, index_col='cell_label', engine='c')
+            cells_df = old_df.join(cells_df[cells_df.columns.difference(old_df.columns)])
     else:
         cells_df = pd.read_csv(
             ABC_ROOT/f"metadata/MERFISH-C57BL6J-638850-CCF/{version}/views/cell_metadata_with_parcellation_annotation.csv", 
-                           dtype=dtype, usecols=usecols, index_col='cell_label', 
-                           engine='c')
+            dtype=dtype, usecols=usecols, index_col='cell_label', engine='c')
     if flip_y:
         cells_df[['y_section', 'y_reconstructed']] *= -1
     if round_z:
