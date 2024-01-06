@@ -125,7 +125,7 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
                                                         realigned=realigned)
         if subset_to_left_hemi:
             flag = "left_hemisphere_realigned" if realigned else "left_hemisphere"
-            cells_md_df = cells_md_df[flag]
+            cells_md_df = cells_md_df[cells_md_df[flag]]
         cell_labels = adata.obs_names.intersection(cells_md_df.index)
         adata = adata[cell_labels]
         adata = adata.to_memory()
