@@ -132,7 +132,7 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
         # add metadata to obs
         adata.obs = adata.obs.join(cells_md_df.loc[cell_labels, cells_md_df.columns.difference(adata.obs.columns)])
     
-    if adata.isbacked():
+    if adata.isbacked:
         adata = adata.to_memory()
         
     # access genes by short symbol vs longer names
@@ -547,7 +547,49 @@ def convert_taxonomy_labels(input_labels, taxonomy_level,
         return out_labels_dict
     else:
         return out_labels_list
+
     
+def get_taxonomy_label_from_alias(aliases, taxonomy_level, version='20230830',
+                                  label_format='id_label',
+                                  output_as_dict=False):
+    ''' Converts cell type labels between taxonomy versions of the ABC Atlas.
+    
+    Parameters
+    ----------
+    aliases : list of strings
+        list of strings containing the cluster aliases
+    taxonomy_level : {'cluster', 'supertype', 'subclass', 'class'}
+        specifies the taxonomy level to retrieve
+    label_format : string, {'id_label', 'id', 'label'}, default='id_label'
+        indicates format of 'labels' parameter; currently only supports full
+        id+label strings, e.g. "1130 TH Prkcd Grin2c Glut_1"
+        [TODO: support 'id'-only ("1130") & 
+               'label'-only ("TH Prkcd Grin2c Glut_1") user inputs]
+    version : str, default='20230830'
+        ABC Atlas version the alias should be converted to
+    output_as_dict : bool, default=False
+        specifies whether output is a list (False, default) or dictionary (True)
+    
+    Results
+    -------
+    labels
+        list of taxonomy labels or dictionary mapping from alias to taxonomy
+        labels
+    '''
+    
+    # load in the specified version of cluster annotation membership CSV files
+    file = 'cluster_to_cluster_annotation_membership_pivoted.csv'
+    pivot_df = pd.read_csv(
+                    ABC_ROOT/f'metadata/WMB-taxonomy/{version}/views/{file}',
+                    dtype='str')
+    # reindexing ensures that label_list is in same order as input aliases
+    query_df = pivot_df.set_index('cluster_alias').loc[aliases].reset_index()
+    label_list = query_df[taxonomy_level].to_list()
+    if output_as_dict:
+        labels_dict = dict(zip(aliases, label_list))
+        return labels_dict
+    else:
+        return label_list
     
 def get_color_dictionary(labels, taxonomy_level, label_format='id_label',
                          version='20230830'):
