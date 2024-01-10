@@ -143,6 +143,31 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
     
     return adata
 
+def add_tiled_obsm(adata, offset=10, coords_name='section', obsm_field='coords_tiled'):
+    """Add obsm coordinates to AnnData object from section coordinates in adata.obs,
+    but with sections tiled along the x-axis at a given separation.
+
+    Parameters
+    ----------
+    adata
+        AnnData object
+    offset, optional
+        separation of sections, by default 10 (5 sufficient for hemi-sections)
+    coords_name, optional
+        suffix of the coordinate type to use, by default 'section'
+    obsm_field, optional
+        name for the new obsm entry, by default 'coords_tiled'
+
+    Returns
+    -------
+        AnnData object, modified in place
+    """
+    obsm = np.vstack([adata.obs[f"x_{coords_name}"] 
+                        + offset*adata.obs[f"z_{coords_name}"].rank(method="dense"),
+                        adata.obs[f"y_{coords_name}"]]).T
+    adata.obsm[coords_tiled] = obsm
+    return adata
+
 
 def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
                           filter_midbrain=True):
