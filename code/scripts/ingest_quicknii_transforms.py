@@ -39,7 +39,7 @@ df = df.join(transformed_points[list('xyz')].rename(columns=lambda x: f"{x}_ccf{
 
 # add parcellation index
 imdata = abc.get_ccf_labels_image(resampled=False)
-new_coords = [f"{x}_ccf{suffix}" for x in 'zyx'] # zyx order 
+new_coords = [f"{x}_ccf{suffix}" for x in 'xyz'] # xyz order 
 df['parcellation_index'+suffix] = imdata[ccf.image_index_from_coords(df[new_coords])]
 
 # add parcellation metadata
@@ -52,7 +52,7 @@ df.to_parquet("/results/abc_realigned_metadata_thalamus-boundingbox.parquet")
 
 # saving resampled images
 img_transform = sd.transformations.Scale(10e-3*np.ones(3), 'xyz')
-labels = sd.models.Labels3DModel.parse(imdata, dims='zyx', transformations={'ccf': img_transform})
+labels = sd.models.Labels3DModel.parse(imdata, dims='xyz', transformations={'ccf': img_transform})
 sdata.add_labels('ccf_regions', labels)
 
 ngrid = 1100
