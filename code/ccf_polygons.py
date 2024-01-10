@@ -47,6 +47,9 @@ def poly_from_points(X: np.ndarray,
         return poly
     else:
         return None
+    
+# def poly_from_binary_mask(mask_img,):
+    
 
 def split_cells_hdbscan(X):
     """Split a point array into separate arrays for every separate 'island' of points
@@ -63,7 +66,7 @@ def split_cells_hdbscan(X):
     clusters = hdbscan.HDBSCAN(min_samples=10).fit_predict(X)
     return [X[clusters==i, :] for i in set(clusters) if not i==-1]
 
-def split_cells_midline(X, midline_gap=100):
+def split_cells_midline(X, midline_gap=0.5):
     """Split a point array into separate arrays for each hemisphere, if there is a midline gap
 
     Parameters
@@ -108,7 +111,7 @@ def get_polygon_from_obs(obs_df, strategy='hdbscan',
     """
     X = obs_df[[x_field, y_field]].values
     if strategy=='hdbscan':
-        allow_holes = True
+        allow_holes = False
         groups = split_cells_hdbscan(X)
     elif strategy=='midline':
         allow_holes = False
@@ -147,7 +150,12 @@ def get_ccf_polygons(data, min_points=50,
                 +'to data, e.g. data.cirro_x=adata.obsm.spatial_cirro[:,0] and '
                 +'data.cirro_y=adata.obsm.spatial_cirro[:,1], and try again.')
     
-    for (name, section), df in data.groupby([region_name_field, section_id_field]):
+    # Warning: as of pandas 2.1.0, the default of df.groupby(.., observed=False)
+    # is deprecated and will be changed to True in a future version of pandas.
+    #  - Setting observed=False to retain current behavior (show all values for 
+    #    categorical groupers), but we may want to consider changing to new 
+    #    default observed=True (only show observed values for categorical groupers)
+    for (name, section), df in data.groupby([region_name_field, section_id_field], observed=False):
         if df.shape[0] > min_points:
             poly = get_polygon_from_obs(df)
             if poly is not None:
@@ -166,7 +174,12 @@ def get_outline_polygon(obs_data, min_points=50, coordinate_type='cirro'):
     ''' Take all the XY cell coordinates in each section and generate a concave
     hull Polygon that encompasses all points in that section'''
     outline_polygons = defaultdict(dict)
-    for section, df in obs_data.groupby('section'):
+    # Warning: as of pandas 2.1.0, the default of df.groupby(.., observed=False)
+    # is deprecated and will be changed to True in a future version of pandas.
+    #  - Setting observed=False to retain current behavior (show all values for 
+    #    categorical groupers), but we may want to consider changing to new 
+    #    default observed=True (only show observed values for categorical groupers)
+    for section, df in obs_data.groupby('section', observed=False):
         if coordinate_type=='napari':
             XY_n = df[['napari_x_brain1and3','napari_y_brain1and3']].values
             XY = np.asarray([[coord[0], -coord[1]] for coord in XY_n])

@@ -10,3 +10,8 @@ credentials:
   id: GTQcxIKPIVX8BP
   description: DOTFILES_REPO
   value: CUSTOM_KEY
+- type: api-key
+  id: 2PuQeUT48mbWLB
+  description: Codeocean API
+  key: API_KEY
+  secret: API_SECRET
