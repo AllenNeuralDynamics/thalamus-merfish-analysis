@@ -178,7 +178,7 @@ def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
     Parameters
     ----------
     th_zi_adata
-        anndata object containing the ABC Atlas MERFISH dataset
+        anndata object or dataframe containing the ABC Atlas MERFISH dataset
     filter_nonneuronal : bool, default=True
         filters out non-neuronal classes
     filter_midbrain : bool, default=True
@@ -206,8 +206,11 @@ def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
     if not filter_nonneuronal:
         classes_to_keep += nonneuronal_classes
 
-    th_zi_adata = th_zi_adata[th_zi_adata.obs['class'].isin(classes_to_keep)]
-    return th_zi_adata
+    if hasattr(th_zi_adata, 'obs'):
+        subset = th_zi_adata.obs['class'].isin(classes_to_keep)
+    else:
+        subset = th_zi_adata['class'].isin(classes_to_keep)
+    return th_zi_adata[subset]
 
 
 def get_combined_metadata(drop_unused=True, cirro_names=False, flip_y=False, 
