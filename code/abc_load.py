@@ -49,8 +49,7 @@ _CIRRO_COLUMNS = {
 def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
                with_metadata=True, flip_y=True, round_z=True, cirro_names=False, 
                with_colors=False,
-               realigned=False,
-               subset_to_left_hemi=False):
+               realigned=False):
     '''Load ABC Atlas MERFISH dataset as an anndata object.
     
     Parameters
@@ -67,6 +66,9 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
         by label_thalamus_spatial_subset()
     with_metadata : bool, default=True
         include cell metadata in adata
+    loaded_metadata : DataFrame, default=None
+        already loaded metadata DataFrame to merge into AnnData, loading cells in this 
+        DataFrame only
     flip_y : bool, default=True
         flip y-axis coordinates so positive is up (coronal section appears 
         right-side up as expected)
@@ -80,8 +82,6 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
     realigned : bool, default=False
         load and use for subsetting the metadata from realignment results data asset,
         containing 'ccf_realigned' coordinates 
-    subset_to_left_hemi : bool, default=False
-        include only cells in left hemisphere, according to CCF coordinates
         
     Results
     -------
@@ -108,7 +108,10 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
                              backed='r')
         
     if with_metadata or subset_to_TH_ZI or subset_to_left_hemi:
-        cells_md_df = get_combined_metadata(cirro_names=cirro_names, 
+        if loaded_metadata is not None:
+            cells_md_df = loaded_metadata
+        else:
+            cells_md_df = get_combined_metadata(cirro_names=cirro_names, 
                                         flip_y=flip_y,
                                         round_z=round_z,
                                         drop_unused=(not with_colors),
@@ -123,9 +126,6 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
                                                         drop_end_sections=True,
                                                         filter_cells=True,
                                                         realigned=realigned)
-        if subset_to_left_hemi:
-            flag = "left_hemisphere_realigned" if realigned else "left_hemisphere"
-            cells_md_df = cells_md_df[cells_md_df[flag]]
         cell_labels = adata.obs_names.intersection(cells_md_df.index)
         adata = adata[cell_labels]
         adata = adata.to_memory()
