@@ -49,7 +49,8 @@ _CIRRO_COLUMNS = {
 def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
                with_metadata=True, flip_y=True, round_z=True, cirro_names=False, 
                with_colors=False,
-               realigned=False):
+               realigned=False,
+               loaded_metadata=None):
     '''Load ABC Atlas MERFISH dataset as an anndata object.
     
     Parameters
@@ -66,9 +67,6 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
         by label_thalamus_spatial_subset()
     with_metadata : bool, default=True
         include cell metadata in adata
-    loaded_metadata : DataFrame, default=None
-        already loaded metadata DataFrame to merge into AnnData, loading cells in this 
-        DataFrame only
     flip_y : bool, default=True
         flip y-axis coordinates so positive is up (coronal section appears 
         right-side up as expected)
@@ -82,6 +80,9 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
     realigned : bool, default=False
         load and use for subsetting the metadata from realignment results data asset,
         containing 'ccf_realigned' coordinates 
+    loaded_metadata : DataFrame, default=None
+        already loaded metadata DataFrame to merge into AnnData, loading cells in this 
+        DataFrame only
         
     Results
     -------
