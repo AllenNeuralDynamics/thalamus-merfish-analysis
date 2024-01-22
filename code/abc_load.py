@@ -213,28 +213,33 @@ def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
     return th_zi_adata[subset]
 
 
-def get_combined_metadata(drop_unused=True, cirro_names=False, flip_y=False, 
-                          round_z=True, version=CURRENT_VERSION,
-                          realigned=False):
+def get_combined_metadata(
+    version=CURRENT_VERSION,
+    realigned=False,
+    drop_unused=True, 
+    flip_y=False, 
+    round_z=True, 
+    cirro_names=False
+    ):
     '''Load the cell metadata csv, with memory/speed improvements.
     Selects correct dtypes and optionally renames and drops columns
     
     Parameters
     ----------
-    drop_unused : bool, default=True
-        don't load uninformative or unused columns (color etc)
-    cirro_names : bool, default=True
-        rename columns to match older cirro anndata names
-    flip_y : bool, default=True
-        flip section and reconstructed y coords so up is positive
-    round_z : bool, default=True
-        rounds z_section, z_reconstructed coords to nearest 10ths place to
-        correct for overprecision in a handful of z coords
     version : str, optional
         version to load, by default=CURRENT_VERSION
     realigned : bool, default=False
         if True, load metadata from realignment results data asset,
         containing 'ccf_realigned' coordinates 
+    drop_unused : bool, default=True
+        don't load uninformative or unused columns (color etc)
+    flip_y : bool, default=False
+        flip section and reconstructed y coords so up is positive
+    round_z : bool, default=True
+        rounds z_section, z_reconstructed coords to nearest 10ths place to
+        correct for overprecision in a handful of z coords
+    cirro_names : bool, default=False
+        rename columns to match older cirro anndata names
 
     Returns
     -------
@@ -324,7 +329,7 @@ def get_ccf_labels_image(resampled=True, realigned=False):
         raise UserWarning("This label image is not available")
     img = nibabel.load(path)
     # could maybe keep the lazy dataobj and not convert to numpy?
-    imdata = np.array(img.dataobj)
+    imdata = np.array(img.dataobj).astype(int)
     return imdata
 
 
