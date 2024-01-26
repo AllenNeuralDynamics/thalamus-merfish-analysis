@@ -95,9 +95,12 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
     # Clean up point hue column    
     # string type allows adding 'other' to data slice by slice
     obs[point_hue] = obs[point_hue].astype(str)
-    # drop groups below min_group_count 
+    # drop groups below min_group_count and sort by size
+    # currently across all of obs, not just selected sections
     point_group_names = obs[point_hue].value_counts().loc[lambda x: x>min_group_count].index
     obs = obs[obs[point_hue].isin(point_group_names)]
+    if bg_cells is not None:
+        bg_cells = bg_cells.loc[bg_cells.index.difference(obs.index)]
     
     # Set color palette for cell scatter points
     if point_palette is None:
@@ -116,6 +119,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
     point_palette.update(other='grey')
     
     # Display each section as a separate plot
+    figs = []
     for section in sections:
         secdata = obs.loc[lambda df: (df[section_col]==section)].copy()
         if len(secdata) < min_group_count:
@@ -157,6 +161,8 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
                        frameon=False)
         format_image_axes(axes)
         plt.show()
+        figs.append(fig)
+    return figs
 
 def format_image_axes(axes=False, set_lims=True):
     plt.axis('image')
@@ -342,8 +348,10 @@ def plot_ccf_section_raster(ccf_img, section_z,
     palette, edgecolor, alpha = expand_palette(palette, ccf_region_names)
     
     # could do in single image, but looping allows selecting highlight set etc...
+    names = []
     for i in region_nums:
         name = structure_index[i]
+        names.append(name)
         if name in palette:
             plot_raster_region(img, i, resolution=10e-3, facecolor=palette[name], 
                                edgecolor=edgecolor, alpha=alpha, ax=ax)
@@ -355,7 +363,7 @@ def plot_ccf_section_raster(ccf_img, section_z,
         # generate "empty" matplotlib handles to be used by plt.legend() call in 
         # plot_ccf_overlay() (NB: that supercedes any call to plt.legend here)
         handles = [plt.plot([], marker="o", ls="", color=color, label=name)[0] 
-                   for name, color in palette.items() if name in ccf_region_names]
+                   for name, color in palette.items() if name in names]
     return
 
 def fill_nan(img):
@@ -371,8 +379,11 @@ def plot_raster_region(imdata, region_val, resolution=10e-3, facecolor='grey',
     im_bound = binary_dilation(im_region, iterations=edge_width) & ~im_region
     ax.imshow(fill_nan(im_bound).T, cmap=ListedColormap([edgecolor]), **kwargs)
 
-def plot_metrics_ccf_raster(ccf_img, metric_series, sections, structure_index,
-                     cmap='viridis', cb_label='metric', axes=False):
+def plot_metrics_ccf_raster(ccf_img, metric_series, sections, 
+                            structure_index=None,
+                            cmap='viridis', cb_label='metric', axes=False):
+    if structure_index is None:
+        structure_index = get_ccf_substructure_index()
     vmin, vmax = (metric_series.min(), metric_series.max())
     norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
     cmap = matplotlib.colormaps.get_cmap(cmap)
