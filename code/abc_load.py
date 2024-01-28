@@ -1,4 +1,5 @@
 from pathlib import Path
+from functools import lru_cache
 import json
 import numpy as np
 import pandas as pd
@@ -266,6 +267,7 @@ def get_combined_metadata(
     usecols = list(dtype.keys()) if drop_unused else None
 
     if realigned:
+        # TODO: add version to the data asset mount point to allow multiple
         cells_df = pd.read_parquet("/data/realigned/abc_realigned_metadata_thalamus-boundingbox.parquet")
         if version != CURRENT_VERSION:
             old_df = pd.read_csv(
@@ -287,6 +289,7 @@ def get_combined_metadata(
     cells_df["left_hemisphere"] = cells_df["z_ccf"] < 5.5
     if realigned:
         cells_df["left_hemisphere_realigned"] = cells_df["z_ccf_realigned"] < 5.5
+    cells_df = cells_df.replace("ZI-unassigned", "ZI")
     return cells_df
 
 
@@ -678,12 +681,16 @@ def get_color_dictionary(labels, taxonomy_level, label_format='id_label',
     
     return color_dict
 
+@lru_cache
 def get_ccf_metadata():
+    # this metadata hasn't been updated in other versions
     ccf_df = pd.read_csv(
             ABC_ROOT/"metadata/Allen-CCF-2020/20230630/parcellation_to_parcellation_term_membership.csv"
             )
+    ccf_df = ccf_df.replace("ZI-unassigned", "ZI")
     return ccf_df
 
+@lru_cache
 def get_thalamus_substructure_names():
     ccf_df = get_ccf_metadata()
     th_zi_ind = np.hstack(
@@ -697,8 +704,23 @@ def get_thalamus_substructure_names():
     th_names = ccf_labels.loc[th_zi_ind, 'substructure']
     return th_names
 
+@lru_cache
 def get_ccf_substructure_index():
     ccf_df = get_ccf_metadata()
     # parcellation_index to acronym
-    substructure_index = ccf_df.query("parcellation_term_set_name=='substructure'").set_index('parcellation_index')['parcellation_term_acronym'].to_dict()
+    substructure_index = ccf_df.query("parcellation_term_set_name=='substructure'").set_index('parcellation_index')['parcellation_term_acronym']
     return substructure_index
+
+@lru_cache
+def _get_cluster_annotations(version=CURRENT_VERSION):
+    df = pd.read_csv(
+        ABC_ROOT/f"metadata/WMB-taxonomy/{version}/cluster_to_cluster_annotation_membership.csv"
+    )
+    return df
+
+@lru_cache
+def get_taxonomy_palette(taxonomy_level, version=CURRENT_VERSION):
+    df = _get_cluster_annotations(version=version)
+    df = df[df["cluster_annotation_term_set_name"]==taxonomy_level]
+    palette = df.set_index('cluster_annotation_term_name')['color_hex_triplet'].to_dict()
+    return palette

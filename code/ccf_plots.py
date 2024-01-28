@@ -9,13 +9,13 @@ import matplotlib.cm as cm
 import matplotlib
 from colorcet import glasbey
 from shapely.plotting import plot_polygon
-from matplotlib.colors import ListedColormap
+from matplotlib.colors import ListedColormap, to_rgba, to_rgb
 from scipy.ndimage import binary_dilation
 
 # TODO: get rid of this import
 # from ccf_polygons import get_outline_polygon, CCF_TH_NAMES
 from abc_load import get_thalamus_substructure_names, get_ccf_substructure_index
-
+import ccf_images as cci
 
 def plot_shape(shape: shapely.Polygon | shapely.GeometryCollection, edgecolor='black', **kwargs):    
     """Plot shapely geometry, 
@@ -41,11 +41,11 @@ def expand_palette(palette, ccf_names):
         edgecolor = 'grey'
         alpha = 1
     elif palette=='dark_outline':
-        palette = {x: 'none' for x in ccf_names}
+        palette = None
         edgecolor = 'grey'
         alpha = 1
     elif palette=='light_outline':
-        palette = {x: 'none' for x in ccf_names}
+        palette = None
         edgecolor = 'lightgrey'
         alpha = 1
     else:
@@ -59,18 +59,34 @@ def plot_ccf_section(ccf_polygons, section, highlight=[], palette=None,
     palette, edgecolor, alpha = expand_palette(palette, ccf_names)
     if highlight=='all':
         highlight = ccf_names
+    if palette is None: 
+        palette = {}
     patches = []
     # could simplify this to single loop over polygons
     if bg_shapes:
         for name in ccf_names:
             if section in ccf_polygons.loc[name].index and name not in highlight:
-                patches.append(plot_shape(ccf_polygons.loc[(name, section), "geometry"], facecolor=palette[name], ax=ax, 
+                patches.append(plot_shape(ccf_polygons.loc[(name, section), "geometry"], 
+                                          facecolor=palette.get(name), ax=ax, 
                                 alpha=0.1, label=name if labels else None))
     for name in highlight:
         if section in ccf_polygons.loc[name].index:
-            patches.append(plot_shape(ccf_polygons.loc[(name, section), "geometry"], facecolor=palette[name], ax=ax, 
+            patches.append(plot_shape(ccf_polygons.loc[(name, section), "geometry"],
+                                          facecolor=palette.get(name), ax=ax, 
                            alpha=alpha, edgecolor=edgecolor, label=name if labels else None))
     return patches
+
+def generate_palette(names, palette_to_match=None):
+    sns_palette = sns.color_palette(glasbey, n_colors=len(names))
+    if palette_to_match is not None:
+        point_palette = palette_to_match.copy()
+        extra_names = names.difference(palette_to_match.keys())
+        extra_palette = dict(zip(extra_names, sns_palette[-len(extra_names):]))
+        point_palette.update(extra_palette)
+    else:
+        point_palette = dict(zip(names, sns_palette))
+    return point_palette
+
 
 def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None, 
                      point_hue='CCF_acronym', legend='cells', 
@@ -85,7 +101,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
     if ccf_names is None:
         ccf_names = get_thalamus_substructure_names()
     if shape_palette is None:
-        shape_palette = dict(zip(ccf_names, sns.color_palette(glasbey, n_colors=len(ccf_names))))
+        shape_palette = generate_palette(ccf_names)
     
     # Determine if we have rasterized CCF volumes or polygons-from-cells
     raster_regions = type(ccf_polygons) is np.ndarray
@@ -93,7 +109,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
         raise Exception('str type detected for ''sections''. You must use ''z_section'' OR ''z_reconstructed'' as your ''section_col'' in order to plot the rasterized CCF volumes.')
         
     # Clean up point hue column    
-    # string type allows adding 'other' to data slice by slice
+    # string type (not categorical) allows adding 'other' to data slice by slice
     obs[point_hue] = obs[point_hue].astype(str)
     # drop groups below min_group_count and sort by size
     # currently across all of obs, not just selected sections
@@ -104,16 +120,10 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
     
     # Set color palette for cell scatter points
     if point_palette is None:
-        sns_palette = sns.color_palette(glasbey, n_colors=len(point_group_names))
-        if ((point_hue in ['CCF_acronym', 'parcellation_substructure']) 
-            and shape_palette not in ('bw','dark_outline','light_outline')):
-            # make sure point palette matches shape palette
-            point_palette = shape_palette.copy()
-            extra_names = point_group_names.difference(ccf_names)
-            extra_palette = dict(zip(extra_names, sns_palette[-len(extra_names):]))
-            point_palette.update(extra_palette)
-        else:
-            point_palette = dict(zip(point_group_names, sns_palette))
+        # make sure point palette matches shape palette
+        match_palette = ((point_hue in ['CCF_acronym', 'parcellation_substructure']) 
+            and shape_palette not in ('bw','dark_outline','light_outline'))
+        point_palette = generate_palette(point_group_names, palette_to_match=None)
     else:
         point_palette = point_palette.copy()
     point_palette.update(other='grey')
@@ -153,7 +163,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
         if len(secdata) > 0:
             sns.scatterplot(secdata, x=x_col, y=y_col, hue=point_hue,
                             s=s, palette=point_palette, linewidth=0,
-                            legend=legend in ['cells', 'both'])
+                            legend=(legend in ['cells', 'both']))
         # plot formatting
         if legend is not None:
             ncols = 4 if (legend=='ccf') else 2 # cell type names require more horizontal space
@@ -336,48 +346,76 @@ def plot_ccf_section_raster(ccf_img, section_z,
                             ax=None):
     # subset to just this section
     index_z = int(np.rint(section_z/z_resolution))
-    img = ccf_img[:,:, index_z]
+    img = ccf_img[:,:, index_z].T
     
-    region_nums = np.unique(img)
     if structure_index is None:
         structure_index = get_ccf_substructure_index()
+    region_nums = np.unique(img)
+    section_region_names = structure_index[region_nums]
     if (ccf_region_names is None) or ((isinstance(ccf_region_names, str)) 
                                       and (ccf_region_names=='all')):
-        ccf_region_names = [structure_index[i] for i in region_nums]
+        ccf_region_names = section_region_names
+    else:
+        ccf_region_names = set(section_region_names).intersection(ccf_region_names)
 
     palette, edgecolor, alpha = expand_palette(palette, ccf_region_names)
     
-    # could do in single image, but looping allows selecting highlight set etc...
-    names = []
-    for i in region_nums:
-        name = structure_index[i]
-        names.append(name)
-        if name in palette:
-            plot_raster_region(img, i, resolution=10e-3, facecolor=palette[name], 
-                               edgecolor=edgecolor, alpha=alpha, ax=ax)
+    names = plot_raster_all(img, structure_index, palette=palette, regions=ccf_region_names,
+                            edgecolor=edgecolor, alpha=alpha, ax=ax)
     if legend:
-        # sometimes it's a Series mapping names to structure indices, sometimes
-        # it's just a list of names (there's probably a better way to handle this)
-        if isinstance(ccf_region_names, pd.Series):
-            ccf_region_names = ccf_region_names.values
         # generate "empty" matplotlib handles to be used by plt.legend() call in 
         # plot_ccf_overlay() (NB: that supercedes any call to plt.legend here)
-        handles = [plt.plot([], marker="o", ls="", color=color, label=name)[0] 
-                   for name, color in palette.items() if name in names]
+        handles = [plt.plot([], marker="o", ls="", color=palette[name], label=name)[0] 
+                   for name in ccf_region_names if name in palette]
     return
 
 def fill_nan(img):
     return np.where(img, 1, np.nan)
 
+def palette_to_rgb_lookup(palette, index):
+    # rgb_lookup = index.map(lambda x: to_rgb(palette[x]))
+    # rgb_lookup = rgb_lookup.reindex(range(max_val), fill_value=0)
+    max_val = np.max(index.index)
+    rgb_lookup = np.zeros((max_val, 4))
+    # fill only values in index and also in palette
+    # rest remain transparent (alpha=0)
+    for i in index.index:
+        name = index[i]
+        if name in palette:
+            rgb_lookup[i,:] = to_rgba(palette[name])
+    return rgb_lookup
+    
+def plot_raster_all(imdata, index, palette=None, regions=None, resolution=10e-3,
+                       edgecolor='black', edge_width=1, alpha=1, ax=None):
+    extent = resolution * (np.array([0, imdata.shape[0], imdata.shape[1], 0]) - 0.5)
+    kwargs = dict(extent=extent, interpolation="none", alpha=alpha)
+    
+    im_edges = cci.label_erosion(imdata, edge_width, fill_val=0, return_edges=True)
+    if palette is not None:
+        if regions:
+            palette = {x: y for x, y in palette.items() if x in regions}
+        rgb_lookup = palette_to_rgb_lookup(palette, index)
+        im_regions = rgb_lookup[imdata, :]
+        ax.imshow(im_regions, **kwargs)
+        im_edges = rgb_lookup[im_edges, 3] != 0
+    elif regions is not None:
+        palette = {x: 'k' for x in regions}
+        rgb_lookup = palette_to_rgb_lookup(palette, index)
+        im_edges = rgb_lookup[im_edges, 3] != 0
+    im_edges = np.where(im_edges[:,:,None]!=0, np.array(to_rgba(edgecolor), ndmin=3), 
+                         np.zeros((1,1,4)))
+    ax.imshow(im_edges, **kwargs)
+    
+    
 def plot_raster_region(imdata, region_val, resolution=10e-3, facecolor='grey', 
                        edgecolor='black', edge_width=2, alpha=1, ax=None):
-    extent = (np.array([0, imdata.shape[1], imdata.shape[0], 0]) - 0.5) * resolution
-    kwargs = dict(extent=extent, interpolation="none")
-    im_region = imdata==region_val
+    extent = (np.array([0, imdata.shape[0], imdata.shape[1], 0]) - 0.5) * resolution
+    kwargs = dict(extent=extent, interpolation="none", alpha=alpha)
+    im_region = (imdata==region_val)
     # transpose for x,y oriented image
-    ax.imshow(fill_nan(im_region).T, cmap=ListedColormap([facecolor]), **kwargs)
+    ax.imshow(fill_nan(im_region), cmap=ListedColormap([facecolor]), **kwargs)
     im_bound = binary_dilation(im_region, iterations=edge_width) & ~im_region
-    ax.imshow(fill_nan(im_bound).T, cmap=ListedColormap([edgecolor]), **kwargs)
+    ax.imshow(fill_nan(im_bound), cmap=ListedColormap([edgecolor]), **kwargs)
 
 def plot_metrics_ccf_raster(ccf_img, metric_series, sections, 
                             structure_index=None,
