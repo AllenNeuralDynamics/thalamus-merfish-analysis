@@ -324,19 +324,17 @@ def plot_metrics_ccf(obs, ccf_polygons, metric_series, sections=None,
         plt.show()
 
 def plot_ccf_section_raster(ccf_img, section_z, 
-                            # structure_index, 
                             palette, 
+                            structure_index=None, 
                             ccf_region_names=None, z_resolution=200e-3, legend=True, 
                             ax=None):
-    '''
-    ccf_region_names
-    '''
     # subset to just this section
     index_z = int(np.rint(section_z/z_resolution))
     img = ccf_img[:,:, index_z]
     
     region_nums = np.unique(img)
-    structure_index = get_ccf_substructure_index()
+    if structure_index is None:
+        structure_index = get_ccf_substructure_index()
     if (ccf_region_names is None) or ((isinstance(ccf_region_names, str)) 
                                       and (ccf_region_names=='all')):
         ccf_region_names = [structure_index[i] for i in region_nums]
@@ -388,6 +386,7 @@ def plot_metrics_ccf_raster(ccf_img, metric_series, sections, structure_index,
         img.set_visible(False)
         plt.colorbar(img, orientation='vertical', label=cb_label, shrink=0.75)
         
-        plot_ccf_section_raster(ccf_img, section_z, structure_index, palette, legend=False, ax=ax)
+        plot_ccf_section_raster(ccf_img, section_z, palette, 
+                                structure_index=structure_index, legend=False, ax=ax)
         format_image_axes(axes)
         plt.show()

@@ -50,7 +50,7 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
                with_metadata=True, flip_y=True, round_z=True, cirro_names=False, 
                with_colors=False,
                realigned=False,
-               subset_to_left_hemi=False):
+               loaded_metadata=None):
     '''Load ABC Atlas MERFISH dataset as an anndata object.
     
     Parameters
@@ -80,8 +80,9 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
     realigned : bool, default=False
         load and use for subsetting the metadata from realignment results data asset,
         containing 'ccf_realigned' coordinates 
-    subset_to_left_hemi : bool, default=False
-        include only cells in left hemisphere, according to CCF coordinates
+    loaded_metadata : DataFrame, default=None
+        already loaded metadata DataFrame to merge into AnnData, loading cells in this 
+        DataFrame only
         
     Results
     -------
@@ -108,7 +109,10 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
                              backed='r')
         
     if with_metadata or subset_to_TH_ZI or subset_to_left_hemi:
-        cells_md_df = get_combined_metadata(cirro_names=cirro_names, 
+        if loaded_metadata is not None:
+            cells_md_df = loaded_metadata
+        else:
+            cells_md_df = get_combined_metadata(cirro_names=cirro_names, 
                                         flip_y=flip_y,
                                         round_z=round_z,
                                         drop_unused=(not with_colors),
@@ -123,9 +127,6 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
                                                         drop_end_sections=True,
                                                         filter_cells=True,
                                                         realigned=realigned)
-        if subset_to_left_hemi:
-            flag = "left_hemisphere_realigned" if realigned else "left_hemisphere"
-            cells_md_df = cells_md_df[cells_md_df[flag]]
         cell_labels = adata.obs_names.intersection(cells_md_df.index)
         adata = adata[cell_labels]
         adata = adata.to_memory()
@@ -143,6 +144,31 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
     
     return adata
 
+def add_tiled_obsm(adata, offset=10, coords_name='section', obsm_field='coords_tiled'):
+    """Add obsm coordinates to AnnData object from section coordinates in adata.obs,
+    but with sections tiled along the x-axis at a given separation.
+
+    Parameters
+    ----------
+    adata
+        AnnData object
+    offset, optional
+        separation of sections, by default 10 (5 sufficient for hemi-sections)
+    coords_name, optional
+        suffix of the coordinate type to use, by default 'section'
+    obsm_field, optional
+        name for the new obsm entry, by default 'coords_tiled'
+
+    Returns
+    -------
+        AnnData object, modified in place
+    """
+    obsm = np.vstack([adata.obs[f"x_{coords_name}"] 
+                        + offset*adata.obs[f"z_{coords_name}"].rank(method="dense"),
+                        adata.obs[f"y_{coords_name}"]]).T
+    adata.obsm[coords_tiled] = obsm
+    return adata
+
 
 def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
                           filter_midbrain=True):
@@ -152,7 +178,7 @@ def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
     Parameters
     ----------
     th_zi_adata
-        anndata object containing the ABC Atlas MERFISH dataset
+        anndata object or dataframe containing the ABC Atlas MERFISH dataset
     filter_nonneuronal : bool, default=True
         filters out non-neuronal classes
     filter_midbrain : bool, default=True
@@ -180,32 +206,40 @@ def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
     if not filter_nonneuronal:
         classes_to_keep += nonneuronal_classes
 
-    th_zi_adata = th_zi_adata[th_zi_adata.obs['class'].isin(classes_to_keep)]
-    return th_zi_adata
+    if hasattr(th_zi_adata, 'obs'):
+        subset = th_zi_adata.obs['class'].isin(classes_to_keep)
+    else:
+        subset = th_zi_adata['class'].isin(classes_to_keep)
+    return th_zi_adata[subset]
 
 
-def get_combined_metadata(drop_unused=True, cirro_names=False, flip_y=False, 
-                          round_z=True, version=CURRENT_VERSION,
-                          realigned=False):
+def get_combined_metadata(
+    version=CURRENT_VERSION,
+    realigned=False,
+    drop_unused=True, 
+    flip_y=False, 
+    round_z=True, 
+    cirro_names=False
+    ):
     '''Load the cell metadata csv, with memory/speed improvements.
     Selects correct dtypes and optionally renames and drops columns
     
     Parameters
     ----------
-    drop_unused : bool, default=True
-        don't load uninformative or unused columns (color etc)
-    cirro_names : bool, default=True
-        rename columns to match older cirro anndata names
-    flip_y : bool, default=True
-        flip section and reconstructed y coords so up is positive
-    round_z : bool, default=True
-        rounds z_section, z_reconstructed coords to nearest 10ths place to
-        correct for overprecision in a handful of z coords
     version : str, optional
         version to load, by default=CURRENT_VERSION
     realigned : bool, default=False
         if True, load metadata from realignment results data asset,
         containing 'ccf_realigned' coordinates 
+    drop_unused : bool, default=True
+        don't load uninformative or unused columns (color etc)
+    flip_y : bool, default=False
+        flip section and reconstructed y coords so up is positive
+    round_z : bool, default=True
+        rounds z_section, z_reconstructed coords to nearest 10ths place to
+        correct for overprecision in a handful of z coords
+    cirro_names : bool, default=False
+        rename columns to match older cirro anndata names
 
     Returns
     -------
@@ -295,7 +329,7 @@ def get_ccf_labels_image(resampled=True, realigned=False):
         raise UserWarning("This label image is not available")
     img = nibabel.load(path)
     # could maybe keep the lazy dataobj and not convert to numpy?
-    imdata = np.array(img.dataobj)
+    imdata = np.array(img.dataobj).astype(int)
     return imdata
 
 

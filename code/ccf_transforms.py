@@ -86,7 +86,7 @@ def get_normalizing_transform(min_xy, max_xy, flip_y=True):
 def parse_cells_by_section(df, transforms_by_section, norm_transform, coords, slice_label='slice_int'):
     cells_by_section = dict()
     for name, df_section in df.groupby(slice_label, observed=True):
-        ccf_transform = sd.transformations.Affine(transforms_by_section[name].T, 'xyz', 'zyx')
+        ccf_transform = sd.transformations.Affine(transforms_by_section[name].T, 'xyz', 'xyz')
     #! converting to dask here is essential to preserve dtypes
         cells_by_section[str(name)] = sd.models.PointsModel.parse(
             dd.from_pandas(df_section, npartitions=1), coordinates=dict(zip('xyz', coords)),
