@@ -93,7 +93,8 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
                      min_group_count=10, highlight=[], shape_palette=None, 
                      point_palette=None, bg_cells=None, bg_shapes=True, s=2,
                      axes=False, section_col='section', x_col='cirro_x', 
-                     y_col='cirro_y'):
+                     y_col='cirro_y', categorical=True,
+                     boundary_img=None):
     obs = obs.copy()
     # Set variables not specified by user
     if sections is None:
@@ -110,23 +111,25 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
         
     # Clean up point hue column    
     # string type (not categorical) allows adding 'other' to data slice by slice
-    obs[point_hue] = obs[point_hue].astype(str)
-    # drop groups below min_group_count and sort by size
-    # currently across all of obs, not just selected sections
-    point_group_names = obs[point_hue].value_counts().loc[lambda x: x>min_group_count].index
-    obs = obs[obs[point_hue].isin(point_group_names)]
+    if categorical:
+        obs[point_hue] = obs[point_hue].astype(str)
+        # drop groups below min_group_count and sort by size
+        # currently across all of obs, not just selected sections
+        point_group_names = obs[point_hue].value_counts().loc[lambda x: x>min_group_count].index
+        obs = obs[obs[point_hue].isin(point_group_names)]
+        
+        # Set color palette for cell scatter points
+        if point_palette is None:
+            # make sure point palette matches shape palette
+            match_palette = ((point_hue in ['CCF_acronym', 'parcellation_substructure']) 
+                and shape_palette not in ('bw','dark_outline','light_outline'))
+            point_palette = generate_palette(point_group_names, palette_to_match=None)
+        else:
+            point_palette = point_palette.copy()
+        point_palette.update(other='grey')
+    
     if bg_cells is not None:
         bg_cells = bg_cells.loc[bg_cells.index.difference(obs.index)]
-    
-    # Set color palette for cell scatter points
-    if point_palette is None:
-        # make sure point palette matches shape palette
-        match_palette = ((point_hue in ['CCF_acronym', 'parcellation_substructure']) 
-            and shape_palette not in ('bw','dark_outline','light_outline'))
-        point_palette = generate_palette(point_group_names, palette_to_match=None)
-    else:
-        point_palette = point_palette.copy()
-    point_palette.update(other='grey')
     
     # Display each section as a separate plot
     figs = []
@@ -139,7 +142,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
         
         # display CCF shapes
         if raster_regions:
-            plot_ccf_section_raster(ccf_polygons, section, 
+            plot_ccf_section_raster(ccf_polygons, section, boundary_img=boundary_img,
                                     ccf_region_names=ccf_names, palette=shape_palette, 
                                     legend=(legend=='ccf'), ax=ax)
         else:
@@ -154,11 +157,12 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
                             x=x_col, y=y_col, c='grey', s=bg_s, alpha=0.5, 
                             linewidth=0)
         # lump small groups if legend list is too long
-        sec_group_counts = secdata[point_hue].value_counts(ascending=True)
-        if len(sec_group_counts) > 10:
-            point_groups_section = sec_group_counts.loc[lambda x: x>min_group_count].index
-            secdata.loc[lambda df: ~df[point_hue].isin(point_groups_section), point_hue] = 'other'
-        secdata[point_hue] = pd.Categorical(secdata[point_hue])
+        if categorical:
+            sec_group_counts = secdata[point_hue].value_counts(ascending=True)
+            if len(sec_group_counts) > 10:
+                point_groups_section = sec_group_counts.loc[lambda x: x>min_group_count].index
+                secdata.loc[lambda df: ~df[point_hue].isin(point_groups_section), point_hue] = 'other'
+            secdata[point_hue] = pd.Categorical(secdata[point_hue])
         # display foreground cells according to point_hue
         if len(secdata) > 0:
             sns.scatterplot(secdata, x=x_col, y=y_col, hue=point_hue,
@@ -231,7 +235,8 @@ def plot_expression_ccf(adata, gene, ccf_polygons,
                         sections=None, nuclei=None, highlight=[], 
                         s=0.5, cmap='Blues', show_outline=False, 
                         bg_shapes=False, axes=False,  
-                        section_col='section', x_col='cirro_x',y_col='cirro_y'):
+                        section_col='section', x_col='cirro_x',y_col='cirro_y',
+                        boundary_img=None):
     # set variables not specified by user
     if sections is None:
         sections = obs[section_col].unique()
@@ -252,7 +257,7 @@ def plot_expression_ccf(adata, gene, ccf_polygons,
         if highlight==[]:
             if raster_regions:
                 plot_ccf_section_raster(ccf_polygons, section_z, palette='dark_outline',
-                                        ccf_region_names=nuclei, ax=ax)
+                                        ccf_region_names=nuclei, boundary_img=boundary_img, ax=ax)
             else:
                 plot_ccf_section(ccf_polygons, section, 
                                  highlight=nuclei, 
@@ -340,13 +345,14 @@ def plot_metrics_ccf(obs, ccf_polygons, metric_series, sections=None,
         plt.show()
 
 def plot_ccf_section_raster(ccf_img, section_z, 
-                            palette, 
+                            palette, boundary_img=None,
                             structure_index=None, 
                             ccf_region_names=None, z_resolution=200e-3, legend=True, 
                             ax=None):
     # subset to just this section
     index_z = int(np.rint(section_z/z_resolution))
     img = ccf_img[:,:, index_z].T
+    boundary_img = boundary_img[:,:, index_z].T if boundary_img is not None else None
     
     if structure_index is None:
         structure_index = get_ccf_substructure_index()
@@ -356,55 +362,67 @@ def plot_ccf_section_raster(ccf_img, section_z,
                                       and (ccf_region_names=='all')):
         ccf_region_names = section_region_names
     else:
-        ccf_region_names = set(section_region_names).intersection(ccf_region_names)
+        ccf_region_names = list(set(section_region_names).intersection(ccf_region_names))
 
     palette, edgecolor, alpha = expand_palette(palette, ccf_region_names)
     
-    names = plot_raster_all(img, structure_index, palette=palette, regions=ccf_region_names,
+    regions = ccf_region_names if palette is None else [x for x in ccf_region_names if x in palette]
+        
+    names = plot_raster_all(img, structure_index, boundary_img=boundary_img, palette=palette, regions=regions,
                             edgecolor=edgecolor, alpha=alpha, ax=ax)
-    if legend:
+    if legend and palette is not None:
         # generate "empty" matplotlib handles to be used by plt.legend() call in 
         # plot_ccf_overlay() (NB: that supercedes any call to plt.legend here)
         handles = [plt.plot([], marker="o", ls="", color=palette[name], label=name)[0] 
-                   for name in ccf_region_names if name in palette]
+                   for name in regions]
     return
 
 def fill_nan(img):
     return np.where(img, 1, np.nan)
 
-def palette_to_rgb_lookup(palette, index):
-    # rgb_lookup = index.map(lambda x: to_rgb(palette[x]))
-    # rgb_lookup = rgb_lookup.reindex(range(max_val), fill_value=0)
+def palette_to_rgba_lookup(palette, index):
+    # rgba_lookup = index.map(lambda x: to_rgb(palette[x]))
+    # rgba_lookup = rgba_lookup.reindex(range(max_val), fill_value=0)
     max_val = np.max(index.index)
-    rgb_lookup = np.zeros((max_val, 4))
+    rgba_lookup = np.zeros((max_val, 4))
     # fill only values in index and also in palette
     # rest remain transparent (alpha=0)
     for i in index.index:
         name = index[i]
         if name in palette:
-            rgb_lookup[i,:] = to_rgba(palette[name])
-    return rgb_lookup
+            rgba_lookup[i,:] = to_rgba(palette[name])
+    return rgba_lookup
     
-def plot_raster_all(imdata, index, palette=None, regions=None, resolution=10e-3,
+def plot_raster_all(imdata, index, boundary_img=None, palette=None, regions=None, resolution=10e-3,
                        edgecolor='black', edge_width=1, alpha=1, ax=None):
+    # TODO: move index logic and boundary_img creation out to plot_ccf_section_raster, pass rgba lookups
     extent = resolution * (np.array([0, imdata.shape[0], imdata.shape[1], 0]) - 0.5)
     kwargs = dict(extent=extent, interpolation="none", alpha=alpha)
     
-    im_edges = cci.label_erosion(imdata, edge_width, fill_val=0, return_edges=True)
     if palette is not None:
         if regions:
             palette = {x: y for x, y in palette.items() if x in regions}
-        rgb_lookup = palette_to_rgb_lookup(palette, index)
-        im_regions = rgb_lookup[imdata, :]
+        rgba_lookup = palette_to_rgba_lookup(palette, index)
+        im_regions = rgba_lookup[imdata, :]
         ax.imshow(im_regions, **kwargs)
-        im_edges = rgb_lookup[im_edges, 3] != 0
-    elif regions is not None:
-        palette = {x: 'k' for x in regions}
-        rgb_lookup = palette_to_rgb_lookup(palette, index)
-        im_edges = rgb_lookup[im_edges, 3] != 0
-    im_edges = np.where(im_edges[:,:,None]!=0, np.array(to_rgba(edgecolor), ndmin=3), 
-                         np.zeros((1,1,4)))
-    ax.imshow(im_edges, **kwargs)
+        
+    if edgecolor is not None:
+        if boundary_img is None:
+            boundary_img = cci.label_erosion(imdata, edge_width, fill_val=0, return_edges=True)
+            
+        # filter edges by palette or regions if present
+        if palette is not None:
+            im_edges = rgba_lookup[boundary_img, 3] != 0
+        elif regions is not None:
+            edge_palette = {x: 'k' for x in regions}
+            rgba_lookup = palette_to_rgba_lookup(edge_palette, index)
+            im_edges = rgba_lookup[boundary_img, 3] != 0
+        else:
+            im_edges = boundary_img
+        
+        im_edges = np.where(im_edges[:,:,None]!=0, np.array(to_rgba(edgecolor), ndmin=3), 
+                            np.zeros((1,1,4)))
+        ax.imshow(im_edges, **kwargs)
     
     
 def plot_raster_region(imdata, region_val, resolution=10e-3, facecolor='grey', 
