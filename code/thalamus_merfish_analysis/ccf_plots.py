@@ -14,8 +14,8 @@ from scipy.ndimage import binary_dilation
 
 # TODO: get rid of this import
 # from ccf_polygons import get_outline_polygon, CCF_TH_NAMES
-from abc_load import get_thalamus_substructure_names, get_ccf_substructure_index
-import ccf_images as cci
+from .abc_load import get_thalamus_substructure_names, get_ccf_substructure_index
+from . import ccf_images as cci
 
 def plot_shape(shape: shapely.Polygon | shapely.GeometryCollection, edgecolor='black', **kwargs):    
     """Plot shapely geometry, 

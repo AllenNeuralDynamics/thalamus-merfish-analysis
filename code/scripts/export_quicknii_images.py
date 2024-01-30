@@ -1,7 +1,7 @@
 import sys
 sys.path.append("/code/")
-import abc_load
-import ccf_registration as ccf
+from thalamus_merfish_analysis import abc_load
+from thalamus_merfish_analysis import ccf_registration as ccf
 
 
 df_full = abc_load.get_combined_metadata(

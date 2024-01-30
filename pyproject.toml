@@ -22,12 +22,13 @@ dependencies = [
     "nibabel",
 ]
 
-# [tool.setuptools.packages.find]
-# where = ["code"]
-[tool.setuptools]
-packages = ["thalamus_merfish_analysis"]
+[tool.setuptools.packages.find]
+where = ["code"]
 
-[tool.setuptools.package-dir]
-thalamus_merfish_analysis = "code"
+# [tool.setuptools]
+# packages = ["thalamus_merfish_analysis"]
+
+# [tool.setuptools.package-dir]
+# thalamus_merfish_analysis = "code"
 
 [tool.setuptools_scm]

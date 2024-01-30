@@ -4,8 +4,8 @@ import pandas as pd
 import dask.dataframe as dd
 import numpy as np
 
-import abc_load as abc
-import ccf_registration as ccf
+from . import abc_load as abc
+from . import ccf_registration as ccf
 from scipy.ndimage import map_coordinates
 
 def get_target_grid_center(source, target, inv_transform):
