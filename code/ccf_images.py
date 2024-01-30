@@ -20,6 +20,7 @@ def sectionwise_label_erosion(label_img, distance_px, fill_val=0, return_edges=F
     result_img = np.zeros_like(label_img)
         
     for i in range(label_img.shape[2]):
+        # TODO: could restrict range to thal indices
         result_img[:,:,i] = label_erosion(label_img[:,:,i], distance_px, 
                                           fill_val=fill_val,
                                           return_edges=return_edges)
@@ -30,7 +31,6 @@ def label_erosion(label_img, distance_px, fill_val=0, return_edges=False):
     result_img = np.zeros_like(label_img)
     for i in label_vals:
         mask = (label_img==i)
-        # TODO: could probably be in 3D with appropriate structure element
         eroded = ndi.binary_erosion(mask, iterations=distance_px)
         if return_edges:
             eroded = mask & ~eroded
