@@ -5,17 +5,29 @@ from scipy import sparse
 
 
 # list of 9 AP positions that have matching brain1 & brain3 sections
-section_pairs_brain1_brain3 = np.array([
-                                        ['1198980077','1199651060'],
-                                        ['1198980089','1199651054'],
-                                        ['1198980101','1199651048'],
-                                        ['1198980108','1199651045'],
-                                        ['1198980114','1199651042'],
-                                        ['1198980120','1199651039'],
-                                        ['1198980134','1199651033'],
-                                        ['1198980146','1199651027'],
-                                        ['1198980152','1199651024']
-                                       ])
+ALL_SECTION_PAIRS_BRAIN1_BRAIN3 = np.array([
+                                            ['1198980077','1199651060'],
+                                            ['1198980089','1199651054'],
+                                            ['1198980101','1199651048'],
+                                            ['1198980108','1199651045'],
+                                            ['1198980114','1199651042'],
+                                            ['1198980120','1199651039'],
+                                            ['1198980134','1199651033'],
+                                            ['1198980146','1199651027'],
+                                            ['1198980152','1199651024']
+                                           ], dtype=object)
+
+# six manually selected, representative brain1-brain3 AP position section pairs 
+# (out of 9 total matching AP postitions) 
+SIX_SECTION_PAIRS_BRAIN1_BRAIN3 = np.array([
+                                            ['1198980077','1199651060'],  # more anterior
+                                            ['1198980089','1199651054'],
+                                            ['1198980101','1199651048'],
+                                            ['1198980108','1199651045'],
+                                            ['1198980114','1199651042'],
+                                            ['1198980134','1199651033']  # more posterior
+                                           ], dtype=object)
+
 
 def plot_brain1_vs_brain3_expression(ad, gene,
                                      match_colorbar_ranges=True,
@@ -65,28 +77,15 @@ def plot_brain1_vs_brain3_expression(ad, gene,
     
     '''
 
-    # six manually selected, representative brain1-brain3 AP position section pairs 
-    # (out of 11 total matching AP postitions) 
-    sec_pairs_b1_b3 = np.array([
-                                ['1198980077','1199651060'],  # more anterior
-                                ['1198980089','1199651054'],
-                                ['1198980101','1199651048'],
-                                ['1198980108','1199651045'],
-                                ['1198980114','1199651042'],
-                                # ['1198980120','1199651039'], # despite being paired in cirrocumulus, 
-                                                               # these do not appear to be the same AP position
-                                ['1198980134','1199651033']  # more posterior
-                               ])
-
-    n_brains = sec_pairs_b1_b3.shape[1]
-    n_sections = sec_pairs_b1_b3.shape[0]
+    n_brains = SIX_SECTION_PAIRS_BRAIN1_BRAIN3.shape[1]
+    n_sections = SIX_SECTION_PAIRS_BRAIN1_BRAIN3.shape[0]
 
     fig, axs = plt.subplots(n_brains, n_sections, figsize=(24,7))
     
     big_font = 24
     small_font = 16
 
-    for i, ap_pos in enumerate(sec_pairs_b1_b3):
+    for i, ap_pos in enumerate(SIX_SECTION_PAIRS_BRAIN1_BRAIN3):
 
         # Handle colorbar range input
         match_colorbar_ranges = True
@@ -263,6 +262,110 @@ def plot_expr_section_by_gene(ad, genes, sections,
                 cbar.set_label('log2(CPV+1)', fontsize=base_fontsize)
 
     fig.suptitle(title, fontsize=big_fontsize, y=1.0)
+    fig.tight_layout()
+    
+    if not display_fig:
+        plt.close()
+    
+    return fig
+
+
+def plot_brain3_expression(ad, gene, sections=SIX_SECTION_PAIRS_BRAIN1_BRAIN3[:,1],
+                           match_colorbar_ranges=True,
+                           display_fig=True, **kwargs):
+    '''
+    Displays a row of 6 pre-selected brain3 sections for a single gene.
+    
+    Parameters
+    ----------
+    ad:
+        cell-by-gene anndata object containing brain3 data.
+        Expects to find:  spatial coordinates for 
+        each cell stored in adata.obsm['spatial_cirro'], x:[:,0], y:[:,1]
+    
+    genes: list of strings
+        gene names to plot in columns
+    
+    sections: list of strings
+        section IDs to plot in rows
+    
+    match_gene_colorbars:
+        for each gene, sets the vmin & vmax to the same values across all 
+        sections
+        
+    display_fig:
+        sets whether or not the figure is displayed. When generating many plots
+        in a row, set to False to speed up runtime.
+        
+    figsize: tuple
+        sets figsize in matplotlib.pyplot.subplots()
+        
+    title: string
+        overall title for the figure, e.g. 'brain1'
+        
+    base_fontsize: int
+        sets the fontsize for the section & gene name labels; all other fonts
+        (title font, colorbar label, etc.) are set as fractions or multiples of
+        this base fontsize.
+        
+    **kwargs:
+        passed through to matplotlib.pyplot.scatter
+    
+    Returns
+    -------
+        Matplotlib figure
+    
+    '''
+    
+    n_sections = len(sections)
+
+    fig, axs = plt.subplots(1, n_sections, figsize=(24,4))
+    
+    big_font = 24
+    small_font = 16
+    
+    # Handle colorbar range input
+    match_colorbar_ranges = True
+    if match_colorbar_ranges:
+        # set colorbar range based on gene expression for both brains
+        gene_expr = ad[ad.obs['section'].isin(sections)][:,gene].X.A.flatten()
+        vmax = np.round(np.max(gene_expr)*0.95)  # *1.0 is often too dim
+        vmin = 0
+    else:
+        vmax, vmin = None
+
+    for i, sec_id in enumerate(sections):
+        curr_data = ad[ad.obs['section']==sec_id]
+        ax = axs[i]
+
+        sc = ax.scatter(curr_data.obsm["spatial_cirro"][:,0], 
+                        curr_data.obsm["spatial_cirro"][:,1],
+                        c=curr_data[:,gene].X.A, 
+                        cmap='Blues', vmax=vmax, vmin=vmin,
+                        s=35000/ad.shape[0])
+        ax.set_aspect('equal', 'box')
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xlabel(None)
+        ax.spines[['top', 'bottom', 'right', 'left']].set_visible(False)
+        # ax.set_facecolor('silver')
+
+        # label sections
+        ax.set_title('sec '+sec_id, fontsize=12)
+
+        # label leftmost section with brain
+        if i==0:
+            ax.set_ylabel('WMB - brain3\n(mouse 638850)', fontsize=small_font+4)
+        else:
+            ax.set_ylabel(None)
+
+        # only display colorbar on rightmost sections
+        if i==(n_sections-1):
+            cbar = plt.colorbar(sc, ax=ax, fraction=0.03, pad=0.04)
+            cbar.ax.tick_params(labelsize=small_font)
+            cbar.set_label('log2(CPV+1)', fontsize=small_font)
+
+    fig.suptitle(gene, fontsize=big_font+4, y=1.0)
     fig.tight_layout()
     
     if not display_fig:
