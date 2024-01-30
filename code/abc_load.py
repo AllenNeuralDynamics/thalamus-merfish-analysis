@@ -286,9 +286,9 @@ def get_combined_metadata(
     if cirro_names:
         cells_df = cells_df.rename(columns=_CIRRO_COLUMNS)
         
-    cells_df["left_hemisphere"] = cells_df["z_ccf"] < 5.5
+    cells_df["left_hemisphere"] = cells_df["z_ccf"] < 5.7
     if realigned:
-        cells_df["left_hemisphere_realigned"] = cells_df["z_ccf_realigned"] < 5.5
+        cells_df["left_hemisphere_realigned"] = cells_df["z_ccf_realigned"] < 5.7
     cells_df = cells_df.replace("ZI-unassigned", "ZI")
     return cells_df
 
