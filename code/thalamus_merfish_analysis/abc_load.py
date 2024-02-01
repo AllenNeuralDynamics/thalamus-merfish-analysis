@@ -90,6 +90,7 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
     adata
         anndata object containing the ABC Atlas MERFISH dataset
     '''
+    # TODO: add option for true CPM? (vs log2CPV?)
     if transform=='both':
         # takes ~4 min + ~9 GB of memory to load both 
         adata_log2 = ad.read_h5ad(ABC_ROOT/f"expression_matrices/MERFISH-{BRAIN_LABEL}/{version}/{BRAIN_LABEL}-log2.h5ad", 
@@ -724,3 +725,23 @@ def get_taxonomy_palette(taxonomy_level, version=CURRENT_VERSION):
     df = df[df["cluster_annotation_term_set_name"]==taxonomy_level]
     palette = df.set_index('cluster_annotation_term_name')['color_hex_triplet'].to_dict()
     return palette
+
+try:
+    nuclei_df = pd.read_csv("/code/resources/prong1_cluster_annotations_by_nucleus.csv", index_col=0)
+    found_annotations = True
+except:
+    found_annotations = False
+
+def get_obs_from_annotated_clusters(name, obs, by='id'):
+    if not found_annotations:
+        raise UserWarning("Can't access annotations sheet from this environment.")
+    if name not in nuclei_df.index:
+        raise UserWarning("Name not found in annotations sheet")
+    
+    if by=='alias':
+        clusters = nuclei_df.loc[name, "cluster_alias"].split(', ')
+        obs = obs.loc[lambda df: df['cluster_alias'].isin(clusters)]
+    elif by=='id':
+        clusters = nuclei_df.loc[name, "cluster_ids_CNN20230720"].split(', ')
+        obs = obs.loc[lambda df: df['cluster'].str[:4].isin(clusters)]
+    return obs

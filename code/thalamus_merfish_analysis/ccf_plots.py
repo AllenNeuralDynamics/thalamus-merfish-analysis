@@ -90,7 +90,8 @@ def generate_palette(names, palette_to_match=None):
 
 def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None, 
                      point_hue='CCF_acronym', legend='cells', 
-                     min_group_count=10, highlight=[], shape_palette=None, 
+                     min_group_count=10, min_section_count=20, 
+                     highlight=[], shape_palette=None, 
                      point_palette=None, bg_cells=None, bg_shapes=True, s=2,
                      axes=False, section_col='section', x_col='cirro_x', 
                      y_col='cirro_y', categorical=True,
@@ -98,7 +99,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
     obs = obs.copy()
     # Set variables not specified by user
     if sections is None:
-        sections = obs[section_col].unique()
+        sections = sorted(obs[section_col].unique())
     if ccf_names is None:
         ccf_names = get_thalamus_substructure_names()
     if shape_palette is None:
@@ -135,7 +136,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
     figs = []
     for section in sections:
         secdata = obs.loc[lambda df: (df[section_col]==section)].copy()
-        if len(secdata) < min_group_count:
+        if len(secdata) < min_section_count:
             continue
         fig, ax = plt.subplots(figsize=(8,4))
         ax.set_title('z='+str(section)+'\n'+point_hue)

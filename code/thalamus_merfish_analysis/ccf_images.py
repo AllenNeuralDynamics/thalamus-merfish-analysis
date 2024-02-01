@@ -2,7 +2,7 @@
 import scipy.ndimage as ndi
 import numpy as np
 
-def sectionwise_label_erosion(label_img, distance_px, fill_val=0, return_edges=False):
+def sectionwise_label_erosion(label_img, distance_px, fill_val=0, return_edges=False, section_list=None):
     '''Erodes a stack of 2D label images by a specified radius (in px).
     
     Parameters
@@ -19,7 +19,9 @@ def sectionwise_label_erosion(label_img, distance_px, fill_val=0, return_edges=F
     '''
     result_img = np.zeros_like(label_img)
         
-    for i in range(label_img.shape[2]):
+    if section_list is None:
+        section_list = range(label_img.shape[2])
+    for i in section_list:
         # TODO: could restrict range to thal indices
         result_img[:,:,i] = label_erosion(label_img[:,:,i], distance_px, 
                                           fill_val=fill_val,
