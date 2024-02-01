@@ -1,4 +1,4 @@
-# hash:sha256:70c0bca0815906c46a9c74abaa795030b6709db4840ad2bc2a8769a020a76610
+# hash:sha256:a86f81784db62775bef47f57bfd5002fc20b6cb2a942de7176265e9640ad7ebf
 FROM registry.codeocean.allenneuraldynamics.org/codeocean/jupyterlab:3.6.1-miniconda4.12.0-python3.9-ubuntu20.04
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -22,7 +22,6 @@ RUN pip install -U --no-cache-dir \
     anndata==0.8.0 \
     bg-atlasapi==1.0.2 \
     colorcet==3.0.1 \
-    fastparquet==2023.10.1 \
     geojson==3.0.1 \
     geopandas==0.13.1 \
     hdbscan==0.8.33 \
@@ -30,7 +29,8 @@ RUN pip install -U --no-cache-dir \
     scanpy==1.9.3 \
     scikit-learn==1.2.2 \
     shapely==2.0.1 \
-    squidpy==1.2.3
+    squidpy==1.2.3 \
+    streamlit==1.30.0
 
 COPY postInstall /
 RUN /postInstall
