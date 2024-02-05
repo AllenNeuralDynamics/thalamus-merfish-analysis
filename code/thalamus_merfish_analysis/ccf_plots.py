@@ -40,6 +40,10 @@ def expand_palette(palette, ccf_names):
         palette = {x: '#BBBBBB' for x in ccf_names}
         edgecolor = 'grey'
         alpha = 1
+    elif palette=='allen_reference_atlas':
+        palette = {x: '#FE8084' for x in ccf_names} # lighter==#FF90A0, darker==#FE8084
+        edgecolor = 'black'
+        alpha = 1
     elif palette=='dark_outline':
         palette = None
         edgecolor = 'grey'
