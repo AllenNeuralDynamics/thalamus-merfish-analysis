@@ -171,9 +171,22 @@ def add_tiled_obsm(adata, offset=10, coords_name='section', obsm_field='coords_t
     adata.obsm[coords_tiled] = obsm
     return adata
 
+def filter_by_thalamus_coords(obs, realigned=False, buffer=0):
+    if buffer > 0:
+        obs = label_thalamus_spatial_subset(obs,
+                                    distance_px=buffer,
+                                    cleanup_mask=True,
+                                    drop_end_sections=True,
+                                    filter_cells=True,
+                                    realigned=realigned)
+    else:
+        ccf_label = 'parcellation_structure_realigned' if realigned else 'parcellation_structure'
+        th_names = get_thalamus_names(level='structure')
+        obs = obs[obs[ccf_label].isin(th_names)]
+    return obs
 
 def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
-                          filter_midbrain=True):
+                          filter_midbrain=True, filter_others=True):
     ''' Filters anndata object to only include cells from specific taxonomy 
     classes.
 
@@ -207,11 +220,17 @@ def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
         classes_to_keep += midbrain_classes
     if not filter_nonneuronal:
         classes_to_keep += nonneuronal_classes
-
-    if hasattr(th_zi_adata, 'obs'):
-        subset = th_zi_adata.obs['class'].isin(classes_to_keep)
+    if filter_others:
+        if hasattr(th_zi_adata, 'obs'):
+            subset = th_zi_adata.obs['class'].isin(classes_to_keep)
+        else:
+            subset = th_zi_adata['class'].isin(classes_to_keep)
     else:
-        subset = th_zi_adata['class'].isin(classes_to_keep)
+        classes_to_exclude = set(midbrain_classes+nonneuronal_classes) - classes_to_keep
+        if hasattr(th_zi_adata, 'obs'):
+            subset = ~th_zi_adata.obs['class'].isin(classes_to_exclude)
+        else:
+            subset = ~th_zi_adata['class'].isin(classes_to_exclude)
     return th_zi_adata[subset]
 
 
@@ -692,7 +711,7 @@ def get_ccf_metadata():
     return ccf_df
 
 @lru_cache
-def get_thalamus_substructure_names():
+def get_thalamus_names(level='substructure'):
     ccf_df = get_ccf_metadata()
     th_zi_ind = np.hstack(
             (ccf_df.loc[ccf_df['parcellation_term_acronym']=='TH', 
@@ -702,15 +721,18 @@ def get_thalamus_substructure_names():
     )
 
     ccf_labels = ccf_df.pivot(index='parcellation_index', values='parcellation_term_acronym', columns='parcellation_term_set_name')
-    th_names = ccf_labels.loc[th_zi_ind, 'substructure']
+    th_names = ccf_labels.loc[th_zi_ind, level]
     return th_names
 
+def get_thalamus_substructure_names():
+    return get_thalamus_names()
+
 @lru_cache
-def get_ccf_substructure_index():
+def get_ccf_index(level='substructure'):
     ccf_df = get_ccf_metadata()
     # parcellation_index to acronym
-    substructure_index = ccf_df.query("parcellation_term_set_name=='substructure'").set_index('parcellation_index')['parcellation_term_acronym']
-    return substructure_index
+    index = ccf_df.query(f"parcellation_term_set_name=='{level}'").set_index('parcellation_index')['parcellation_term_acronym']
+    return index
 
 @lru_cache
 def _get_cluster_annotations(version=CURRENT_VERSION):

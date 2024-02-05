@@ -14,7 +14,7 @@ from scipy.ndimage import binary_dilation
 
 # TODO: get rid of this import
 # from ccf_polygons import get_outline_polygon, CCF_TH_NAMES
-from .abc_load import get_thalamus_substructure_names, get_ccf_substructure_index
+from .abc_load import get_thalamus_substructure_names, get_ccf_index
 from . import ccf_images as cci
 
 def plot_shape(shape: shapely.Polygon | shapely.GeometryCollection, edgecolor='black', **kwargs):    
@@ -356,7 +356,7 @@ def plot_ccf_section_raster(ccf_img, section_z,
     boundary_img = boundary_img[:,:, index_z].T if boundary_img is not None else None
     
     if structure_index is None:
-        structure_index = get_ccf_substructure_index()
+        structure_index = get_ccf_index()
     region_nums = np.unique(img)
     section_region_names = structure_index[region_nums]
     if (ccf_region_names is None) or ((isinstance(ccf_region_names, str)) 
@@ -440,7 +440,7 @@ def plot_metrics_ccf_raster(ccf_img, metric_series, sections,
                             structure_index=None,
                             cmap='viridis', cb_label='metric', axes=False):
     if structure_index is None:
-        structure_index = get_ccf_substructure_index()
+        structure_index = get_ccf_index()
     vmin, vmax = (metric_series.min(), metric_series.max())
     norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
     cmap = matplotlib.colormaps.get_cmap(cmap)
