@@ -12,7 +12,7 @@ if [ -n "$CUSTOM_KEY_2" ]; then
     printf "Installing code-server version $CUSTOM_KEY_2"
     mkdir /.code-server
     cd /.code-server
-    curl -fL https://github.com/coder/code-server/releases/download/v$CUSTOM_KEY_2/code-server-$CUSTOM_KEY2-linux-amd64.tar.gz \
+    curl -fL "https://github.com/coder/code-server/releases/download/v$CUSTOM_KEY_2/code-server-$CUSTOM_KEY_2-linux-amd64.tar.gz" \
       | tar -xvz
     ln -s /.code-server/code-server-$CUSTOM_KEY_2-linux-amd64/bin/code-server  /usr/bin/code-server
     cd -
