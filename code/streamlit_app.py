@@ -80,12 +80,19 @@ with tab1:
         "Level of celltype hierarcy",
         ['subclass','supertype','cluster'], index=0,
     )
+    if celltype_label=='cluster':
+        legend = False
+        palette = None
+    else:
+        legend = 'cells'
+        palette = palettes[celltype_label]
     obs = obs_th_neurons.loc[lambda df: df['subclass'].isin(subclasses_all)]
     plots = cplots.plot_ccf_overlay(obs, ccf_polygons, 
                                    ccf_names=None,
                                     point_hue=celltype_label, 
                                     sections=sections,
-                                    point_palette=palettes[celltype_label],
+                                    point_palette=palette,
+                                    legend=legend,
                                     **kwargs)
     for plot in plots:
         st.pyplot(plot)
@@ -97,7 +104,7 @@ with tab2:
     )
     celltype_label = st.selectbox(
         "Level of celltype hierarcy",
-        ['subclass','supertype','cluster'], index=0,
+        ['subclass','supertype','cluster'], index=2,
         key=2
     )
     try:
