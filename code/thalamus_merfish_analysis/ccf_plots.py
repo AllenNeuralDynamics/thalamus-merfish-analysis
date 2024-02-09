@@ -99,7 +99,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
                      point_palette=None, bg_cells=None, bg_shapes=True, s=2,
                      axes=False, section_col='section', x_col='cirro_x', 
                      y_col='cirro_y', categorical=True,
-                     boundary_img=None):
+                     boundary_img=None, custom_xy_lims=[]):
     obs = obs.copy()
     # Set variables not specified by user
     if sections is None:
@@ -158,6 +158,8 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
         # display background cells in grey
         if bg_cells is not None:
             bg_s = s*0.8 if (s<=2) else 2
+            if custom_xy_lims!=[]:
+                bg_cells = filter_by_xy_lims(bg_cells, x_col, y_col, custom_xy_lims)
             sns.scatterplot(bg_cells.loc[lambda df: (df[section_col]==section)], 
                             x=x_col, y=y_col, c='grey', s=bg_s, alpha=0.5, 
                             linewidth=0)
@@ -170,6 +172,8 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
             secdata[point_hue] = pd.Categorical(secdata[point_hue])
         # display foreground cells according to point_hue
         if len(secdata) > 0:
+            if custom_xy_lims!=[]:
+                secdata = filter_by_xy_lims(secdata, x_col, y_col, custom_xy_lims)
             sns.scatterplot(secdata, x=x_col, y=y_col, hue=point_hue,
                             s=s, palette=point_palette, linewidth=0,
                             legend=(legend in ['cells', 'both']))
@@ -178,12 +182,12 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
             ncols = 4 if (legend=='ccf') else 2 # cell type names require more horizontal space
             plt.legend(ncols=ncols, loc='upper center', bbox_to_anchor=(0.5, 0),
                        frameon=False)
-        format_image_axes(axes)
+        format_image_axes(axes, custom_xy_lims=custom_xy_lims)
         plt.show()
         figs.append(fig)
     return figs
 
-def format_image_axes(axes=False, set_lims=True):
+def format_image_axes(axes=False, set_lims=True, custom_xy_lims=[]):
     plt.axis('image')
     if not axes:
         sns.despine(left=True, bottom=True)
@@ -194,6 +198,37 @@ def format_image_axes(axes=False, set_lims=True):
     if set_lims:
         plt.gca().set_xlim([2.5, 8.5])
         plt.gca().set_ylim([7, 4])
+    # custom_xy_lims supercedes set_lims
+    if custom_xy_lims!=[]:
+        if len(custom_xy_lims)==4:
+            plt.gca().set_xlim(custom_xy_lims[:2])
+            plt.gca().set_ylim(custom_xy_lims[2:])
+        else:
+            print('incorrect custom_xy_lims detected, must be [x_min,x_max,y_min,y_max]')
+            
+def filter_by_xy_lims(data, x_col, y_col, custom_xy_lims):
+    '''custom_xy_lims =[xlim, xlim, ylim, ylim]'''
+    # need to detect min & max because of how the abc atlas coordinates are 
+    # oriented, i.e. abs(ymin) > abs(ymax) but ymin=bottom & ymax=top
+    xmin = min(custom_xy_lims[:2])
+    xmax = max(custom_xy_lims[:2])
+    ymin = min(custom_xy_lims[2:])
+    ymax = max(custom_xy_lims[2:])
+    
+    # can handle both adata or obs
+    if hasattr(data, 'obs'):
+        adata = data
+        subset = ((adata.obs[x_col] >= xmin) & (adata.obs[x_col] <= xmax) &
+                  (adata.obs[y_col] >= ymin) & (adata.obs[y_col] <= ymax)
+                 )
+    else:
+        obs = data
+        subset = ((obs[x_col] >= xmin) & (obs[x_col] <= xmax) &
+                  (obs[y_col] >= ymin) & (obs[y_col] <= ymax)
+                 )
+        
+    return data[subset]
+
         
 def plot_section_outline(outline_polygons, sections, axes=False, 
                          facecolor='none', edgecolor='black', alpha=0.05):
@@ -241,7 +276,9 @@ def plot_expression_ccf(adata, gene, ccf_polygons,
                         s=0.5, cmap='Blues', show_outline=False, 
                         bg_shapes=False, axes=False,  
                         section_col='section', x_col='cirro_x',y_col='cirro_y',
-                        boundary_img=None):
+                        boundary_img=None, custom_xy_lims=[], 
+                        cb_vmin_vmax=[None,None],
+                        **kwargs):
     # set variables not specified by user
     if sections is None:
         sections = obs[section_col].unique()
@@ -251,6 +288,7 @@ def plot_expression_ccf(adata, gene, ccf_polygons,
     raster_regions = type(ccf_polygons) is np.ndarray
         
     # Plot
+    figs = []
     for section in sections:
         # need to parse both string & num sections so can't use query()
         sec_adata = adata[adata.obs[section_col]==section] 
@@ -262,30 +300,36 @@ def plot_expression_ccf(adata, gene, ccf_polygons,
         if highlight==[]:
             if raster_regions:
                 plot_ccf_section_raster(ccf_polygons, section_z, palette='dark_outline',
-                                        ccf_region_names=nuclei, boundary_img=boundary_img, ax=ax)
+                                        ccf_region_names=nuclei, boundary_img=boundary_img, ax=ax, **kwargs)
             else:
                 plot_ccf_section(ccf_polygons, section, 
                                  highlight=nuclei, 
                                  bg_shapes=bg_shapes, 
-                                 ax=ax, palette='dark_outline')
+                                 ax=ax, palette='dark_outline', **kwargs)
         elif highlight!=[]:
             if raster_regions:
                 plot_ccf_section_raster(ccf_polygons, section_z, palette='light_outline',
-                                        ccf_region_names=nuclei, ax=ax)
+                                        ccf_region_names=nuclei, ax=ax, **kwargs)
                 plot_ccf_section_raster(ccf_polygons, section_z, palette='dark_outline',
-                                        ccf_region_names=highlight, ax=ax)
+                                        ccf_region_names=highlight, ax=ax, **kwargs)
             else:
                 plot_ccf_section(ccf_polygons, section, highlight=nuclei, 
                                  palette='light_outline', bg_shapes=bg_shapes, 
-                                 ax=ax)
+                                 ax=ax, **kwargs)
                 plot_ccf_section(ccf_polygons, section, highlight=highlight, 
                                  palette='dark_outline', bg_shapes=bg_shapes, 
-                                 ax=ax)
-                
+                                 ax=ax, **kwargs)
+        
+        # if you rely solely on set_xlim/ylim, the data is just masked but is
+        # still actually present in the pdf savefig
+        if custom_xy_lims!=[]:
+            sec_adata = filter_by_xy_lims(sec_adata, x_col, y_col, 
+                                            custom_xy_lims)
         # Plot gene expression
         c = sec_adata[:,gene].X.toarray().squeeze()
         sc = ax.scatter(x=sec_adata.obs[x_col], y=sec_adata.obs[y_col], c=c, 
-                        s=s, cmap=cmap, zorder=-1) # force sc to very bottom of plot
+                        s=s, cmap=cmap, vmin=cb_vmin_vmax[0], vmax=cb_vmin_vmax[1], 
+                        zorder=-1) # force sc to very bottom of plot
         # are we plotting raw counts or log2p counts?
         if all([i.is_integer() for i in c]):
             fig.colorbar(sc, label="CPM", fraction=0.046, pad=0.01)
@@ -301,10 +345,10 @@ def plot_expression_ccf(adata, gene, ccf_polygons,
         #     plot_section_outline(th_outline_polygons, sections=section, alpha=0.15)
         
         ax.set_title(gene)
-        format_image_axes()
+        format_image_axes(custom_xy_lims=custom_xy_lims)
         plt.show()
-    
-    # return fig, ax
+        figs.append(fig)
+    return figs
 
 
 def get_colormap_color(value, cmap='viridis', vmin=0, vmax=1):
