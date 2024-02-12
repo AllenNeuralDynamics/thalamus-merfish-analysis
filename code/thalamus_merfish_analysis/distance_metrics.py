@@ -17,6 +17,7 @@ def cluster_distances_from_labels(obs_df, y_col, x_col=None,
         X = np.vstack([obs_df[x_col]==name for name in x_names])
     # multiple x columns
     else:
+        x_names = x_col if x_names is None else x_names
         X = obs_df[x_col].values.T
     dist = pairwise_distances(Y, X, metric=metric)
     return dist, y_names, x_names
