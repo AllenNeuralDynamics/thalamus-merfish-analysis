@@ -183,7 +183,9 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
         figs.append(fig)
     return figs
 
-def format_image_axes(axes=False, set_lims=True):
+def format_image_axes(axes=False, set_lims=[2.5, 8.5, 7, 4], ax=None):
+    if ax is not None:
+        plt.sca(ax)
     plt.axis('image')
     if not axes:
         sns.despine(left=True, bottom=True)
@@ -192,8 +194,8 @@ def format_image_axes(axes=False, set_lims=True):
     plt.xlabel('')
     plt.ylabel('')
     if set_lims:
-        plt.gca().set_xlim([2.5, 8.5])
-        plt.gca().set_ylim([7, 4])
+        plt.gca().set_xlim(set_lims[:2])
+        plt.gca().set_ylim(set_lims[2:])
         
 def plot_section_outline(outline_polygons, sections, axes=False, 
                          facecolor='none', edgecolor='black', alpha=0.05):
@@ -240,23 +242,39 @@ def plot_expression_ccf(adata, gene, ccf_polygons,
                         sections=None, nuclei=None, highlight=[], 
                         s=0.5, cmap='Blues', show_outline=False, 
                         bg_shapes=False, axes=False,  
-                        section_col='section', x_col='cirro_x',y_col='cirro_y',
+                        section_col='section', x_col='cirro_x', y_col='cirro_y',
                         boundary_img=None):
     # set variables not specified by user
     if sections is None:
-        sections = obs[section_col].unique()
-    if nuclei is None:
-        nuclei = get_thalamus_substructure_names()
-    # determine if we have rasterized CCF volumes or polygons-from-cells
-    raster_regions = type(ccf_polygons) is np.ndarray
-        
+        sections = adata.obs[section_col].unique()
     # Plot
     for section in sections:
+        plot_expression_ccf(adata, gene, ccf_polygons, 
+                        section, nuclei=nuclei, highlight=highlight, 
+                        s=s, cmap=cmap, show_outline=show_outline, 
+                        bg_shapes=bg_shapes, axes=axes,  
+                        section_col=section_col, x_col=x_col, y_col=y_col,
+                        boundary_img=boundary_img)
+
+def plot_expression_ccf_section(adata_or_obs, gene, ccf_polygons, 
+                        section, nuclei=None, highlight=[], 
+                        s=0.5, cmap='Blues', show_outline=False, 
+                        bg_shapes=False, axes=False,  
+                        section_col='section', x_col='cirro_x', y_col='cirro_y',
+                        boundary_img=None, label=None,
+                        colorbar=True, ax=None, set_lims=[2.5, 8.5, 7, 4], **kwargs):
+        if nuclei is None:
+            nuclei = get_thalamus_substructure_names()
+        # determine if we have rasterized CCF volumes or polygons-from-cells
+        raster_regions = type(ccf_polygons) is np.ndarray
+        obs_df = type(adata_or_obs) is pd.DataFrame
+        obs = adata_or_obs if obs_df else adata_or_obs.obs
         # need to parse both string & num sections so can't use query()
-        sec_adata = adata[adata.obs[section_col]==section] 
-        section_z = sec_adata.obs['z_section'][0]
+        sec_obs = obs[obs[section_col]==section] 
+        section_z = sec_obs['z_section'].iloc[0]
         
-        fig, ax = plt.subplots(figsize=(8,4))
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(8,4))
 
         # Plot ccf annotation in front of gene expression
         if highlight==[]:
@@ -283,28 +301,24 @@ def plot_expression_ccf(adata, gene, ccf_polygons,
                                  ax=ax)
                 
         # Plot gene expression
-        c = sec_adata[:,gene].X.toarray().squeeze()
-        sc = ax.scatter(x=sec_adata.obs[x_col], y=sec_adata.obs[y_col], c=c, 
+        if obs_df:
+            c = sec_obs[gene].values
+        else:
+            c = adata_or_obs[sec_obs.index, gene].X.toarray().squeeze()
+        sc = ax.scatter(x=sec_obs[x_col], y=sec_obs[y_col], c=c, 
                         s=s, cmap=cmap, zorder=-1) # force sc to very bottom of plot
         # are we plotting raw counts or log2p counts?
-        if all([i.is_integer() for i in c]):
-            fig.colorbar(sc, label="CPM", fraction=0.046, pad=0.01)
-        else:
-            fig.colorbar(sc, label="log2(CPM+1)", fraction=0.046, pad=0.01)
-        
-        # [TODO]: fix this so it's working again
-        # # plot TH outline --- 
-        # if show_outline:
-        #     th_outline_polygons = get_outline_polygon(sec_adata.obs)
-        #     plot_section_outline(outline_polygons, sections, axes=False, 
-        #                      facecolor='none', edgecolor='black', alpha=0.05)
-        #     plot_section_outline(th_outline_polygons, sections=section, alpha=0.15)
+        if colorbar:
+            if label is None:
+                if all([i.is_integer() for i in c]):
+                    label="CPM"
+                else:
+                    label="log2(CPM+1)"
+            plt.colorbar(sc, label=label, fraction=0.046, pad=0.01)
         
         ax.set_title(gene)
-        format_image_axes()
-        plt.show()
+        format_image_axes(set_lims=set_lims, ax=ax)
     
-    # return fig, ax
 
 
 def get_colormap_color(value, cmap='viridis', vmin=0, vmax=1):
@@ -365,7 +379,7 @@ def plot_ccf_section_raster(ccf_img, section_z,
     section_region_names = structure_index[region_nums]
     if (ccf_region_names is None) or ((isinstance(ccf_region_names, str)) 
                                       and (ccf_region_names=='all')):
-        ccf_region_names = section_region_names
+        ccf_region_names = list(set(section_region_names).intersection(get_thalamus_substructure_names()))
     else:
         ccf_region_names = list(set(section_region_names).intersection(ccf_region_names))
 
