@@ -3,6 +3,7 @@ import scipy.spatial.distance as ssd
 import scipy.cluster.hierarchy as sch
 import seaborn as sns
 import numpy as np
+import matplotlib.pyplot as plt
 
 def cluster_distances_from_labels(obs_df, y_col, x_col=None,
                                   y_names=None, x_names=None,
@@ -75,6 +76,8 @@ def order_distances_x_to_y(D, reorder_y=True, min_similarity_x=0.1):
     # reorder rows without a match, grouping with similar matched rows
         y_old = [i for i in range(D.shape[0]) if i not in np.unique(argmin) 
                  ]
+        # sorts to a row with a matching argmin
+        # alternatively, could choose by overall pattern match (correlation etc)
         y_new = [D[:, D[y, :].argmin()].argmin() + 1 for y in y_old]
         for i in np.argsort(y_new)[::-1]:
             inew = y_new[i]
@@ -86,13 +89,18 @@ def order_distances_x_to_y(D, reorder_y=True, min_similarity_x=0.1):
     return y_order, x_order
 
 def plot_ordered_similarity_heatmap(D, y_order=None, x_order=None, y_names=None, x_names=None,
-                           label="Dice coefficient (similarity)", cmap='rocket_r'):
+                                    triangular=False, vmin=0, vmax=1,
+                           label="Dice coefficient (similarity)", cmap='rocket_r', **kwargs):
     if y_order is None: 
         y_order = list(range(D.shape[0]))
     if x_order is None: 
         x_order = y_order
     
+    Dplot = D[np.ix_(y_order,x_order)]
+    if triangular:
+        Dplot[np.triu_indices_from(Dplot, k=1)] = np.nan
     yticklabels = np.array(y_names)[y_order] if y_names is not None else y_order
-    xticklabels = np.array(x_names)[x_order] if x_names is not None else []
-    sns.heatmap(1-D[np.ix_(y_order,x_order)], yticklabels=yticklabels, xticklabels=xticklabels, 
-                cbar_kws=dict(label=label), cmap=cmap, vmin=0, vmax=1)
+    xticklabels = np.array(x_names)[x_order] if x_names is not None else x_order
+    sns.heatmap(1-Dplot, yticklabels=yticklabels, xticklabels=xticklabels, 
+                cbar_kws=dict(label=label), cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
+    plt.axis('image')
