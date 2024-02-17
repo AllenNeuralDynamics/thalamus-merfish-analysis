@@ -313,7 +313,7 @@ def get_combined_metadata(
     return cells_df
 
 
-def get_ccf_labels_image(resampled=True, realigned=False):
+def get_ccf_labels_image(resampled=True, realigned=False, subset_to_left_hemi=False):
     '''Loads rasterized image volumes of the CCF parcellation as 3D numpy array.
     
     Voxels are labelled with assigned brain structure parcellation ID #.
@@ -336,6 +336,8 @@ def get_ccf_labels_image(resampled=True, realigned=False):
         if resampled and realigned are both True, loads CCF labels from manual realignment, 
         which have been aligned into the MERFISH space/coordinates
         (incompatible with resampled=False as these haven't been calculated)
+    subset_to_left_hemi : bool, default=False
+        return a trimmed image to use visualizing single-hemisphere results
     
     Returns
     -------
@@ -353,6 +355,10 @@ def get_ccf_labels_image(resampled=True, realigned=False):
     img = nibabel.load(path)
     # could maybe keep the lazy dataobj and not convert to numpy?
     imdata = np.array(img.dataobj).astype(int)
+    if subset_to_left_hemi:
+        # erase right hemisphere (can't drop or indexing won't work correctly)
+        imdata[550:,:,:] = 0
+        
     return imdata
 
 
@@ -711,7 +717,7 @@ def get_ccf_metadata():
     return ccf_df
 
 @lru_cache
-def get_thalamus_names(level='substructure'):
+def get_thalamus_names(level=None):
     ccf_df = get_ccf_metadata()
     th_zi_ind = np.hstack(
             (ccf_df.loc[ccf_df['parcellation_term_acronym']=='TH', 
@@ -721,14 +727,17 @@ def get_thalamus_names(level='substructure'):
     )
 
     ccf_labels = ccf_df.pivot(index='parcellation_index', values='parcellation_term_acronym', columns='parcellation_term_set_name')
-    th_names = ccf_labels.loc[th_zi_ind, level]
+    if level is not None:
+        th_names = ccf_labels.loc[th_zi_ind, level].values
+    else:
+        th_names = ccf_labels.loc[th_zi_ind, :].values.flatten()
     return th_names
 
 def get_thalamus_substructure_names():
-    return get_thalamus_names()
+    return get_thalamus_names(level='substructure')
 
 @lru_cache
-def get_ccf_index(level='substructure'):
+def get_ccf_index(level='structure'):
     ccf_df = get_ccf_metadata()
     # parcellation_index to acronym
     index = ccf_df.query(f"parcellation_term_set_name=='{level}'").set_index('parcellation_index')['parcellation_term_acronym']
@@ -750,20 +759,28 @@ def get_taxonomy_palette(taxonomy_level, version=CURRENT_VERSION):
 
 try:
     nuclei_df = pd.read_csv("/code/resources/prong1_cluster_annotations_by_nucleus.csv", index_col=0)
+    nuclei_df = nuclei_df.fillna("")
     found_annotations = True
 except:
     found_annotations = False
 
-def get_obs_from_annotated_clusters(name, obs, by='id'):
+def get_obs_from_annotated_clusters(name, obs, by='id', include_shared_clusters=False):
     if not found_annotations:
         raise UserWarning("Can't access annotations sheet from this environment.")
-    if name not in nuclei_df.index:
-        raise UserWarning("Name not found in annotations sheet")
+    # if name not in nuclei_df.index:
+    #     raise UserWarning("Name not found in annotations sheet")
     
-    if by=='alias':
-        clusters = nuclei_df.loc[name, "cluster_alias"].split(', ')
-        obs = obs.loc[lambda df: df['cluster_alias'].isin(clusters)]
-    elif by=='id':
-        clusters = nuclei_df.loc[name, "cluster_ids_CNN20230720"].split(', ')
-        obs = obs.loc[lambda df: df['cluster'].str[:4].isin(clusters)]
-    return obs
+    if include_shared_clusters:
+        names = [x for x in nuclei_df.index if name in x.split(" ")]
+    else: names = [name]
+    
+    dfs = []
+    for name in names:
+        if by=='alias':
+            clusters = nuclei_df.loc[name, "cluster_alias"].split(', ')
+            obs = obs.loc[lambda df: df['cluster_alias'].isin(clusters)]
+        elif by=='id':
+            clusters = nuclei_df.loc[name, "cluster_ids_CNN20230720"].split(', ')
+            obs = obs.loc[lambda df: df['cluster'].str[:4].isin(clusters)]
+        dfs.append(obs)
+    return pd.concat(dfs)

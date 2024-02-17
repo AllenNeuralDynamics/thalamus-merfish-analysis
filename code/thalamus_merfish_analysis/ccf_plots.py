@@ -14,7 +14,7 @@ from scipy.ndimage import binary_dilation
 
 # TODO: get rid of this import
 # from ccf_polygons import get_outline_polygon, CCF_TH_NAMES
-from .abc_load import get_thalamus_substructure_names, get_ccf_index
+from .abc_load import get_thalamus_names, get_ccf_index
 from . import ccf_images as cci
 
 def plot_shape(shape: shapely.Polygon | shapely.GeometryCollection, edgecolor='black', **kwargs):    
@@ -105,7 +105,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
     if sections is None:
         sections = sorted(obs[section_col].unique())
     if ccf_names is None:
-        ccf_names = get_thalamus_substructure_names()
+        ccf_names = get_thalamus_names()
     if shape_palette is None:
         shape_palette = generate_palette(ccf_names)
     
@@ -305,7 +305,7 @@ def plot_expression_ccf_section(adata_or_obs, gene, ccf_polygons,
                         label=None, colorbar=True, ax=None,
                         **kwargs):
     if nuclei is None:
-        nuclei = get_thalamus_substructure_names()
+        nuclei = get_thalamus_names()
     # determine if we have rasterized CCF volumes or polygons-from-cells
     raster_regions = type(ccf_polygons) is np.ndarray
     obs_df = type(adata_or_obs) is pd.DataFrame
@@ -429,7 +429,7 @@ def plot_ccf_section_raster(ccf_img, section_z,
     section_region_names = structure_index[region_nums]
     if (ccf_region_names is None) or ((isinstance(ccf_region_names, str)) 
                                       and (ccf_region_names=='all')):
-        ccf_region_names = list(set(section_region_names).intersection(get_thalamus_substructure_names()))
+        ccf_region_names = list(set(section_region_names).intersection(get_thalamus_names()))
     else:
         ccf_region_names = list(set(section_region_names).intersection(ccf_region_names))
 
@@ -507,14 +507,18 @@ def plot_raster_region(imdata, region_val, resolution=10e-3, facecolor='grey',
 
 def plot_metrics_ccf_raster(ccf_img, metric_series, sections, 
                             structure_index=None,
-                            cmap='viridis', cb_label='metric', axes=False):
+                            cmap='viridis', cb_label='metric', 
+                            vmin=None, vmax=None,
+                            axes=False):
     if structure_index is None:
         structure_index = get_ccf_index()
-    vmin, vmax = (metric_series.min(), metric_series.max())
+    vmin = metric_series.min() if vmin is None else vmin
+    vmax = metric_series.max() if vmax is None else vmax
     norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
     cmap = matplotlib.colormaps.get_cmap(cmap)
     palette = metric_series.apply(lambda x: cmap(norm(x))).to_dict()
     
+    figs = []
     for section_z in sections:
         print(section_z)
         fig, ax = plt.subplots(figsize=(8, 5))
@@ -526,4 +530,5 @@ def plot_metrics_ccf_raster(ccf_img, metric_series, sections,
         plot_ccf_section_raster(ccf_img, section_z, palette, 
                                 structure_index=structure_index, legend=False, ax=ax)
         format_image_axes(axes)
-        plt.show()
+        figs.append(fig)
+    return figs
