@@ -14,7 +14,8 @@ realigned = st.radio("CCF alignment", [False, True], index=0,
                       else 'published nonlinear alignment'
                       )
 section_col = 'z_section'
-ccf_level = 'structure'
+ccf_level = 'substructure'
+lump_structures = False
 if realigned:
     ccf_label = f'parcellation_{ccf_level}_realigned'
     coords = 'section'
@@ -22,8 +23,8 @@ else:
     ccf_label = f'parcellation_{ccf_level}'
     coords = 'reconstructed'
     
-th_names = abc.get_thalamus_names(level=ccf_level)
-th_subregion_names = list(set(th_names).difference(['TH-unassigned']))
+th_names = [x for x in abc.get_thalamus_names() if not 'unassigned' in x]
+th_subregion_names = [x for x in abc.get_thalamus_names(level=ccf_level) if not 'unassigned' in x]
 palettes = {level: abc.get_taxonomy_palette(level) for level in 
             ['subclass','supertype','cluster']}
 
@@ -57,7 +58,7 @@ def get_image_volumes(realigned, sections_all, lump_structures=True, edge_width=
     return ccf_polygons, ccf_boundaries
 
 obs_th_neurons, sections_all, subclasses_all = get_data(version, ccf_label)
-ccf_polygons, ccf_boundaries = get_image_volumes(realigned, sections_all)
+ccf_polygons, ccf_boundaries = get_image_volumes(realigned, sections_all, lump_structures=False)
 
 kwargs = dict(
     bg_cells=obs_th_neurons,
@@ -80,10 +81,10 @@ def plot(obs, sections, regions=None, point_hue='subclass'):
                                     **kwargs)
 
 tab1, tab2 = st.tabs([
+    "by thalamic nucleus",
     "by section",
-    "by CCF region"
 ])
-with tab1:
+with tab2:
     sections = st.multiselect(
         "Section z coordinate", sections_all, 
         default=[7.2]
@@ -103,6 +104,7 @@ with tab1:
     if len(sections)>0 and len(obs)>0:
         plots = cplots.plot_ccf_overlay(obs, ccf_polygons, 
                                     ccf_names=None,
+                                        ccf_level=ccf_level,
                                         point_hue=celltype_label, 
                                         sections=sections,
                                         point_palette=palette,
@@ -112,10 +114,34 @@ with tab1:
             st.pyplot(plot)
 
 
-with tab2:
-    nuclei = st.multiselect(
-        "CCF region", th_subregion_names,
+nucleus_groups = {
+    "Motor": ['VAL','VM'],
+    "Vision": ['LGd','LP'],
+    "Somatosensory": ['VPM','VPL','PO'],
+    "Limbic/Anterior": ['AD','AV','AM'],
+    "Auditory": ['MG']
+}
+with tab1:
+    manual_annotations = st.radio("Nucleus vs cluster annotations", [True, False], index=0,
+                     format_func = lambda manual_annotations: 
+                      'manual' if manual_annotations 
+                      else 'automated'
+                      )
+    groups = st.multiselect(
+        "Select nucleus groups", nucleus_groups.keys(),
     )
+    with st.empty():
+        if len(groups)>0:
+            preselect = set.union(*[set(nucleus_groups[group]) for group in groups])
+            nuclei = st.multiselect(
+                "Select individual nuclei", th_names,
+                default=preselect
+            )
+        else:
+            nuclei = st.multiselect(
+                "Select individual nuclei", th_names,
+            )
+    
     celltype_label = st.selectbox(
         "Level of celltype hierarcy",
         ['subclass','supertype','cluster'], index=2,
@@ -128,18 +154,22 @@ with tab2:
     try:
         if len(nuclei)>0:
             obs2 = pd.concat([
-                abc.get_obs_from_annotated_clusters(nucleus, obs_th_neurons, include_shared_clusters=include_shared_clusters)
+                abc.get_obs_from_annotated_clusters(nucleus, obs_th_neurons, 
+                                                    include_shared_clusters=include_shared_clusters,
+                                                    manual_annotations=manual_annotations)
                 for nucleus in nuclei
             ])
             if len(obs2)>0:
-                # regions = [x for x in th_subregion_names if nucleus in x]
+                regions = [x for x in th_subregion_names if any((name in x and not 'pc' in x) or (name==x) 
+                                                                for name in nuclei)]
                 plots = cplots.plot_ccf_overlay(obs2, ccf_polygons, 
-                                            ccf_names=nuclei,
+                                            ccf_names=regions,
+                                            ccf_level=ccf_level,
                                             # highlight=nuclei, TODO: fix highlight for raster plots
                                             point_hue=celltype_label, 
                                             sections=None,
                                             min_group_count=0,
-                                            point_palette=palettes[celltype_label],
+                                            point_palette=None if celltype_label=='cluster' else palettes[celltype_label],
                                             **kwargs)
                 for plot in plots:
                     st.pyplot(plot)

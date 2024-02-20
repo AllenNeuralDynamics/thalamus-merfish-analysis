@@ -1,5 +1,6 @@
 from pathlib import Path
 from functools import lru_cache
+from itertools import chain
 import json
 import numpy as np
 import pandas as pd
@@ -730,7 +731,7 @@ def get_thalamus_names(level=None):
     if level is not None:
         th_names = ccf_labels.loc[th_zi_ind, level].values
     else:
-        th_names = ccf_labels.loc[th_zi_ind, :].values.flatten()
+        th_names = list(set(ccf_labels.loc[th_zi_ind, :].values.flatten()))
     return th_names
 
 def get_thalamus_substructure_names():
@@ -758,29 +759,31 @@ def get_taxonomy_palette(taxonomy_level, version=CURRENT_VERSION):
     return palette
 
 try:
-    nuclei_df = pd.read_csv("/code/resources/prong1_cluster_annotations_by_nucleus.csv", index_col=0)
-    nuclei_df = nuclei_df.fillna("")
+    nuclei_df_manual = pd.read_csv("/code/resources/prong1_cluster_annotations_by_nucleus.csv", index_col=0)
+    nuclei_df_manual = nuclei_df_manual.fillna("")
+    nuclei_df_auto = pd.read_csv("/code/resources/annotations_from_eroded_counts.csv",  index_col=0)
     found_annotations = True
 except:
     found_annotations = False
 
-def get_obs_from_annotated_clusters(name, obs, by='id', include_shared_clusters=False):
+def get_obs_from_annotated_clusters(name, obs, by='id', include_shared_clusters=False, manual_annotations=True):
     if not found_annotations:
         raise UserWarning("Can't access annotations sheet from this environment.")
     # if name not in nuclei_df.index:
     #     raise UserWarning("Name not found in annotations sheet")
-    
+    nuclei_df = nuclei_df_manual if manual_annotations else nuclei_df_auto
     if include_shared_clusters:
-        names = [x for x in nuclei_df.index if name in x.split(" ")]
-    else: names = [name]
+        names = [x for x in nuclei_df.index if any(name in y and not 'pc' in y
+                                                    for y in x.split(" "))]
+    else: 
+        names = [x for x in nuclei_df.index if name in x 
+                 and not (' ' in x or 'pc' in x)]
     
     dfs = []
-    for name in names:
-        if by=='alias':
-            clusters = nuclei_df.loc[name, "cluster_alias"].split(', ')
-            obs = obs.loc[lambda df: df['cluster_alias'].isin(clusters)]
-        elif by=='id':
-            clusters = nuclei_df.loc[name, "cluster_ids_CNN20230720"].split(', ')
-            obs = obs.loc[lambda df: df['cluster'].str[:4].isin(clusters)]
-        dfs.append(obs)
-    return pd.concat(dfs)
+    field = "cluster_alias" if by=='alias' else "cluster_ids_CNN20230720"
+    clusters = chain(*[nuclei_df.loc[name, field].split(', ') for name in names])
+    if by=='alias':
+        obs = obs.loc[lambda df: df['cluster_alias'].isin(clusters)]
+    elif by=='id':
+        obs = obs.loc[lambda df: df['cluster'].str[:4].isin(clusters)]
+    return obs

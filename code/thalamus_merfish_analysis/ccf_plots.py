@@ -98,7 +98,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
                      highlight=[], shape_palette=None, 
                      point_palette=None, bg_cells=None, bg_shapes=True, s=2,
                      axes=False, section_col='section', x_col='cirro_x', 
-                     y_col='cirro_y', categorical=True,
+                     y_col='cirro_y', categorical=True, ccf_level='structure',
                      boundary_img=None, custom_xy_lims=[]):
     obs = obs.copy()
     # Set variables not specified by user
@@ -149,6 +149,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
         if raster_regions:
             plot_ccf_section_raster(ccf_polygons, section, boundary_img=boundary_img,
                                     ccf_region_names=ccf_names, palette=shape_palette, 
+                                    structure_index=get_ccf_index(level=ccf_level),
                                     legend=(legend=='ccf'), ax=ax)
         else:
             plot_ccf_section(ccf_polygons, section, highlight=highlight, 
