@@ -3,13 +3,14 @@ sys.path.append('/code/')
 import spatialdata as sd
 import pandas as pd
 import numpy as np
-import abc_load as abc
-import ccf_registration as ccf
-import ccf_transforms as ccft
+from thalamus_merfish_analysis import abc_load as abc
+from thalamus_merfish_analysis import ccf_registration as ccf
+from thalamus_merfish_analysis import ccf_transforms as ccft
 
-df_full = abc.get_combined_metadata()
+df_full = abc.get_combined_metadata(drop_unused=False)
 df = abc.label_thalamus_spatial_subset(df_full, flip_y=False, distance_px=25, 
-                                  cleanup_mask=True, drop_end_sections=True,
+                                  cleanup_mask=True, 
+                                  drop_end_sections=False,
                                   filter_cells=True)
 
 coords = ['x_section', 'y_section', 'z_section']

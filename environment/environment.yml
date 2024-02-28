@@ -15,3 +15,7 @@ credentials:
   description: Codeocean API
   key: API_KEY
   secret: API_SECRET
+- type: general
+  id: 9LuciPpCPNaVyq
+  description: code-server version
+  value: CUSTOM_KEY_2

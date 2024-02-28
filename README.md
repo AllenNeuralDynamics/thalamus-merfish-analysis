@@ -7,9 +7,11 @@ Code Ocean capsule for sharing analysis of thalamus MERFISH data, primarily in j
 
 To create your own working copy on Code Ocean, select **Duplicate** from the **Capsule** menu and use the default option ("Link to git repository"). You can then make your own changes and sync back and forth from our shared github repository (https://github.com/AllenNeuralDynamics/thalamus-merfish-analysis) via git. You can use git functions either in the **Reproducibility** panel on the right-hand side of the capsule view, or within the cloud workstation (more flexibility).
 
-Feel free to make minor environment changes, but make sure they work by testing in a cloud workstation before you commit/push. If you're making a dramatic change (installing something with a ton of dependencies) that may be an indication you should create a separate capsule for that work.
+As a package: install the core functionality as a package directly from github via pip: `pip install git+https://github.com/AllenNeuralDynamics/thalamus-merfish-analysis`
 
-You can also work locally by cloning directly from github to your personal machine, but data assets will not be available.
+As a streamlit app: start a Code Ocean cloud workstation in streamlit mode (or from the terminal on another cloud workstation, run `streamlit run /code/streamlit_app.py`)
+
+Locally: you can clone directly from github to your personal machine, but data assets will not be available. Code Ocean also has an option to download the capsule with data assets, but this will be very large if you're not careful!
 
 ### Data assets
 
@@ -23,6 +25,8 @@ To use this API call though, you'll need to generate and attach a CO API key (on
 ### Git details 
 
 We'll generally plan to use a single branch, but feel free to create branches as needed for your own work, and merge back to the master branch to share. **Do not** attempt to "force push" in git (`git push -f`), as this seems to be incompatible with how Code Ocean interfaces with git. 
+
+Feel free to make minor environment changes, but make sure they work by testing in a cloud workstation before you commit/push. If you're making a dramatic change (installing something with a ton of dependencies) that may be an indication you should create a separate capsule for that work.
 
 # Code Ocean basics
 

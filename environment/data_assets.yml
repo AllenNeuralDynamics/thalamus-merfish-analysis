@@ -1,12 +1,13 @@
 # id is the only required field, name optional
 # mount can be specified to change the mount point
-# uncomment entries as needed, then run attach_data_assets.py or rebuild capsule
+# uncomment entries as needed, then run attach_data_assets.py
 - name: Allen Brain Cell Atlas
   id: b76f5c2c-d94b-426b-b861-699ea0a63889
   mount: abc_atlas
   # metadata and coordinates from CCF realignment
 - name: merfish_63850_ABC-2023-08-30_00-00-00_realigned_2023-11-29_17-06-00
   id: c5c19476-fcf6-4070-838a-205085501527
+  mount: realigned
 # scRNAseq, needed for distance metrics etc
 # - name: rnaseq_AIT17.2_2022-12-15_12-00-00
 #   id: bdc95b38-4f24-4581-b4c1-e7220fd7dd49
