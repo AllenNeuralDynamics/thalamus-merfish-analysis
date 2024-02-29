@@ -3,7 +3,7 @@ set -e
 
 pip install -U --upgrade-strategy=only-if-needed \
 git+https://github.com/scverse/spatialdata@v0.0.15 \
-git+https://github.com/scverse/spatialdata-plot@v0.0.6
+git+https://github.com/scverse/spatialdata-plot@v0.1.0
 
 if [ -n "$CUSTOM_KEY" ]; then
     printf "Installing dotfiles via chezmoi, from $CUSTOM_KEY"
