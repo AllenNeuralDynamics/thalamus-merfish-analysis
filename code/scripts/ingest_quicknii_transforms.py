@@ -76,15 +76,15 @@ def save_resampled_image(imdata, fname):
     nibabel.save(nifti_img, f'/results/{fname}.nii.gz')
     
 # CCFv3
-# imdata = abc.get_ccf_labels_image(resampled=False)
-# df['parcellation_index_realigned'] = imdata[ccf.image_index_from_coords(df[new_coords])]
-# save_resampled_image(imdata, 'abc_realigned_ccf_labels')
+imdata = abc.get_ccf_labels_image(resampled=False)
+df['parcellation_index_realigned'] = imdata[ccf.image_index_from_coords(df[new_coords])]
+save_resampled_image(imdata, 'abc_realigned_ccf_labels')
 
-# # add parcellation metadata
-# ccf_df = pd.read_csv(abc.ABC_ROOT/f"metadata/Allen-CCF-2020/20230630/parcellation_to_parcellation_term_membership.csv")
-# ccf_df = ccf_df.pivot(index='parcellation_index', columns='parcellation_term_set_name', values='parcellation_term_acronym').astype('category')
-# df = df.join(ccf_df[['division','structure','substructure']].rename(columns=lambda x: f"parcellation_{x}_realigned"),
-#              on='parcellation_index_realigned')
+# add parcellation metadata
+ccf_df = pd.read_csv(abc.ABC_ROOT/f"metadata/Allen-CCF-2020/20230630/parcellation_to_parcellation_term_membership.csv")
+ccf_df = ccf_df.pivot(index='parcellation_index', columns='parcellation_term_set_name', values='parcellation_term_acronym').astype('category')
+df = df.join(ccf_df[['division','structure','substructure']].rename(columns=lambda x: f"parcellation_{x}_realigned"),
+             on='parcellation_index_realigned')
 
 # Kim Lab DevCCF
 img = nibabel.load("/data/KimLabDevCCFv001/KimLabDevCCFv001_Annotations_ASL_Oriented_10um.nii.gz")
