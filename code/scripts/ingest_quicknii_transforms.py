@@ -46,31 +46,31 @@ df = df.join(transformed_points[list('xyz')].rename(columns=dict(zip('xyz', new_
 ngrid = 1100
 nz = 76
 z_res = 2
-# img_stack = np.zeros((ngrid, ngrid, nz))
-# for section in sdata.points.keys():
 def transform_section(section, imdata=None, fname=None):
-    i = int(np.rint(int(section)/z_res))
     target = sdata[section]
     source = sdata[fname]
     scale = 10e-3
     target_img, target_grid_transform = ccft.map_image_to_slice(sdata, imdata, source, target, scale=scale, ngrid=ngrid, centered=False)
     return target_img
 
-from multiprocessing import Pool
-import functools
+# from multiprocessing import Pool
+# import functools
 def save_resampled_image(imdata, fname):
-    # saving resampled images
     img_transform = sd.transformations.Scale(10e-3*np.ones(3), 'xyz')
     labels = sd.models.Labels3DModel.parse(imdata, dims='xyz', transformations={'ccf': img_transform})
     sdata.add_labels(fname, labels)
+    img_stack = np.zeros((ngrid, ngrid, nz))
 
-        # img_stack[:,:,i] = target_img.T
+    for section in sdata.points.keys():
+        target_img = transform_section(section, imdata=imdata, fname=fname)
+        i = int(np.rint(int(section)/z_res))
+        img_stack[:,:,i] = target_img.T
     # with Pool(processes=8) as p:
     #     out = p.map(functools.partial(transform_section, imdata=imdata, fname=fname), 
     #                 sdata.points.keys())
-    out = map(functools.partial(transform_section, imdata=imdata, fname=fname), 
-                    sdata.points.keys())
-    img_stack = np.stack(out, axis=-1)
+    # out = map(functools.partial(transform_section, imdata=imdata, fname=fname), 
+    #                 sdata.points.keys())
+    # img_stack = np.stack(out, axis=-1)
 
     nifti_img = nibabel.Nifti1Image(img_stack, affine=np.eye(4), dtype='int64')
     nibabel.save(nifti_img, f'/results/{fname}.nii.gz')
