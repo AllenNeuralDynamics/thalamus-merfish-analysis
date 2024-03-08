@@ -30,6 +30,7 @@ SPF,"072 PF Fzd5 Glut, 069 TH Prkcd Grin2c Glut","0290 PF Fzd5 Glut_1, 0272 TH P
 VAL,069 TH Prkcd Grin2c Glut,0274 TH Prkcd Grin2c Glut_13,1141,"5051, 5065","2686, 2683",1,
 VM,069 TH Prkcd Grin2c Glut,0274 TH Prkcd Grin2c Glut_13,"1139, 1142","5019, 5058","2684, 2687, 2695",1,
 VPM VPL LGd,069 TH Prkcd Grin2c Glut,0270 TH Prkcd Grin2c Glut_1,1131,5067,2649,,
+VPM VPL LGd PO LP PCN MD,069 TH Prkcd Grin2c Glut,0270 TH Prkcd Grin2c Glut_1,1131,5067,2648,,
 VPMpc,"069 TH Prkcd Grin2c Glut, 070 RE-Xi Nox4 Glut","0274 TH Prkcd Grin2c Glut_13, 0285 RE-Xi Nox4 Glut_2","1140, 1177","5040, 5052",,,
 Xi,"067 PVT-PT Ntrk1 Glut, 070 RE-Xi Nox4 Glut","0262 PVT-PT Ntrk1 Glut_4, 0284 RE-Xi Nox4 Glut_1, 0287 RE-Xi Nox4 Glut_4","1111, 1172, 1173, 1175, 1174, 1185","5089, 5122, 5123, 5124, 5128, 5116","2690, 2691, 2693, 2692, 2703",,
 ZI,,,,,,,

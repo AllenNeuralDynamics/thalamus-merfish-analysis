@@ -14,7 +14,7 @@ from scipy.ndimage import binary_dilation
 
 # TODO: get rid of this import
 # from ccf_polygons import get_outline_polygon, CCF_TH_NAMES
-from .abc_load import get_thalamus_substructure_names, get_ccf_index
+from .abc_load import get_thalamus_names, get_ccf_index
 from . import ccf_images as cci
 
 def plot_shape(shape: shapely.Polygon | shapely.GeometryCollection, edgecolor='black', **kwargs):    
@@ -98,14 +98,14 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
                      highlight=[], shape_palette=None, 
                      point_palette=None, bg_cells=None, bg_shapes=True, s=2,
                      axes=False, section_col='section', x_col='cirro_x', 
-                     y_col='cirro_y', categorical=True,
+                     y_col='cirro_y', categorical=True, ccf_level='structure',
                      boundary_img=None, custom_xy_lims=[]):
     obs = obs.copy()
     # Set variables not specified by user
     if sections is None:
         sections = sorted(obs[section_col].unique())
     if ccf_names is None:
-        ccf_names = get_thalamus_substructure_names()
+        ccf_names = get_thalamus_names()
     if shape_palette is None:
         shape_palette = generate_palette(ccf_names)
     
@@ -149,6 +149,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
         if raster_regions:
             plot_ccf_section_raster(ccf_polygons, section, boundary_img=boundary_img,
                                     ccf_region_names=ccf_names, palette=shape_palette, 
+                                    structure_index=get_ccf_index(level=ccf_level),
                                     legend=(legend=='ccf'), ax=ax)
         else:
             plot_ccf_section(ccf_polygons, section, highlight=highlight, 
@@ -288,74 +289,94 @@ def plot_expression_ccf(adata, gene, ccf_polygons,
                         **kwargs):
     # set variables not specified by user
     if sections is None:
-        sections = obs[section_col].unique()
-    if nuclei is None:
-        nuclei = get_thalamus_substructure_names()
-    # determine if we have rasterized CCF volumes or polygons-from-cells
-    raster_regions = type(ccf_polygons) is np.ndarray
-        
+        sections = adata.obs[section_col].unique()
     # Plot
     figs = []
     for section in sections:
-        # need to parse both string & num sections so can't use query()
-        sec_adata = adata[adata.obs[section_col]==section] 
-        section_z = sec_adata.obs['z_section'][0]
-        
-        fig, ax = plt.subplots(figsize=(8,4))
-
-        # Plot ccf annotation in front of gene expression
-        if highlight==[]:
-            if raster_regions:
-                plot_ccf_section_raster(ccf_polygons, section_z, palette='dark_outline',
-                                        ccf_region_names=nuclei, boundary_img=boundary_img, ax=ax, **kwargs)
-            else:
-                plot_ccf_section(ccf_polygons, section, 
-                                 highlight=nuclei, 
-                                 bg_shapes=bg_shapes, 
-                                 ax=ax, palette='dark_outline', **kwargs)
-        elif highlight!=[]:
-            if raster_regions:
-                plot_ccf_section_raster(ccf_polygons, section_z, palette='light_outline',
-                                        ccf_region_names=nuclei, ax=ax, **kwargs)
-                plot_ccf_section_raster(ccf_polygons, section_z, palette='dark_outline',
-                                        ccf_region_names=highlight, ax=ax, **kwargs)
-            else:
-                plot_ccf_section(ccf_polygons, section, highlight=nuclei, 
-                                 palette='light_outline', bg_shapes=bg_shapes, 
-                                 ax=ax, **kwargs)
-                plot_ccf_section(ccf_polygons, section, highlight=highlight, 
-                                 palette='dark_outline', bg_shapes=bg_shapes, 
-                                 ax=ax, **kwargs)
-        
-        # if you rely solely on set_xlim/ylim, the data is just masked but is
-        # still actually present in the pdf savefig
-        if custom_xy_lims!=[]:
-            sec_adata = filter_by_xy_lims(sec_adata, x_col, y_col, 
-                                            custom_xy_lims)
-        # Plot gene expression
-        c = sec_adata[:,gene].X.toarray().squeeze()
-        sc = ax.scatter(x=sec_adata.obs[x_col], y=sec_adata.obs[y_col], c=c, 
-                        s=s, cmap=cmap, vmin=cb_vmin_vmax[0], vmax=cb_vmin_vmax[1], 
-                        zorder=-1) # force sc to very bottom of plot
-        # are we plotting raw counts or log2p counts?
-        if all([i.is_integer() for i in c]):
-            fig.colorbar(sc, label="CPM", fraction=0.046, pad=0.01)
-        else:
-            fig.colorbar(sc, label="log2(CPM+1)", fraction=0.046, pad=0.01)
-        
-        # [TODO]: fix this so it's working again
-        # # plot TH outline --- 
-        # if show_outline:
-        #     th_outline_polygons = get_outline_polygon(sec_adata.obs)
-        #     plot_section_outline(outline_polygons, sections, axes=False, 
-        #                      facecolor='none', edgecolor='black', alpha=0.05)
-        #     plot_section_outline(th_outline_polygons, sections=section, alpha=0.15)
-        
-        ax.set_title(gene)
-        format_image_axes(ax=ax, custom_xy_lims=custom_xy_lims)
-        plt.show()
+        fig = plot_expression_ccf(adata, gene, ccf_polygons, 
+                        section, nuclei=nuclei, highlight=highlight, 
+                        s=s, cmap=cmap, show_outline=show_outline, 
+                        bg_shapes=bg_shapes, axes=axes,  
+                        section_col=section_col, x_col=x_col, y_col=y_col,
+                        boundary_img=boundary_img, custom_xy_lims=custom_xy_lims,
+                        cb_vmin_vmax=cb_vmin_vmax)
         figs.append(fig)
     return figs
+
+def plot_expression_ccf_section(adata_or_obs, gene, ccf_polygons, 
+                        section, nuclei=None, highlight=[], 
+                        s=0.5, cmap='Blues', show_outline=False, 
+                        bg_shapes=False, axes=False,  
+                        section_col='section', x_col='cirro_x', y_col='cirro_y',
+                        boundary_img=None, custom_xy_lims=[], 
+                        cb_vmin_vmax=[None,None],
+                        label=None, colorbar=True, ax=None,
+                        **kwargs):
+    if nuclei is None:
+        nuclei = get_thalamus_names()
+    # determine if we have rasterized CCF volumes or polygons-from-cells
+    raster_regions = type(ccf_polygons) is np.ndarray
+    obs_df = type(adata_or_obs) is pd.DataFrame
+    obs = adata_or_obs if obs_df else adata_or_obs.obs
+    # need to parse both string & num sections so can't use query()
+    sec_obs = obs[obs[section_col]==section] 
+    section_z = sec_obs['z_section'].iloc[0]
+    
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(8,4))
+    else:
+        plt.sca(ax)
+        fig = plt.gcf()
+
+    # Plot ccf annotation in front of gene expression
+    if highlight==[]:
+        if raster_regions:
+            plot_ccf_section_raster(ccf_polygons, section_z, palette='dark_outline',
+                                    ccf_region_names=nuclei, boundary_img=boundary_img, ax=ax, **kwargs)
+        else:
+            plot_ccf_section(ccf_polygons, section, 
+                                highlight=nuclei, 
+                                bg_shapes=bg_shapes, 
+                                ax=ax, palette='dark_outline', **kwargs)
+    elif highlight!=[]:
+        if raster_regions:
+            plot_ccf_section_raster(ccf_polygons, section_z, palette='light_outline',
+                                    ccf_region_names=nuclei, ax=ax, **kwargs)
+            plot_ccf_section_raster(ccf_polygons, section_z, palette='dark_outline',
+                                    ccf_region_names=highlight, ax=ax, **kwargs)
+        else:
+            plot_ccf_section(ccf_polygons, section, highlight=nuclei, 
+                                palette='light_outline', bg_shapes=bg_shapes, 
+                                ax=ax, **kwargs)
+            plot_ccf_section(ccf_polygons, section, highlight=highlight, 
+                                palette='dark_outline', bg_shapes=bg_shapes, 
+                                ax=ax, **kwargs)
+    
+    # if you rely solely on set_xlim/ylim, the data is just masked but is
+    # still actually present in the pdf savefig
+    if custom_xy_lims!=[]:
+        sec_obs = filter_by_xy_lims(sec_obs, x_col, y_col, 
+                                        custom_xy_lims)
+    # Plot gene expression
+    if obs_df:
+        c = sec_obs[gene].values
+    else:
+        c = adata_or_obs[sec_obs.index, gene].X.toarray().squeeze()
+    sc = ax.scatter(x=sec_obs[x_col], y=sec_obs[y_col], c=c, 
+                    s=s, cmap=cmap, vmin=cb_vmin_vmax[0], vmax=cb_vmin_vmax[1], 
+                    zorder=-1) # force sc to very bottom of plot
+    # are we plotting raw counts or log2p counts?
+    if colorbar:
+        if label is None:
+            if all([i.is_integer() for i in c]):
+                label="CPM"
+            else:
+                label="log2(CPM+1)"
+        plt.colorbar(sc, label=label, fraction=0.046, pad=0.01)
+    
+    ax.set_title(gene)
+    format_image_axes(ax=ax, custom_xy_lims=custom_xy_lims)
+    return fig
 
 
 def get_colormap_color(value, cmap='viridis', vmin=0, vmax=1):
@@ -416,7 +437,7 @@ def plot_ccf_section_raster(ccf_img, section_z,
     section_region_names = structure_index[region_nums]
     if (ccf_region_names is None) or ((isinstance(ccf_region_names, str)) 
                                       and (ccf_region_names=='all')):
-        ccf_region_names = section_region_names
+        ccf_region_names = list(set(section_region_names).intersection(get_thalamus_names()))
     else:
         ccf_region_names = list(set(section_region_names).intersection(ccf_region_names))
 
@@ -424,7 +445,7 @@ def plot_ccf_section_raster(ccf_img, section_z,
     
     regions = ccf_region_names if palette is None else [x for x in ccf_region_names if x in palette]
         
-    names = plot_raster_all(img, structure_index, boundary_img=boundary_img, palette=palette, regions=regions,
+    plot_raster_all(img, structure_index, boundary_img=boundary_img, palette=palette, regions=regions,
                             edgecolor=edgecolor, alpha=alpha, ax=ax)
     if legend and palette is not None:
         # generate "empty" matplotlib handles to be used by plt.legend() call in 
@@ -447,6 +468,7 @@ def palette_to_rgba_lookup(palette, index):
         name = index[i]
         if name in palette:
             rgba_lookup[i,:] = to_rgba(palette[name])
+    rgba_lookup[0,:] = [1, 1, 1, 0]
     return rgba_lookup
     
 def plot_raster_all(imdata, index, boundary_img=None, palette=None, regions=None, resolution=10e-3,
@@ -493,14 +515,18 @@ def plot_raster_region(imdata, region_val, resolution=10e-3, facecolor='grey',
 
 def plot_metrics_ccf_raster(ccf_img, metric_series, sections, 
                             structure_index=None,
-                            cmap='viridis', cb_label='metric', axes=False):
+                            cmap='viridis', cb_label='metric', 
+                            vmin=None, vmax=None,
+                            axes=False):
     if structure_index is None:
         structure_index = get_ccf_index()
-    vmin, vmax = (metric_series.min(), metric_series.max())
+    vmin = metric_series.min() if vmin is None else vmin
+    vmax = metric_series.max() if vmax is None else vmax
     norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
     cmap = matplotlib.colormaps.get_cmap(cmap)
     palette = metric_series.apply(lambda x: cmap(norm(x))).to_dict()
     
+    figs = []
     for section_z in sections:
         print(section_z)
         fig, ax = plt.subplots(figsize=(8, 5))
@@ -512,4 +538,5 @@ def plot_metrics_ccf_raster(ccf_img, metric_series, sections,
         plot_ccf_section_raster(ccf_img, section_z, palette, 
                                 structure_index=structure_index, legend=False, ax=ax)
         format_image_axes(ax=ax, axes=axes)
-        plt.show()
+        figs.append(fig)
+    return figs
