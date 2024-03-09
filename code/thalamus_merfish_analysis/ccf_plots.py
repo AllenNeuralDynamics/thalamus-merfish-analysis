@@ -293,7 +293,7 @@ def plot_expression_ccf(adata, gene, ccf_polygons,
     # Plot
     figs = []
     for section in sections:
-        fig = plot_expression_ccf(adata, gene, ccf_polygons, 
+        fig = plot_expression_ccf_section(adata, gene, ccf_polygons, 
                         section, nuclei=nuclei, highlight=highlight, 
                         s=s, cmap=cmap, show_outline=show_outline, 
                         bg_shapes=bg_shapes, axes=axes,  
