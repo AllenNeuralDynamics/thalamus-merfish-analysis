@@ -183,27 +183,34 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
             ncols = 4 if (legend=='ccf') else 2 # cell type names require more horizontal space
             plt.legend(ncols=ncols, loc='upper center', bbox_to_anchor=(0.5, 0),
                        frameon=False)
-        format_image_axes(axes, custom_xy_lims=custom_xy_lims)
+        format_image_axes(ax=ax, axes=axes, custom_xy_lims=custom_xy_lims)
         plt.show()
         figs.append(fig)
     return figs
 
-def format_image_axes(axes=False, set_lims=True, custom_xy_lims=[]):
-    plt.axis('image')
+def format_image_axes(ax, axes=False, set_lims='whole', custom_xy_lims=[]):
+    ax.axis('image')
     if not axes:
         sns.despine(left=True, bottom=True)
-        plt.xticks([])
-        plt.yticks([])
-    plt.xlabel('')
-    plt.ylabel('')
-    if set_lims:
-        plt.gca().set_xlim([2.5, 8.5])
-        plt.gca().set_ylim([7, 4])
+        ax.set_xticks([])
+        ax.set_yticks([])
+    ax.set_xlabel(None)
+    ax.set_ylabel(None)
+    # (set_lims==True) is for backwards compatibility
+    if (set_lims=='whole') | (set_lims==True):
+        ax.set_xlim([2.5, 8.5])
+        ax.set_ylim([7, 4])
+    elif set_lims=='left_hemi':
+        ax.set_xlim([2.5, 6])
+        ax.set_ylim([7, 4])
+    elif set_lims=='right_hemi':
+        ax.set_xlim([5, 8.5])
+        ax.set_ylim([7, 4])
     # custom_xy_lims supercedes set_lims
     if custom_xy_lims!=[]:
         if len(custom_xy_lims)==4:
-            plt.gca().set_xlim(custom_xy_lims[:2])
-            plt.gca().set_ylim(custom_xy_lims[2:])
+            ax.set_xlim(custom_xy_lims[:2])
+            ax.set_ylim(custom_xy_lims[2:])
         else:
             print('incorrect custom_xy_lims detected, must be [x_min,x_max,y_min,y_max]')
             
@@ -286,7 +293,7 @@ def plot_expression_ccf(adata, gene, ccf_polygons,
     # Plot
     figs = []
     for section in sections:
-        fig = plot_expression_ccf(adata, gene, ccf_polygons, 
+        fig = plot_expression_ccf_section(adata, gene, ccf_polygons, 
                         section, nuclei=nuclei, highlight=highlight, 
                         s=s, cmap=cmap, show_outline=show_outline, 
                         bg_shapes=bg_shapes, axes=axes,  
@@ -368,7 +375,7 @@ def plot_expression_ccf_section(adata_or_obs, gene, ccf_polygons,
         plt.colorbar(sc, label=label, fraction=0.046, pad=0.01)
     
     ax.set_title(gene)
-    format_image_axes(custom_xy_lims=custom_xy_lims)
+    format_image_axes(ax=ax, custom_xy_lims=custom_xy_lims)
     return fig
 
 
@@ -407,7 +414,7 @@ def plot_metrics_ccf(obs, ccf_polygons, metric_series, sections=None,
         #     plt.legend(ncols=2, loc='upper center', bbox_to_anchor=(0.5, 0))
         #     # plt.legend(ncols=1, loc='center left', bbox_to_anchor=(0.98, 0.5), fontsize=16)
         
-        format_image_axes(axes)
+        format_image_axes(ax=ax, axes=axes)
         # hidden image just to generate colorbar
         img = ax.imshow(np.array([[vmin,vmax]]), cmap=cmap)
         img.set_visible(False)
@@ -530,6 +537,6 @@ def plot_metrics_ccf_raster(ccf_img, metric_series, sections,
         
         plot_ccf_section_raster(ccf_img, section_z, palette, 
                                 structure_index=structure_index, legend=False, ax=ax)
-        format_image_axes(axes)
+        format_image_axes(ax=ax, axes=axes)
         figs.append(fig)
     return figs
