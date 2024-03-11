@@ -44,6 +44,10 @@ def expand_palette(palette, ccf_names):
         palette = {x: '#FE8084' for x in ccf_names} # lighter==#FF90A0, darker==#FE8084
         edgecolor = 'black'
         alpha = 1
+    elif palette=='black_outline': # need this dark of outline to be seen in full coronal sections
+        palette = None
+        edgecolor = 'k'
+        alpha = 1
     elif palette=='dark_outline':
         palette = None
         edgecolor = 'grey'
@@ -539,4 +543,64 @@ def plot_metrics_ccf_raster(ccf_img, metric_series, sections,
                                 structure_index=structure_index, legend=False, ax=ax)
         format_image_axes(ax=ax, axes=axes)
         figs.append(fig)
+    return figs
+
+
+def plot_metrics_ccf_full_coronal(ccf_img, metric_series, sections, 
+                                  ccf_level='substructure', structure_index=None,
+                                  ccf_names=None, ccf_highlight=[],
+                                  cmap='viridis', cbar_label='metric', 
+                                  vmin=None, vmax=None, 
+                                  custom_xy_lims=[0,11,11,0],
+                                  legend=False, axes=False):
+    ''' Plots CCF parcellations shapes, shaded by a metric, and boundaries.
+    
+    Arguments
+    -----
+    ccf_img: raster image with CCF structures encoded as unique pixel values
+    metric_series: pd.Series, e.g. column of a pd.DataFrame
+    sections: list of floats, matching 'z_section' coordinates
+    structure_index: pd.Series, with index=parcellation_index & name=parcellation_term_acronym
+    ccf_names: list of strings, names of all CCF parcellations to be plotted
+    ccf_highlight: list of strings, name(s) of CCF parcellations to be highlighted
+    
+    '''
+    if structure_index is None:
+        structure_index = get_ccf_index(level=ccf_level)
+        
+    # Set up color palette for metric
+    vmin = metric_series.min() if vmin is None else vmin
+    vmax = metric_series.max() if vmax is None else vmax
+    norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+    cmap = matplotlib.colormaps.get_cmap(cmap)
+    shape_palette = metric_series.apply(lambda x: cmap(norm(x))).to_dict()
+    
+    figs = []
+    for section_z in sections:
+        fig, ax = plt.subplots(figsize=(20, 16))
+        
+        # make hidden image in order to generate colorbar for metric
+        img = ax.imshow(np.array([[vmin, vmax]]), cmap=cmap)
+        img.set_visible(False)
+        plt.colorbar(img, orientation='vertical', label=cbar_label, 
+                     shrink=0.65 # manually adjust shrink fraction to set height of cbar
+                    )
+        
+        # metric sets facecolor of CCF shapes; CCF boundaries default to grey
+        plot_ccf_section_raster(ccf_img, section_z, palette=shape_palette,
+                                ccf_region_names=ccf_names, 
+                                structure_index=structure_index, legend=legend,
+                                ax=ax)
+        
+        # add layer for any nuclei to be highlighted with black outline
+        if ccf_highlight!=[]:
+            plot_ccf_section_raster(ccf_img, section_z, palette='black_outline', 
+                                    ccf_region_names=ccf_highlight, ax=ax)
+            
+        # format plot
+        format_image_axes(ax=ax, axes=axes, custom_xy_lims=custom_xy_lims)
+        ax.set_title('z='+str(section_z))
+        plt.show() # suppress weird text output from Axes
+        figs.append(fig)
+        
     return figs
