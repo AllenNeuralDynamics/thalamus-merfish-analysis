@@ -98,14 +98,14 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
                      highlight=[], shape_palette=None, 
                      point_palette=None, bg_cells=None, bg_shapes=True, s=2,
                      axes=False, section_col='section', x_col='cirro_x', 
-                     y_col='cirro_y', categorical=True, ccf_level='structure',
+                     y_col='cirro_y', categorical=True, ccf_level='substructure',
                      boundary_img=None, custom_xy_lims=[]):
     obs = obs.copy()
     # Set variables not specified by user
     if sections is None:
         sections = sorted(obs[section_col].unique())
     if ccf_names is None:
-        ccf_names = get_thalamus_names()
+        ccf_names = get_thalamus_names(level=ccf_level)
     if shape_palette is None:
         shape_palette = generate_palette(ccf_names)
     
@@ -427,7 +427,7 @@ def plot_ccf_section_raster(ccf_img, section_z,
     if structure_index is None:
         structure_index = get_ccf_index()
     region_nums = np.unique(img)
-    section_region_names = structure_index[region_nums]
+    section_region_names = [structure_index[i] for i in region_nums if i in structure_index.index]
     if (ccf_region_names is None) or ((isinstance(ccf_region_names, str)) 
                                       and (ccf_region_names=='all')):
         ccf_region_names = list(set(section_region_names).intersection(get_thalamus_names()))

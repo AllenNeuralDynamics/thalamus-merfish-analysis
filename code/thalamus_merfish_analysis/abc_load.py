@@ -718,20 +718,40 @@ def get_ccf_metadata():
     return ccf_df
 
 @lru_cache
-def get_thalamus_names(level=None):
-    ccf_df = get_ccf_metadata()
-    th_zi_ind = np.hstack(
-            (ccf_df.loc[ccf_df['parcellation_term_acronym']=='TH', 
-                        'parcellation_index'].unique(),
-                ccf_df.loc[ccf_df['parcellation_term_acronym']=='ZI', 
-                        'parcellation_index'].unique())
-    )
+def get_devccf_metadata():
+    devccf_index = pd.read_csv("/data/KimLabDevCCFv001/KimLabDevCCFv001_MouseOntologyStructure.csv",
+                           dtype={'ID':int, 'Parent ID':str})
+    # some quotes have both single and double
+    for x in ['Acronym','Name']:
+        devccf_index[x] = devccf_index[x].str.replace("'","")
+    return devccf_index
 
-    ccf_labels = ccf_df.pivot(index='parcellation_index', values='parcellation_term_acronym', columns='parcellation_term_set_name')
-    if level is not None:
-        th_names = ccf_labels.loc[th_zi_ind, level].values
+import networkx as nx
+@lru_cache
+def get_thalamus_names(level=None):
+    if level=='devccf':
+        devccf_index = get_devccf_metadata().copy()
+        devccf_index['ID'] = devccf_index['ID'].astype(str)
+        th_top_level = ['ZIC', 'CZI', 'RtC', 'Th']
+        g = nx.from_pandas_edgelist(devccf_index, source='Parent ID', target='ID', 
+                            create_using=nx.DiGraph())
+        devccf_index = devccf_index.set_index('Acronym')
+        th_ids = list(set.union(*(set(nx.descendants(g, devccf_index.loc[x, 'ID'])) 
+                        for x in th_top_level)))
+        th_names = devccf_index.reset_index().set_index('ID').loc[th_ids, 'Acronym']
     else:
-        th_names = list(set(ccf_labels.loc[th_zi_ind, :].values.flatten()))
+        ccf_df = get_ccf_metadata()
+        th_zi_ind = np.hstack(
+                (ccf_df.loc[ccf_df['parcellation_term_acronym']=='TH', 
+                            'parcellation_index'].unique(),
+                    ccf_df.loc[ccf_df['parcellation_term_acronym']=='ZI', 
+                            'parcellation_index'].unique())
+        )
+        ccf_labels = ccf_df.pivot(index='parcellation_index', values='parcellation_term_acronym', columns='parcellation_term_set_name')
+        if level is not None:
+            th_names = ccf_labels.loc[th_zi_ind, level].values
+        else:
+            th_names = list(set(ccf_labels.loc[th_zi_ind, :].values.flatten()))
     return th_names
 
 def get_thalamus_substructure_names():
@@ -739,9 +759,13 @@ def get_thalamus_substructure_names():
 
 @lru_cache
 def get_ccf_index(level='structure'):
-    ccf_df = get_ccf_metadata()
-    # parcellation_index to acronym
-    index = ccf_df.query(f"parcellation_term_set_name=='{level}'").set_index('parcellation_index')['parcellation_term_acronym']
+    if level=='devccf':
+        ccf_df = get_devccf_metadata()
+        index = ccf_df.set_index('ID')['Acronym']
+    else:
+        ccf_df = get_ccf_metadata()
+        # parcellation_index to acronym
+        index = ccf_df.query(f"parcellation_term_set_name=='{level}'").set_index('parcellation_index')['parcellation_term_acronym']
     return index
 
 @lru_cache
