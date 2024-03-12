@@ -15,6 +15,7 @@ from .abc_load import get_thalamus_names, get_ccf_index
 from . import ccf_images as cci
 
 
+# ------------------------- Multi-Section Plotting ------------------------- #
 def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None, 
                      point_hue='CCF_acronym', legend='cells', 
                      min_group_count=10, min_section_count=20, 
@@ -153,6 +154,38 @@ def plot_expression_ccf(adata, gene, ccf_polygons,
         figs.append(fig)
     return figs
 
+
+def plot_metrics_ccf_raster(ccf_img, metric_series, sections, 
+                            structure_index=None,
+                            cmap='viridis', cb_label='metric', 
+                            vmin=None, vmax=None,
+                            axes=False):
+    if structure_index is None:
+        structure_index = get_ccf_index()
+    vmin = metric_series.min() if vmin is None else vmin
+    vmax = metric_series.max() if vmax is None else vmax
+    norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+    cmap = matplotlib.colormaps.get_cmap(cmap)
+    palette = metric_series.apply(lambda x: cmap(norm(x))).to_dict()
+    
+    figs = []
+    for section_z in sections:
+        print(section_z)
+        fig, ax = plt.subplots(figsize=(8, 5))
+        # hidden image just to generate colorbar
+        img = ax.imshow(np.array([[vmin, vmax]]), cmap=cmap)
+        img.set_visible(False)
+        plt.colorbar(img, orientation='vertical', label=cb_label, shrink=0.75)
+        
+        plot_ccf_section_raster(ccf_img, section_z, palette, 
+                                structure_index=structure_index, legend=False, ax=ax)
+        _format_image_axes(ax=ax, axes=axes)
+        figs.append(fig)
+    return figs
+
+
+# ----------------------- Single-Section Plot Elements ----------------------- #
+
 def plot_expression_ccf_section(adata_or_obs, gene, ccf_polygons, 
                         section, nuclei=None, highlight=[], 
                         s=0.5, cmap='Blues', show_outline=False, 
@@ -278,35 +311,6 @@ def plot_raster_all(imdata, index, boundary_img=None, palette=None, regions=None
         im_edges = np.where(im_edges[:,:,None]!=0, np.array(to_rgba(edgecolor), ndmin=3), 
                             np.zeros((1,1,4)))
         ax.imshow(im_edges, **kwargs)
-
-
-def plot_metrics_ccf_raster(ccf_img, metric_series, sections, 
-                            structure_index=None,
-                            cmap='viridis', cb_label='metric', 
-                            vmin=None, vmax=None,
-                            axes=False):
-    if structure_index is None:
-        structure_index = get_ccf_index()
-    vmin = metric_series.min() if vmin is None else vmin
-    vmax = metric_series.max() if vmax is None else vmax
-    norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
-    cmap = matplotlib.colormaps.get_cmap(cmap)
-    palette = metric_series.apply(lambda x: cmap(norm(x))).to_dict()
-    
-    figs = []
-    for section_z in sections:
-        print(section_z)
-        fig, ax = plt.subplots(figsize=(8, 5))
-        # hidden image just to generate colorbar
-        img = ax.imshow(np.array([[vmin, vmax]]), cmap=cmap)
-        img.set_visible(False)
-        plt.colorbar(img, orientation='vertical', label=cb_label, shrink=0.75)
-        
-        plot_ccf_section_raster(ccf_img, section_z, palette, 
-                                structure_index=structure_index, legend=False, ax=ax)
-        _format_image_axes(ax=ax, axes=axes)
-        figs.append(fig)
-    return figs
 
 
 # ------------------------- DataFrame Preprocessing ------------------------- #
