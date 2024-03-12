@@ -15,45 +15,6 @@ from .abc_load import get_thalamus_names, get_ccf_index
 from . import ccf_images as cci
 
 
-def expand_palette(palette, ccf_names):
-    edgecolor = None
-    alpha = 0.6
-    if palette is None:
-        palette = dict(zip(ccf_names, sns.color_palette(glasbey, n_colors=len(ccf_names))))
-    elif palette=='greyscale':
-        palette = {x: '#BBBBBB' for x in ccf_names}
-        edgecolor = 'grey'
-        alpha = 1
-    elif palette=='allen_reference_atlas':
-        palette = {x: '#FE8084' for x in ccf_names} # lighter==#FF90A0, darker==#FE8084
-        edgecolor = 'black'
-        alpha = 1
-    elif palette=='dark_outline':
-        palette = None
-        edgecolor = 'grey'
-        alpha = 1
-    elif palette=='light_outline':
-        palette = None
-        edgecolor = 'lightgrey'
-        alpha = 1
-    else:
-        edgecolor = 'grey'
-        alpha = 1
-    return palette, edgecolor, alpha
-
-
-def generate_palette(names, palette_to_match=None):
-    sns_palette = sns.color_palette(glasbey, n_colors=len(names))
-    if palette_to_match is not None:
-        point_palette = palette_to_match.copy()
-        extra_names = names.difference(palette_to_match.keys())
-        extra_palette = dict(zip(extra_names, sns_palette[-len(extra_names):]))
-        point_palette.update(extra_palette)
-    else:
-        point_palette = dict(zip(names, sns_palette))
-    return point_palette
-
-
 def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None, 
                      point_hue='CCF_acronym', legend='cells', 
                      min_group_count=10, min_section_count=20, 
@@ -69,7 +30,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
     if ccf_names is None:
         ccf_names = get_thalamus_names(level=ccf_level)
     if shape_palette is None:
-        shape_palette = generate_palette(ccf_names)
+        shape_palette = _generate_palette(ccf_names)
     
     if isinstance(sections[0], str):
         raise Exception('str type detected for ''sections''. You must use ''z_section'' OR ''z_reconstructed'' as your ''section_col'' in order to plot the rasterized CCF volumes.')
@@ -88,7 +49,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
             # make sure point palette matches shape palette
             match_palette = ((point_hue in ['CCF_acronym', 'parcellation_substructure']) 
                 and shape_palette not in ('bw','dark_outline','light_outline'))
-            point_palette = generate_palette(point_group_names, palette_to_match=None)
+            point_palette = _generate_palette(point_group_names, palette_to_match=None)
         else:
             point_palette = point_palette.copy()
         point_palette.update(other='grey')
@@ -115,7 +76,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
         if bg_cells is not None:
             bg_s = s*0.8 if (s<=2) else 2
             if custom_xy_lims!=[]:
-                bg_cells = filter_by_xy_lims(bg_cells, x_col, y_col, custom_xy_lims)
+                bg_cells = _filter_by_xy_lims(bg_cells, x_col, y_col, custom_xy_lims)
             sns.scatterplot(bg_cells.loc[lambda df: (df[section_col]==section)], 
                             x=x_col, y=y_col, c='grey', s=bg_s, alpha=0.5, 
                             linewidth=0)
@@ -129,7 +90,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
         # display foreground cells according to point_hue
         if len(secdata) > 0:
             if custom_xy_lims!=[]:
-                secdata = filter_by_xy_lims(secdata, x_col, y_col, custom_xy_lims)
+                secdata = _filter_by_xy_lims(secdata, x_col, y_col, custom_xy_lims)
             sns.scatterplot(secdata, x=x_col, y=y_col, hue=point_hue,
                             s=s, palette=point_palette, linewidth=0,
                             legend=(legend in ['cells', 'both']))
@@ -138,59 +99,10 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
             ncols = 4 if (legend=='ccf') else 2 # cell type names require more horizontal space
             plt.legend(ncols=ncols, loc='upper center', bbox_to_anchor=(0.5, 0),
                        frameon=False)
-        format_image_axes(ax=ax, axes=axes, custom_xy_lims=custom_xy_lims)
+        _format_image_axes(ax=ax, axes=axes, custom_xy_lims=custom_xy_lims)
         plt.show()
         figs.append(fig)
     return figs
-
-def format_image_axes(ax, axes=False, set_lims='whole', custom_xy_lims=[]):
-    ax.axis('image')
-    if not axes:
-        sns.despine(left=True, bottom=True)
-        ax.set_xticks([])
-        ax.set_yticks([])
-    ax.set_xlabel(None)
-    ax.set_ylabel(None)
-    # (set_lims==True) is for backwards compatibility
-    if (set_lims=='whole') | (set_lims==True):
-        ax.set_xlim([2.5, 8.5])
-        ax.set_ylim([7, 4])
-    elif set_lims=='left_hemi':
-        ax.set_xlim([2.5, 6])
-        ax.set_ylim([7, 4])
-    elif set_lims=='right_hemi':
-        ax.set_xlim([5, 8.5])
-        ax.set_ylim([7, 4])
-    # custom_xy_lims supercedes set_lims
-    if custom_xy_lims!=[]:
-        if len(custom_xy_lims)==4:
-            ax.set_xlim(custom_xy_lims[:2])
-            ax.set_ylim(custom_xy_lims[2:])
-        else:
-            print('incorrect custom_xy_lims detected, must be [x_min,x_max,y_min,y_max]')
-            
-def filter_by_xy_lims(data, x_col, y_col, custom_xy_lims):
-    '''custom_xy_lims =[xlim, xlim, ylim, ylim]'''
-    # need to detect min & max because of how the abc atlas coordinates are 
-    # oriented, i.e. abs(ymin) > abs(ymax) but ymin=bottom & ymax=top
-    xmin = min(custom_xy_lims[:2])
-    xmax = max(custom_xy_lims[:2])
-    ymin = min(custom_xy_lims[2:])
-    ymax = max(custom_xy_lims[2:])
-    
-    # can handle both adata or obs
-    if hasattr(data, 'obs'):
-        adata = data
-        subset = ((adata.obs[x_col] >= xmin) & (adata.obs[x_col] <= xmax) &
-                  (adata.obs[y_col] >= ymin) & (adata.obs[y_col] <= ymax)
-                 )
-    else:
-        obs = data
-        subset = ((obs[x_col] >= xmin) & (obs[x_col] <= xmax) &
-                  (obs[y_col] >= ymin) & (obs[y_col] <= ymax)
-                 )
-        
-    return data[subset]
             
             
 def plot_nucleus_cluster_comparison_slices(obs, ccf_polygons, nuclei, 
@@ -278,7 +190,7 @@ def plot_expression_ccf_section(adata_or_obs, gene, ccf_polygons,
     # if you rely solely on set_xlim/ylim, the data is just masked but is
     # still actually present in the pdf savefig
     if custom_xy_lims!=[]:
-        sec_obs = filter_by_xy_lims(sec_obs, x_col, y_col, 
+        sec_obs = _filter_by_xy_lims(sec_obs, x_col, y_col, 
                                         custom_xy_lims)
     # Plot gene expression
     if obs_df:
@@ -298,17 +210,8 @@ def plot_expression_ccf_section(adata_or_obs, gene, ccf_polygons,
         plt.colorbar(sc, label=label, fraction=0.046, pad=0.01)
     
     ax.set_title(gene)
-    format_image_axes(ax=ax, custom_xy_lims=custom_xy_lims)
+    _format_image_axes(ax=ax, custom_xy_lims=custom_xy_lims)
     return fig
-
-
-def get_colormap_color(value, cmap='viridis', vmin=0, vmax=1):
-    # norm = plt.Normalize(vmin, vmax)
-    norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
-    cmap = matplotlib.colormaps.get_cmap(cmap)  # PiYG
-    rgb = cmap(norm(abs(value)))[:3]  # will return rgba, we take only first 3 so we get rgb
-    color = matplotlib.colors.rgb2hex(rgb)
-    return color
 
 
 def plot_ccf_section_raster(ccf_img, section_z, 
@@ -331,7 +234,7 @@ def plot_ccf_section_raster(ccf_img, section_z,
     else:
         ccf_region_names = list(set(section_region_names).intersection(ccf_region_names))
 
-    palette, edgecolor, alpha = expand_palette(palette, ccf_region_names)
+    palette, edgecolor, alpha = _expand_palette(palette, ccf_region_names)
     
     regions = ccf_region_names if palette is None else [x for x in ccf_region_names if x in palette]
         
@@ -344,22 +247,6 @@ def plot_ccf_section_raster(ccf_img, section_z,
                    for name in regions]
     return
 
-def fill_nan(img):
-    return np.where(img, 1, np.nan)
-
-def palette_to_rgba_lookup(palette, index):
-    # rgba_lookup = index.map(lambda x: to_rgb(palette[x]))
-    # rgba_lookup = rgba_lookup.reindex(range(max_val), fill_value=0)
-    max_val = np.max(index.index)
-    rgba_lookup = np.zeros((max_val, 4))
-    # fill only values in index and also in palette
-    # rest remain transparent (alpha=0)
-    for i in index.index:
-        name = index[i]
-        if name in palette:
-            rgba_lookup[i,:] = to_rgba(palette[name])
-    rgba_lookup[0,:] = [1, 1, 1, 0]
-    return rgba_lookup
     
 def plot_raster_all(imdata, index, boundary_img=None, palette=None, regions=None, resolution=10e-3,
                        edgecolor='black', edge_width=1, alpha=1, ax=None):
@@ -370,7 +257,7 @@ def plot_raster_all(imdata, index, boundary_img=None, palette=None, regions=None
     if palette is not None:
         if regions:
             palette = {x: y for x, y in palette.items() if x in regions}
-        rgba_lookup = palette_to_rgba_lookup(palette, index)
+        rgba_lookup = _palette_to_rgba_lookup(palette, index)
         im_regions = rgba_lookup[imdata, :]
         ax.imshow(im_regions, **kwargs)
         
@@ -383,7 +270,7 @@ def plot_raster_all(imdata, index, boundary_img=None, palette=None, regions=None
             im_edges = rgba_lookup[boundary_img, 3] != 0
         elif regions is not None:
             edge_palette = {x: 'k' for x in regions}
-            rgba_lookup = palette_to_rgba_lookup(edge_palette, index)
+            rgba_lookup = _palette_to_rgba_lookup(edge_palette, index)
             im_edges = rgba_lookup[boundary_img, 3] != 0
         else:
             im_edges = boundary_img
@@ -417,6 +304,117 @@ def plot_metrics_ccf_raster(ccf_img, metric_series, sections,
         
         plot_ccf_section_raster(ccf_img, section_z, palette, 
                                 structure_index=structure_index, legend=False, ax=ax)
-        format_image_axes(ax=ax, axes=axes)
+        _format_image_axes(ax=ax, axes=axes)
         figs.append(fig)
     return figs
+
+
+# ------------------------- DataFrame Preprocessing ------------------------- #
+
+def _filter_by_xy_lims(data, x_col, y_col, custom_xy_lims):
+    '''custom_xy_lims =[xlim, xlim, ylim, ylim]'''
+    # need to detect min & max because of how the abc atlas coordinates are 
+    # oriented, i.e. abs(ymin) > abs(ymax) but ymin=bottom & ymax=top
+    xmin = min(custom_xy_lims[:2])
+    xmax = max(custom_xy_lims[:2])
+    ymin = min(custom_xy_lims[2:])
+    ymax = max(custom_xy_lims[2:])
+    
+    # can handle both adata or obs
+    if hasattr(data, 'obs'):
+        adata = data
+        subset = ((adata.obs[x_col] >= xmin) & (adata.obs[x_col] <= xmax) &
+                  (adata.obs[y_col] >= ymin) & (adata.obs[y_col] <= ymax)
+                 )
+    else:
+        obs = data
+        subset = ((obs[x_col] >= xmin) & (obs[x_col] <= xmax) &
+                  (obs[y_col] >= ymin) & (obs[y_col] <= ymax)
+                 )
+        
+    return data[subset]
+
+
+# ------------------------- Color Palette Handling ------------------------- #
+
+def _expand_palette(palette, ccf_names):
+    edgecolor = None
+    alpha = 0.6
+    if palette is None:
+        palette = dict(zip(ccf_names, sns.color_palette(glasbey, n_colors=len(ccf_names))))
+    elif palette=='greyscale':
+        palette = {x: '#BBBBBB' for x in ccf_names}
+        edgecolor = 'grey'
+        alpha = 1
+    elif palette=='allen_reference_atlas':
+        palette = {x: '#FE8084' for x in ccf_names} # lighter==#FF90A0, darker==#FE8084
+        edgecolor = 'black'
+        alpha = 1
+    elif palette=='dark_outline':
+        palette = None
+        edgecolor = 'grey'
+        alpha = 1
+    elif palette=='light_outline':
+        palette = None
+        edgecolor = 'lightgrey'
+        alpha = 1
+    else:
+        edgecolor = 'grey'
+        alpha = 1
+    return palette, edgecolor, alpha
+
+
+def _generate_palette(names, palette_to_match=None):
+    sns_palette = sns.color_palette(glasbey, n_colors=len(names))
+    if palette_to_match is not None:
+        point_palette = palette_to_match.copy()
+        extra_names = names.difference(palette_to_match.keys())
+        extra_palette = dict(zip(extra_names, sns_palette[-len(extra_names):]))
+        point_palette.update(extra_palette)
+    else:
+        point_palette = dict(zip(names, sns_palette))
+    return point_palette
+
+
+def _palette_to_rgba_lookup(palette, index):
+    # rgba_lookup = index.map(lambda x: to_rgb(palette[x]))
+    # rgba_lookup = rgba_lookup.reindex(range(max_val), fill_value=0)
+    max_val = np.max(index.index)
+    rgba_lookup = np.zeros((max_val, 4))
+    # fill only values in index and also in palette
+    # rest remain transparent (alpha=0)
+    for i in index.index:
+        name = index[i]
+        if name in palette:
+            rgba_lookup[i,:] = to_rgba(palette[name])
+    rgba_lookup[0,:] = [1, 1, 1, 0]
+    return rgba_lookup
+
+
+# ----------------------------- Plot Formatting ----------------------------- #
+
+def _format_image_axes(ax, axes=False, set_lims='whole', custom_xy_lims=[]):
+    ax.axis('image')
+    if not axes:
+        sns.despine(left=True, bottom=True)
+        ax.set_xticks([])
+        ax.set_yticks([])
+    ax.set_xlabel(None)
+    ax.set_ylabel(None)
+    # (set_lims==True) is for backwards compatibility
+    if (set_lims=='whole') | (set_lims==True):
+        ax.set_xlim([2.5, 8.5])
+        ax.set_ylim([7, 4])
+    elif set_lims=='left_hemi':
+        ax.set_xlim([2.5, 6])
+        ax.set_ylim([7, 4])
+    elif set_lims=='right_hemi':
+        ax.set_xlim([5, 8.5])
+        ax.set_ylim([7, 4])
+    # custom_xy_lims supercedes set_lims
+    if custom_xy_lims!=[]:
+        if len(custom_xy_lims)==4:
+            ax.set_xlim(custom_xy_lims[:2])
+            ax.set_ylim(custom_xy_lims[2:])
+        else:
+            print('incorrect custom_xy_lims detected, must be [x_min,x_max,y_min,y_max]')
