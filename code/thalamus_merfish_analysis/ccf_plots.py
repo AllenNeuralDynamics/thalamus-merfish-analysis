@@ -68,7 +68,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
         ax.set_title('z='+str(section)+'\n'+point_hue)
         
         # display CCF shapes
-        plot_ccf_section_raster(ccf_polygons, section, boundary_img=boundary_img,
+        plot_ccf_section(ccf_polygons, section, boundary_img=boundary_img,
                                 ccf_region_names=ccf_names, palette=shape_palette, 
                                 structure_index=get_ccf_index(level=ccf_level),
                                 legend=(legend=='ccf'), ax=ax)
@@ -155,7 +155,7 @@ def plot_expression_ccf(adata, gene, ccf_polygons,
     return figs
 
 
-def plot_metrics_ccf_raster(ccf_img, metric_series, sections, 
+def plot_metrics_ccf(ccf_img, metric_series, sections, 
                             structure_index=None,
                             cmap='viridis', cb_label='metric', 
                             vmin=None, vmax=None,
@@ -177,7 +177,7 @@ def plot_metrics_ccf_raster(ccf_img, metric_series, sections,
         img.set_visible(False)
         plt.colorbar(img, orientation='vertical', label=cb_label, shrink=0.75)
         
-        plot_ccf_section_raster(ccf_img, section_z, palette, 
+        plot_ccf_section(ccf_img, section_z, palette, 
                                 structure_index=structure_index, legend=False, ax=ax)
         _format_image_axes(ax=ax, axes=axes)
         figs.append(fig)
@@ -212,12 +212,12 @@ def plot_expression_ccf_section(adata_or_obs, gene, ccf_polygons,
 
     # Plot ccf annotation in front of gene expression
     if highlight==[]:
-        plot_ccf_section_raster(ccf_polygons, section_z, palette='dark_outline',
+        plot_ccf_section(ccf_polygons, section_z, palette='dark_outline',
                                 ccf_region_names=nuclei, boundary_img=boundary_img, ax=ax, **kwargs)
     elif highlight!=[]:
-        plot_ccf_section_raster(ccf_polygons, section_z, palette='light_outline',
+        plot_ccf_section(ccf_polygons, section_z, palette='light_outline',
                                 ccf_region_names=nuclei, ax=ax, **kwargs)
-        plot_ccf_section_raster(ccf_polygons, section_z, palette='dark_outline',
+        plot_ccf_section(ccf_polygons, section_z, palette='dark_outline',
                                 ccf_region_names=highlight, ax=ax, **kwargs)
     
     # if you rely solely on set_xlim/ylim, the data is just masked but is
@@ -247,7 +247,7 @@ def plot_expression_ccf_section(adata_or_obs, gene, ccf_polygons,
     return fig
 
 
-def plot_ccf_section_raster(ccf_img, section_z, 
+def plot_ccf_section(ccf_img, section_z, 
                             palette, boundary_img=None,
                             structure_index=None, 
                             ccf_region_names=None, z_resolution=200e-3, legend=True, 
@@ -283,7 +283,7 @@ def plot_ccf_section_raster(ccf_img, section_z,
     
 def plot_raster_all(imdata, index, boundary_img=None, palette=None, regions=None, resolution=10e-3,
                        edgecolor='black', edge_width=1, alpha=1, ax=None):
-    # TODO: move index logic and boundary_img creation out to plot_ccf_section_raster, pass rgba lookups
+    # TODO: move index logic and boundary_img creation out to plot_ccf_section, pass rgba lookups
     extent = resolution * (np.array([0, imdata.shape[0], imdata.shape[1], 0]) - 0.5)
     kwargs = dict(extent=extent, interpolation="none", alpha=alpha)
     
