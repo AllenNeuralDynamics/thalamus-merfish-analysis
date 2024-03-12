@@ -501,17 +501,7 @@ def plot_raster_all(imdata, index, boundary_img=None, palette=None, regions=None
         im_edges = np.where(im_edges[:,:,None]!=0, np.array(to_rgba(edgecolor), ndmin=3), 
                             np.zeros((1,1,4)))
         ax.imshow(im_edges, **kwargs)
-    
-    
-def plot_raster_region(imdata, region_val, resolution=10e-3, facecolor='grey', 
-                       edgecolor='black', edge_width=2, alpha=1, ax=None):
-    extent = (np.array([0, imdata.shape[0], imdata.shape[1], 0]) - 0.5) * resolution
-    kwargs = dict(extent=extent, interpolation="none", alpha=alpha)
-    im_region = (imdata==region_val)
-    # transpose for x,y oriented image
-    ax.imshow(fill_nan(im_region), cmap=ListedColormap([facecolor]), **kwargs)
-    im_bound = binary_dilation(im_region, iterations=edge_width) & ~im_region
-    ax.imshow(fill_nan(im_bound), cmap=ListedColormap([edgecolor]), **kwargs)
+
 
 def plot_metrics_ccf_raster(ccf_img, metric_series, sections, 
                             structure_index=None,
