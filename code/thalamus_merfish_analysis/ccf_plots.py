@@ -11,7 +11,7 @@ from colorcet import glasbey
 from matplotlib.colors import ListedColormap, to_rgba, to_rgb
 from scipy.ndimage import binary_dilation
 
-from .abc_load import get_thalamus_names, get_ccf_index
+from .abc_load import get_thalamus_names, get_ccf_index, get_color_dictionary, CURRENT_VERSION
 from . import ccf_images as cci
 
 
@@ -47,10 +47,15 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
         
         # Set color palette for cell scatter points
         if point_palette is None:
-            # make sure point palette matches shape palette
-            match_palette = ((point_hue in ['CCF_acronym', 'parcellation_substructure']) 
-                and shape_palette not in ('bw','dark_outline','light_outline'))
-            point_palette = _generate_palette(point_group_names, palette_to_match=None)
+            # if point_hue is a taxonomy level, no need to pass in pre-generated
+            # palette as a parameter, just calculate it on the fly
+            if point_hue in ['class','subclass','supertype','cluster']:
+                hue_categories = obs[point_hue].unique().tolist() #.cat.categories.tolist()
+                point_palette = get_color_dictionary(hue_categories, 
+                                                     point_hue, 
+                                                     version=CURRENT_VERSION)
+            else:
+                point_palette = _generate_palette(point_group_names)
         else:
             point_palette = point_palette.copy()
         point_palette.update(other='grey')
@@ -368,19 +373,35 @@ def _expand_palette(palette, ccf_names):
     return palette, edge_color, alpha
 
 
-def _generate_palette(names, palette_to_match=None):
-    sns_palette = sns.color_palette(glasbey, n_colors=len(names))
-    if palette_to_match is not None:
-        point_palette = palette_to_match.copy()
-        extra_names = names.difference(palette_to_match.keys())
-        extra_palette = dict(zip(extra_names, sns_palette[-len(extra_names):]))
-        point_palette.update(extra_palette)
-    else:
-        point_palette = dict(zip(names, sns_palette))
-    return point_palette
+def _generate_palette(ccf_names):
+    ''' Generate a color palette dict for a given list of CCF regions.
+    
+    Parameters
+    ----------
+    ccf_names : list of str
+        List of CCF region names
+        
+    Returns
+    -------
+    palette_dict : dict of (str, RGB tuples)
+        Dictionary of CCF region names and colors
+    '''
+    sns_palette = sns.color_palette(glasbey, n_colors=len(ccf_names))
+    palette_dict = dict(zip(ccf_names, sns_palette))
+    
+    return palette_dict
 
 
 def _palette_to_rgba_lookup(palette, index):
+    ''' Convert a color palette dict to an RGBA lookup table.
+    
+    Parameters
+    ----------
+    palette : dict of (str, )
+        Dictionary of CCF region names and their corresponding colors
+    index : pd.Series
+        Series of CCF region names, 
+    '''
     # rgba_lookup = index.map(lambda x: to_rgb(palette[x]))
     # rgba_lookup = rgba_lookup.reindex(range(max_val), fill_value=0)
     max_val = np.max(index.index)
