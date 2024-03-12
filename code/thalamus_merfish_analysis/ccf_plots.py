@@ -267,12 +267,12 @@ def plot_ccf_section(ccf_img, section_z,
     else:
         ccf_region_names = list(set(section_region_names).intersection(ccf_region_names))
 
-    palette, edgecolor, alpha = _expand_palette(palette, ccf_region_names)
+    palette, edge_color, alpha = _expand_palette(palette, ccf_region_names)
     
     regions = ccf_region_names if palette is None else [x for x in ccf_region_names if x in palette]
         
-    plot_raster_all(img, structure_index, boundary_img=boundary_img, palette=palette, regions=regions,
-                            edgecolor=edgecolor, alpha=alpha, ax=ax)
+    plot_ccf_shapes(img, structure_index, boundary_img=boundary_img, palette=palette, regions=regions,
+                            edge_color=edge_color, alpha=alpha, ax=ax)
     if legend and palette is not None:
         # generate "empty" matplotlib handles to be used by plt.legend() call in 
         # plot_ccf_overlay() (NB: that supercedes any call to plt.legend here)
@@ -281,8 +281,8 @@ def plot_ccf_section(ccf_img, section_z,
     return
 
     
-def plot_raster_all(imdata, index, boundary_img=None, palette=None, regions=None, resolution=10e-3,
-                       edgecolor='black', edge_width=1, alpha=1, ax=None):
+def plot_ccf_shapes(imdata, index, boundary_img=None, palette=None, regions=None, resolution=10e-3,
+                       edge_color='black', edge_width=1, alpha=1, ax=None):
     # TODO: move index logic and boundary_img creation out to plot_ccf_section, pass rgba lookups
     extent = resolution * (np.array([0, imdata.shape[0], imdata.shape[1], 0]) - 0.5)
     kwargs = dict(extent=extent, interpolation="none", alpha=alpha)
@@ -294,7 +294,7 @@ def plot_raster_all(imdata, index, boundary_img=None, palette=None, regions=None
         im_regions = rgba_lookup[imdata, :]
         ax.imshow(im_regions, **kwargs)
         
-    if edgecolor is not None:
+    if edge_color is not None:
         if boundary_img is None:
             boundary_img = cci.label_erosion(imdata, edge_width, fill_val=0, return_edges=True)
             
@@ -308,7 +308,7 @@ def plot_raster_all(imdata, index, boundary_img=None, palette=None, regions=None
         else:
             im_edges = boundary_img
         
-        im_edges = np.where(im_edges[:,:,None]!=0, np.array(to_rgba(edgecolor), ndmin=3), 
+        im_edges = np.where(im_edges[:,:,None]!=0, np.array(to_rgba(edge_color), ndmin=3), 
                             np.zeros((1,1,4)))
         ax.imshow(im_edges, **kwargs)
 
@@ -342,30 +342,30 @@ def _filter_by_xy_lims(data, x_col, y_col, custom_xy_lims):
 # ------------------------- Color Palette Handling ------------------------- #
 
 def _expand_palette(palette, ccf_names):
-    edgecolor = None
+    edge_color = None
     alpha = 0.6
     if palette is None:
         palette = dict(zip(ccf_names, sns.color_palette(glasbey, n_colors=len(ccf_names))))
     elif palette=='greyscale':
         palette = {x: '#BBBBBB' for x in ccf_names}
-        edgecolor = 'grey'
+        edge_color = 'grey'
         alpha = 1
     elif palette=='allen_reference_atlas':
         palette = {x: '#FE8084' for x in ccf_names} # lighter==#FF90A0, darker==#FE8084
-        edgecolor = 'black'
+        edge_color = 'black'
         alpha = 1
     elif palette=='dark_outline':
         palette = None
-        edgecolor = 'grey'
+        edge_color = 'grey'
         alpha = 1
     elif palette=='light_outline':
         palette = None
-        edgecolor = 'lightgrey'
+        edge_color = 'lightgrey'
         alpha = 1
     else:
-        edgecolor = 'grey'
+        edge_color = 'grey'
         alpha = 1
-    return palette, edgecolor, alpha
+    return palette, edge_color, alpha
 
 
 def _generate_palette(names, palette_to_match=None):
