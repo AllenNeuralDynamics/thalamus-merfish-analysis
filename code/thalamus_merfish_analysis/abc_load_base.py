@@ -128,7 +128,7 @@ def filter_by_ccf_region(obs, regions, buffer=0,
     """    
     # TODO: modify to accept adata or obs
     if include_children:
-        regions = get_taxonomy_names(regions)
+        regions = get_ccf_names(regions)
     if buffer > 0:
         obs, _ = label_ccf_spatial_subset(obs, regions,
                                                distance_px=buffer,
@@ -418,13 +418,46 @@ def _get_ccf_names(top_nodes, level=None):
         names = list(set(ccf_labels.loc[th_zi_ind, :].values.flatten()))
     return names
 
-def get_taxonomy_names(top_nodes, level=None):
+def get_ccf_names(top_nodes, level=None):
+    """Get the names of all CCF regions that are children of the 
+    specified list of top-level regions
+
+    Parameters
+    ----------
+    top_nodes
+        list of top-level regions
+    level, optional : {'division', 'structure', 'substructure', 'devccf'}
+        level of the CCF hierarchy to return labels from,
+        or None to return CCF labels at all levels, 
+        or 'devccf' to return labels from Kronman et al. 2023 parcellation,
+        by default None
+
+    Returns
+    -------
+        list of region names
+    """    
     if level=='devccf':
         return _get_devccf_names(top_nodes)
     else:
-        return _get_devccf_names(top_nodes, level=level)
+        return _get_ccf_names(top_nodes, level=level)
 
-def get_ccf_index(level='structure'):
+def get_ccf_index(level='substructure'):
+    """Get an index mapping CCF ideas to (abbreviated) names,
+    at a given taxonomy level
+
+    Parameters
+    ----------
+    top_nodes
+        list of top-level regions
+    level, optional : {'division', 'structure', 'substructure', 'devccf'}
+        level of the CCF hierarchy to return labels from,
+        or 'devccf' to return labels from Kronman et al. 2023 parcellation,
+        by default 'substructure' (lowest level)
+
+    Returns
+    -------
+        Pandas.Series with index CCF IDs and values CCF acronyms
+    """    
     if level=='devccf':
         ccf_df = _get_devccf_metadata()
         index = ccf_df.set_index('ID')['Acronym']
@@ -442,6 +475,21 @@ def _get_cluster_annotations(version=CURRENT_VERSION):
     return df
 
 def get_taxonomy_palette(taxonomy_level, version=CURRENT_VERSION):
+    ''' Get the published color dictionary for a given level of
+    the ABC cell type taxonomy
+    
+    Parameters
+    ----------
+    taxonomy_level : {'cluster', 'supertype', 'subclass', 'class'}
+        specifies the taxonomy level to get labels and colors from
+    version : str, default=CURRENT_VERSION
+        ABC Atlas version of the labels
+        
+    Returns
+    -------
+    color_dict : dict
+        dictionary mapping cell type labels to their official ABC Atlas hex colors
+    '''
     df = _get_cluster_annotations(version=version)
     df = df[df["cluster_annotation_term_set_name"]==taxonomy_level]
     palette = df.set_index('cluster_annotation_term_name')['color_hex_triplet'].to_dict()
