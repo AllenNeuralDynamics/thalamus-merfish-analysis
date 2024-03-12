@@ -8,28 +8,12 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib
 from colorcet import glasbey
-from shapely.plotting import plot_polygon
 from matplotlib.colors import ListedColormap, to_rgba, to_rgb
 from scipy.ndimage import binary_dilation
 
-# TODO: get rid of this import
-# from ccf_polygons import get_outline_polygon, CCF_TH_NAMES
 from .abc_load import get_thalamus_names, get_ccf_index
 from . import ccf_images as cci
 
-def plot_shape(shape: shapely.Polygon | shapely.GeometryCollection, edgecolor='black', **kwargs):    
-    """Plot shapely geometry, 
-    wrapping shapely.plotting.plot_polygon to accept either a Polygon or GeometryCollection.
-    
-    All **kwargs are passed through to plot_polygon, then to matplotlib.Patch
-    """
-    
-    if type(shape) is shapely.GeometryCollection:
-        for subpoly in shape.geoms:
-            patch = plot_polygon(subpoly, add_points=False, edgecolor=edgecolor, **kwargs)
-    else:
-        patch = plot_polygon(shape, add_points=False, edgecolor=edgecolor, **kwargs)
-    return shape
 
 def expand_palette(palette, ccf_names):
     edgecolor = None
@@ -57,28 +41,6 @@ def expand_palette(palette, ccf_names):
         alpha = 1
     return palette, edgecolor, alpha
 
-def plot_ccf_section(ccf_polygons, section, highlight=[], palette=None, 
-                     labels=True, bg_shapes=True, ax=None):
-    ccf_names = ccf_polygons.index.get_level_values('name')
-    palette, edgecolor, alpha = expand_palette(palette, ccf_names)
-    if highlight=='all':
-        highlight = ccf_names
-    if palette is None: 
-        palette = {}
-    patches = []
-    # could simplify this to single loop over polygons
-    if bg_shapes:
-        for name in ccf_names:
-            if section in ccf_polygons.loc[name].index and name not in highlight:
-                patches.append(plot_shape(ccf_polygons.loc[(name, section), "geometry"], 
-                                          facecolor=palette.get(name), ax=ax, 
-                                alpha=0.1, label=name if labels else None))
-    for name in highlight:
-        if section in ccf_polygons.loc[name].index:
-            patches.append(plot_shape(ccf_polygons.loc[(name, section), "geometry"],
-                                          facecolor=palette.get(name), ax=ax, 
-                           alpha=alpha, edgecolor=edgecolor, label=name if labels else None))
-    return patches
 
 def generate_palette(names, palette_to_match=None):
     sns_palette = sns.color_palette(glasbey, n_colors=len(names))
@@ -109,9 +71,7 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
     if shape_palette is None:
         shape_palette = generate_palette(ccf_names)
     
-    # Determine if we have rasterized CCF volumes or polygons-from-cells
-    raster_regions = type(ccf_polygons) is np.ndarray
-    if raster_regions & isinstance(sections[0], str):
+    if isinstance(sections[0], str):
         raise Exception('str type detected for ''sections''. You must use ''z_section'' OR ''z_reconstructed'' as your ''section_col'' in order to plot the rasterized CCF volumes.')
         
     # Clean up point hue column    
@@ -146,15 +106,10 @@ def plot_ccf_overlay(obs, ccf_polygons, sections=None, ccf_names=None,
         ax.set_title('z='+str(section)+'\n'+point_hue)
         
         # display CCF shapes
-        if raster_regions:
-            plot_ccf_section_raster(ccf_polygons, section, boundary_img=boundary_img,
-                                    ccf_region_names=ccf_names, palette=shape_palette, 
-                                    structure_index=get_ccf_index(level=ccf_level),
-                                    legend=(legend=='ccf'), ax=ax)
-        else:
-            plot_ccf_section(ccf_polygons, section, highlight=highlight, 
-                             palette=shape_palette, bg_shapes=bg_shapes,
-                             labels=legend in ['ccf', 'both'], ax=ax)
+        plot_ccf_section_raster(ccf_polygons, section, boundary_img=boundary_img,
+                                ccf_region_names=ccf_names, palette=shape_palette, 
+                                structure_index=get_ccf_index(level=ccf_level),
+                                legend=(legend=='ccf'), ax=ax)
 
         # display background cells in grey
         if bg_cells is not None:
@@ -236,23 +191,6 @@ def filter_by_xy_lims(data, x_col, y_col, custom_xy_lims):
                  )
         
     return data[subset]
-
-        
-def plot_section_outline(outline_polygons, sections, axes=False, 
-                         facecolor='none', edgecolor='black', alpha=0.05):
-    ''' Displays the per-section outline_polygons from get_outline_polygon() for
-    the specified sections'''
-    if isinstance(sections, str):
-        sections = [sections]
-    
-    for section in sections:
-        plot_shape(outline_polygons[section],facecolor=facecolor,
-                   edgecolor=edgecolor,alpha=alpha)
-        if not axes:
-            plt.gca().set_aspect('equal')
-            plt.box(False)
-            plt.xticks([])
-            plt.yticks([])
             
             
 def plot_nucleus_cluster_comparison_slices(obs, ccf_polygons, nuclei, 
@@ -314,8 +252,7 @@ def plot_expression_ccf_section(adata_or_obs, gene, ccf_polygons,
                         **kwargs):
     if nuclei is None:
         nuclei = get_thalamus_names()
-    # determine if we have rasterized CCF volumes or polygons-from-cells
-    raster_regions = type(ccf_polygons) is np.ndarray
+
     obs_df = type(adata_or_obs) is pd.DataFrame
     obs = adata_or_obs if obs_df else adata_or_obs.obs
     # need to parse both string & num sections so can't use query()
@@ -330,27 +267,13 @@ def plot_expression_ccf_section(adata_or_obs, gene, ccf_polygons,
 
     # Plot ccf annotation in front of gene expression
     if highlight==[]:
-        if raster_regions:
-            plot_ccf_section_raster(ccf_polygons, section_z, palette='dark_outline',
-                                    ccf_region_names=nuclei, boundary_img=boundary_img, ax=ax, **kwargs)
-        else:
-            plot_ccf_section(ccf_polygons, section, 
-                                highlight=nuclei, 
-                                bg_shapes=bg_shapes, 
-                                ax=ax, palette='dark_outline', **kwargs)
+        plot_ccf_section_raster(ccf_polygons, section_z, palette='dark_outline',
+                                ccf_region_names=nuclei, boundary_img=boundary_img, ax=ax, **kwargs)
     elif highlight!=[]:
-        if raster_regions:
-            plot_ccf_section_raster(ccf_polygons, section_z, palette='light_outline',
-                                    ccf_region_names=nuclei, ax=ax, **kwargs)
-            plot_ccf_section_raster(ccf_polygons, section_z, palette='dark_outline',
-                                    ccf_region_names=highlight, ax=ax, **kwargs)
-        else:
-            plot_ccf_section(ccf_polygons, section, highlight=nuclei, 
-                                palette='light_outline', bg_shapes=bg_shapes, 
-                                ax=ax, **kwargs)
-            plot_ccf_section(ccf_polygons, section, highlight=highlight, 
-                                palette='dark_outline', bg_shapes=bg_shapes, 
-                                ax=ax, **kwargs)
+        plot_ccf_section_raster(ccf_polygons, section_z, palette='light_outline',
+                                ccf_region_names=nuclei, ax=ax, **kwargs)
+        plot_ccf_section_raster(ccf_polygons, section_z, palette='dark_outline',
+                                ccf_region_names=highlight, ax=ax, **kwargs)
     
     # if you rely solely on set_xlim/ylim, the data is just masked but is
     # still actually present in the pdf savefig
@@ -387,39 +310,6 @@ def get_colormap_color(value, cmap='viridis', vmin=0, vmax=1):
     color = matplotlib.colors.rgb2hex(rgb)
     return color
 
-def plot_metrics_ccf(obs, ccf_polygons, metric_series, sections=None, 
-                     cmap='viridis', cb_label='metric',
-                     highlight=[], legend='cells', bg_shapes=True, s=2, axes=False):
-    obs = obs.copy()
-    if sections is None:
-        sections = obs['section'].unique()
-    else:
-        ccf_polygons = ccf_polygons[ccf_polygons.index.isin(sections, level="section")]
-    ccf_names = ccf_polygons.index.get_level_values('name')
-    
-    # convert metric to color palette
-    vmin = np.min(metric_series.values)
-    vmax = np.max(metric_series.values)
-    metric_colors = [get_colormap_color(value, cmap=cmap, vmin=vmin, vmax=vmax) 
-                     for (name, value) in pd.Series.items(metric_series)]
-    shape_palette = dict(zip(metric_series.index, metric_colors))
-    
-    for section in sections:
-        print(section)
-        fig, ax = plt.subplots(figsize=(8,4))
-        
-        patches = plot_ccf_section(ccf_polygons, section, highlight=highlight, palette=shape_palette, bg_shapes=bg_shapes,
-                                   labels=legend in ['ccf', 'both'], ax=ax)
-        # if legend:
-        #     plt.legend(ncols=2, loc='upper center', bbox_to_anchor=(0.5, 0))
-        #     # plt.legend(ncols=1, loc='center left', bbox_to_anchor=(0.98, 0.5), fontsize=16)
-        
-        format_image_axes(ax=ax, axes=axes)
-        # hidden image just to generate colorbar
-        img = ax.imshow(np.array([[vmin,vmax]]), cmap=cmap)
-        img.set_visible(False)
-        plt.colorbar(img, orientation='vertical', label=cb_label, shrink=0.75)
-        plt.show()
 
 def plot_ccf_section_raster(ccf_img, section_z, 
                             palette, boundary_img=None,
