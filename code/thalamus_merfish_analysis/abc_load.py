@@ -116,20 +116,20 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
             cells_md_df = loaded_metadata
         else:
             cells_md_df = get_combined_metadata(cirro_names=cirro_names, 
-                                        flip_y=flip_y,
-                                        round_z=round_z,
-                                        drop_unused=(not with_colors),
-                                        version=version,
-                                        realigned=realigned)
+                                                flip_y=flip_y,
+                                                round_z=round_z,
+                                                drop_unused=(not with_colors),
+                                                version=version,
+                                                realigned=realigned)
         # subset to TH+ZI dataset
         if subset_to_TH_ZI:
-            cells_md_df = label_thalamus_spatial_subset(cells_md_df,
-                                                        flip_y=flip_y,
-                                                        distance_px=20,
-                                                        cleanup_mask=True,
-                                                        drop_end_sections=True,
-                                                        filter_cells=True,
-                                                        realigned=realigned)
+            cells_md_df, _ = label_thalamus_spatial_subset(cells_md_df,
+                                                           flip_y=flip_y,
+                                                           distance_px=20,
+                                                           cleanup_mask=True,
+                                                           drop_end_sections=True,
+                                                           filter_cells=True,
+                                                           realigned=realigned)
         cell_labels = adata.obs_names.intersection(cells_md_df.index)
         adata = adata[cell_labels]
         adata = adata.to_memory()
@@ -173,13 +173,14 @@ def add_tiled_obsm(adata, offset=10, coords_name='section', obsm_field='coords_t
     return adata
 
 def filter_by_thalamus_coords(obs, realigned=False, buffer=0):
+    # TODO: modify to accept adata or obs
     if buffer > 0:
-        obs = label_thalamus_spatial_subset(obs,
-                                    distance_px=buffer,
-                                    cleanup_mask=True,
-                                    drop_end_sections=True,
-                                    filter_cells=True,
-                                    realigned=realigned)
+        obs, _ = label_thalamus_spatial_subset(obs,
+                                               distance_px=buffer,
+                                               cleanup_mask=True,
+                                               drop_end_sections=True,
+                                               filter_cells=True,
+                                               realigned=realigned)
     else:
         ccf_label = 'parcellation_structure_realigned' if realigned else 'parcellation_structure'
         th_names = get_thalamus_names(level='structure')
@@ -314,7 +315,8 @@ def get_combined_metadata(
     return cells_df
 
 
-def get_ccf_labels_image(resampled=True, realigned=False, subset_to_left_hemi=False):
+def get_ccf_labels_image(resampled=True, realigned=False, 
+                         subset_to_left_hemi=False):
     '''Loads rasterized image volumes of the CCF parcellation as 3D numpy array.
     
     Voxels are labelled with assigned brain structure parcellation ID #.
@@ -440,9 +442,9 @@ def label_thalamus_spatial_subset(cells_df, flip_y=False, distance_px=20,
                                 & (cells_df[coords[2]] < 8.39))
     # optionally, remove non-TH+ZI cells from df
     if filter_cells:
-        return cells_df[cells_df[field_name]].copy().drop(columns=[field_name])
+        return cells_df[cells_df[field_name]].copy().drop(columns=[field_name]), mask_img
     else:
-        return cells_df
+        return cells_df, mask_img
 
 
 def sectionwise_dilation(mask_img, distance_px, true_radius=False):
@@ -656,7 +658,7 @@ def get_taxonomy_label_from_alias(aliases, taxonomy_level, version='20230830',
         return label_list
     
 def get_color_dictionary(labels, taxonomy_level, label_format='id_label',
-                         version='20230830'):
+                         version='20230830', as_list=False):
     ''' Returns a color dictionary for the specified cell types labels.
     
     Parameters
@@ -703,10 +705,12 @@ def get_color_dictionary(labels, taxonomy_level, label_format='id_label',
     # use cluster_alias to map to colors
     color_query_df = color_df.set_index('cluster_alias').loc[cluster_alias_list].reset_index()
     colors_list = color_query_df[taxonomy_level+'_color'].to_list()
-
-    color_dict = dict(zip(labels,colors_list))
     
-    return color_dict
+    if as_list:
+        return colors_list
+    else:
+        color_dict = dict(zip(labels,colors_list))
+        return color_dict
 
 @lru_cache
 def get_ccf_metadata():
@@ -718,20 +722,40 @@ def get_ccf_metadata():
     return ccf_df
 
 @lru_cache
-def get_thalamus_names(level=None):
-    ccf_df = get_ccf_metadata()
-    th_zi_ind = np.hstack(
-            (ccf_df.loc[ccf_df['parcellation_term_acronym']=='TH', 
-                        'parcellation_index'].unique(),
-                ccf_df.loc[ccf_df['parcellation_term_acronym']=='ZI', 
-                        'parcellation_index'].unique())
-    )
+def get_devccf_metadata():
+    devccf_index = pd.read_csv("/data/KimLabDevCCFv001/KimLabDevCCFv001_MouseOntologyStructure.csv",
+                           dtype={'ID':int, 'Parent ID':str})
+    # some quotes have both single and double
+    for x in ['Acronym','Name']:
+        devccf_index[x] = devccf_index[x].str.replace("'","")
+    return devccf_index
 
-    ccf_labels = ccf_df.pivot(index='parcellation_index', values='parcellation_term_acronym', columns='parcellation_term_set_name')
-    if level is not None:
-        th_names = ccf_labels.loc[th_zi_ind, level].values
+import networkx as nx
+@lru_cache
+def get_thalamus_names(level=None):
+    if level=='devccf':
+        devccf_index = get_devccf_metadata().copy()
+        devccf_index['ID'] = devccf_index['ID'].astype(str)
+        th_top_level = ['ZIC', 'CZI', 'RtC', 'Th']
+        g = nx.from_pandas_edgelist(devccf_index, source='Parent ID', target='ID', 
+                            create_using=nx.DiGraph())
+        devccf_index = devccf_index.set_index('Acronym')
+        th_ids = list(set.union(*(set(nx.descendants(g, devccf_index.loc[x, 'ID'])) 
+                        for x in th_top_level)))
+        th_names = devccf_index.reset_index().set_index('ID').loc[th_ids, 'Acronym']
     else:
-        th_names = list(set(ccf_labels.loc[th_zi_ind, :].values.flatten()))
+        ccf_df = get_ccf_metadata()
+        th_zi_ind = np.hstack(
+                (ccf_df.loc[ccf_df['parcellation_term_acronym']=='TH', 
+                            'parcellation_index'].unique(),
+                    ccf_df.loc[ccf_df['parcellation_term_acronym']=='ZI', 
+                            'parcellation_index'].unique())
+        )
+        ccf_labels = ccf_df.pivot(index='parcellation_index', values='parcellation_term_acronym', columns='parcellation_term_set_name')
+        if level is not None:
+            th_names = ccf_labels.loc[th_zi_ind, level].values
+        else:
+            th_names = list(set(ccf_labels.loc[th_zi_ind, :].values.flatten()))
     return th_names
 
 def get_thalamus_substructure_names():
@@ -739,9 +763,13 @@ def get_thalamus_substructure_names():
 
 @lru_cache
 def get_ccf_index(level='structure'):
-    ccf_df = get_ccf_metadata()
-    # parcellation_index to acronym
-    index = ccf_df.query(f"parcellation_term_set_name=='{level}'").set_index('parcellation_index')['parcellation_term_acronym']
+    if level=='devccf':
+        ccf_df = get_devccf_metadata()
+        index = ccf_df.set_index('ID')['Acronym']
+    else:
+        ccf_df = get_ccf_metadata()
+        # parcellation_index to acronym
+        index = ccf_df.query(f"parcellation_term_set_name=='{level}'").set_index('parcellation_index')['parcellation_term_acronym']
     return index
 
 @lru_cache

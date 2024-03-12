@@ -1,6 +1,7 @@
 from sklearn.metrics import pairwise_distances
 import scipy.spatial.distance as ssd
 import scipy.cluster.hierarchy as sch
+import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
@@ -95,6 +96,8 @@ def plot_ordered_similarity_heatmap(D, y_order=None, x_order=None, y_names=None,
         y_order = list(range(D.shape[0]))
     if x_order is None: 
         x_order = y_order
+        
+    fig = plt.figure()
     
     Dplot = D[np.ix_(y_order,x_order)]
     if triangular:
@@ -102,5 +105,11 @@ def plot_ordered_similarity_heatmap(D, y_order=None, x_order=None, y_names=None,
     yticklabels = np.array(y_names)[y_order] if y_names is not None else y_order
     xticklabels = np.array(x_names)[x_order] if x_names is not None else x_order
     sns.heatmap(1-Dplot, yticklabels=yticklabels, xticklabels=xticklabels, 
-                cbar_kws=dict(label=label), cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
-    plt.axis('image')
+                cbar_kws=dict(label=label), cmap=cmap, vmin=vmin, vmax=vmax, 
+                **kwargs)
+    # format figure
+    plt.rcParams.update({'font.size': 14})
+    ax = fig.gca()
+    ax.axis('equal')
+    
+    return fig

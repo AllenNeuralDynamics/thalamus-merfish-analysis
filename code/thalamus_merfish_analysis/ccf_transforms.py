@@ -41,7 +41,7 @@ def get_sample_points_centered(sdata, source, target, scale=None, ngrid=1100):
 
 def get_sample_points_square(sdata, source, target, scale=None, ngrid=1100):
     inv_transform = sd.transformations.get_transformation_between_coordinate_systems(sdata, target, source)
-    target_z = target['z'].max().compute()
+    target_z = next(target.itertuples()).z
     # xyz grid (pixel centers)
     grid = np.stack((*np.mgrid[0:ngrid, 0:ngrid][::-1], np.zeros((ngrid, ngrid))), axis=0)
     grid_points = sd.models.PointsModel.parse(grid.reshape(3, -1).T)
