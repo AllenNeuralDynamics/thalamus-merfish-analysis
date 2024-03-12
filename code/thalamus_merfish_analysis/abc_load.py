@@ -1,42 +1,9 @@
-from pathlib import Path
-from functools import lru_cache
-from itertools import chain
-import json
-import numpy as np
-import pandas as pd
-import anndata as ad
-import scipy.ndimage as ndi
-import nibabel
+from .abc_load_base import *
 
-'''
-Functions for loading a thalamus + zona incerta (TH+ZI) spatial subset of the
-ABC Atlas MERFISH dataset.
 
-functions:
-    load_adata:
-        loads ABC Atlas MERFISH dataset as an anndata object
-    filter_adata_by_class:
-        filters anndata obj to only include cells from TH & ZI taxonomy classes
-    get_combined_metadata:
-        loads the cell metadata csv, with memory/speed improvements
-    get_ccf_labels_image:
-        loads rasterized image volumes of the CCF parcellation
-    label_thalamus_spatial_subset:
-        labels cells that are in the thalamus spatial subset of the ABC atlas
-    sectionwise_dilation:
-        dilates a stack of 2D binary masks by a specified radius (in px)
-    cleanup_mask_regions:
-        removes too-small, mistaken parcellation regions from TH/ZI binary masks
-    convert_taxonomy_labels:
-        converts cell type labels between different taxonomy versions
-    get_color_dictionary:
-        returns dictionary of ABC Atlas hex colors for an input list of cell 
-        type labels
-'''
+_DEVCCF_TOP_NODES_THALAMUS = ['ZIC', 'CZI', 'RtC', 'Th']
+_CCF_TOP_NODES_THALAMUS = ['TH', 'ZI']
 
-ABC_ROOT = Path("/data/abc_atlas/")
-CURRENT_VERSION = "20230830"
-BRAIN_LABEL = 'C57BL6J-638850'
 
 _CIRRO_COLUMNS = {
     'x':'cirro_x',
@@ -46,7 +13,6 @@ _CIRRO_COLUMNS = {
     'brain_section_label':'section',
     'parcellation_substructure':'CCF_acronym'
 }
-        
 
 def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
                with_metadata=True, flip_y=True, round_z=True, cirro_names=False, 
@@ -147,45 +113,6 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
     
     return adata
 
-def add_tiled_obsm(adata, offset=10, coords_name='section', obsm_field='coords_tiled'):
-    """Add obsm coordinates to AnnData object from section coordinates in adata.obs,
-    but with sections tiled along the x-axis at a given separation.
-
-    Parameters
-    ----------
-    adata
-        AnnData object
-    offset, optional
-        separation of sections, by default 10 (5 sufficient for hemi-sections)
-    coords_name, optional
-        suffix of the coordinate type to use, by default 'section'
-    obsm_field, optional
-        name for the new obsm entry, by default 'coords_tiled'
-
-    Returns
-    -------
-        AnnData object, modified in place
-    """
-    obsm = np.vstack([adata.obs[f"x_{coords_name}"] 
-                        + offset*adata.obs[f"z_{coords_name}"].rank(method="dense"),
-                        adata.obs[f"y_{coords_name}"]]).T
-    adata.obsm[coords_tiled] = obsm
-    return adata
-
-def filter_by_thalamus_coords(obs, realigned=False, buffer=0):
-    # TODO: modify to accept adata or obs
-    if buffer > 0:
-        obs, _ = label_thalamus_spatial_subset(obs,
-                                               distance_px=buffer,
-                                               cleanup_mask=True,
-                                               drop_end_sections=True,
-                                               filter_cells=True,
-                                               realigned=realigned)
-    else:
-        ccf_label = 'parcellation_structure_realigned' if realigned else 'parcellation_structure'
-        th_names = get_thalamus_names(level='structure')
-        obs = obs[obs[ccf_label].isin(th_names)]
-    return obs
 
 def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
                           filter_midbrain=True, filter_others=True):
@@ -235,135 +162,20 @@ def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
             subset = ~th_zi_adata['class'].isin(classes_to_exclude)
     return th_zi_adata[subset]
 
-
-def get_combined_metadata(
-    version=CURRENT_VERSION,
-    realigned=False,
-    drop_unused=True, 
-    flip_y=False, 
-    round_z=True, 
-    cirro_names=False
-    ):
-    '''Load the cell metadata csv, with memory/speed improvements.
-    Selects correct dtypes and optionally renames and drops columns
-    
-    Parameters
-    ----------
-    version : str, optional
-        version to load, by default=CURRENT_VERSION
-    realigned : bool, default=False
-        if True, load metadata from realignment results data asset,
-        containing 'ccf_realigned' coordinates 
-    drop_unused : bool, default=True
-        don't load uninformative or unused columns (color etc)
-    flip_y : bool, default=False
-        flip section and reconstructed y coords so up is positive
-    round_z : bool, default=True
-        rounds z_section, z_reconstructed coords to nearest 10ths place to
-        correct for overprecision in a handful of z coords
-    cirro_names : bool, default=False
-        rename columns to match older cirro anndata names
-
-    Returns
-    -------
-        cells_df pandas dataframe
-    '''
-    float_columns = [
-        'average_correlation_score', 
-        'x_ccf', 'y_ccf', 'z_ccf', 
-        'x_section', 'y_section', 'z_section', 
-        'x_reconstructed', 'y_reconstructed', 'z_reconstructed',
-        ]
-    cat_columns = [
-        'brain_section_label', 'cluster_alias', 
-        'neurotransmitter', 'class',
-        'subclass', 'supertype', 'cluster', 
-        'parcellation_index',  
-        'parcellation_division',
-        'parcellation_structure', 'parcellation_substructure'
-        # 'parcellation_organ', 'parcellation_category',
-        ]
-    dtype = dict(cell_label='string', 
-                **{x: 'float' for x in float_columns}, 
-                **{x: 'category' for x in cat_columns})
-    usecols = list(dtype.keys()) if drop_unused else None
-
-    if realigned:
-        # TODO: add version to the data asset mount point to allow multiple
-        cells_df = pd.read_parquet("/data/realigned/abc_realigned_metadata_thalamus-boundingbox.parquet")
-        if version != CURRENT_VERSION:
-            old_df = pd.read_csv(
-                ABC_ROOT/f"metadata/MERFISH-C57BL6J-638850-CCF/{version}/views/cell_metadata_with_parcellation_annotation.csv", 
-                dtype=dtype, usecols=usecols, index_col='cell_label', engine='c')
-            cells_df = old_df.join(cells_df[cells_df.columns.difference(old_df.columns)])
+def filter_by_thalamus_coords(obs, realigned=False, buffer=0):
+    # TODO: modify to accept adata or obs
+    if buffer > 0:
+        obs, _ = label_thalamus_spatial_subset(obs,
+                                               distance_px=buffer,
+                                               cleanup_mask=True,
+                                               drop_end_sections=True,
+                                               filter_cells=True,
+                                               realigned=realigned)
     else:
-        cells_df = pd.read_csv(
-            ABC_ROOT/f"metadata/MERFISH-C57BL6J-638850-CCF/{version}/views/cell_metadata_with_parcellation_annotation.csv", 
-            dtype=dtype, usecols=usecols, index_col='cell_label', engine='c')
-    if flip_y:
-        cells_df[['y_section', 'y_reconstructed']] *= -1
-    if round_z:
-        cells_df['z_section'] = cells_df['z_section'].round(1)
-        cells_df['z_reconstructed'] = cells_df['z_reconstructed'].round(1)
-    if cirro_names:
-        cells_df = cells_df.rename(columns=_CIRRO_COLUMNS)
-        
-    cells_df["left_hemisphere"] = cells_df["z_ccf"] < 5.7
-    if realigned:
-        cells_df["left_hemisphere_realigned"] = cells_df["z_ccf_realigned"] < 5.7
-    cells_df = cells_df.replace("ZI-unassigned", "ZI")
-    return cells_df
-
-
-def get_ccf_labels_image(resampled=True, realigned=False, 
-                         subset_to_left_hemi=False):
-    '''Loads rasterized image volumes of the CCF parcellation as 3D numpy array.
-    
-    Voxels are labelled with assigned brain structure parcellation ID #.
-    Rasterized voxels are 10 x 10 x 10 micrometers. First (x) axis is 
-    anterior-to-posterior, the second (y) axis is superior-to-inferior 
-    (dorsal-to-ventral) and third (z) axis is left-to-right.
-    
-    See ccf_and_parcellation_annotation_tutorial.html and 
-    merfish_ccf_registration_tutorial.html in ABC Atlas Data Access JupyterBook
-    (https://alleninstitute.github.io/abc_atlas_access/notebooks/) for more
-    details on the CCF image volumes.
-    
-    Parameters
-    ----------
-    resampled : bool, default=True
-        if True, loads the "resampled CCF" labels, which have been aligned into
-        the MERFISH space/coordinates
-        if False, loads CCF labels that are in AllenCCFv3 average template space
-    realigned : bool, default=False
-        if resampled and realigned are both True, loads CCF labels from manual realignment, 
-        which have been aligned into the MERFISH space/coordinates
-        (incompatible with resampled=False as these haven't been calculated)
-    subset_to_left_hemi : bool, default=False
-        return a trimmed image to use visualizing single-hemisphere results
-    
-    Returns
-    -------
-    imdata
-        numpy array containing rasterized image volumes of CCF parcellation
-    '''
-    if resampled and not realigned:
-        path = ABC_ROOT/"image_volumes/MERFISH-C57BL6J-638850-CCF/20230630/resampled_annotation.nii.gz"
-    elif not resampled and not realigned:
-        path = ABC_ROOT/"image_volumes/Allen-CCF-2020/20230630/annotation_10.nii.gz"
-    elif resampled and realigned:
-        path = "/data/realigned/abc_realigned_ccf_labels.nii.gz"
-    else:
-        raise UserWarning("This label image is not available")
-    img = nibabel.load(path)
-    # could maybe keep the lazy dataobj and not convert to numpy?
-    imdata = np.array(img.dataobj).astype(int)
-    if subset_to_left_hemi:
-        # erase right hemisphere (can't drop or indexing won't work correctly)
-        imdata[550:,:,:] = 0
-        
-    return imdata
-
+        ccf_label = 'parcellation_structure_realigned' if realigned else 'parcellation_structure'
+        names = get_thalamus_names(level='structure')
+        obs = obs[obs[ccf_label].isin(names)]
+    return obs
 
 def label_thalamus_spatial_subset(cells_df, flip_y=False, distance_px=20, 
                                   cleanup_mask=True, drop_end_sections=True,
@@ -446,84 +258,7 @@ def label_thalamus_spatial_subset(cells_df, flip_y=False, distance_px=20,
     else:
         return cells_df, mask_img
 
-
-def sectionwise_dilation(mask_img, distance_px, true_radius=False):
-    '''Dilates a stack of 2D binary masks by a specified radius (in px).
-    
-    Parameters
-    ----------
-    mask_img : array_like
-        stack of 2D binary mask, shape (x, y, n_sections)
-    distance_px : int
-        dilation radius in pixels
-    true_radius : bool, default=False
-        specifies the method used by ndimage's binary_dilation to dilate
-          - False: dilates by 1 px per iteration for iterations=distance_px
-          - True: dilates once using a structure of radius=distance_px
-        both return similar results but true_radius=False is significantly faster
-
-    Returns
-    -------
-    dilated_mask_img 
-        3D np array, stack of dilated 2D binary masks
-    '''
-    dilated_mask_img = np.zeros_like(mask_img)
-    
-    if true_radius:
-        # generate a circular structure for dilation
-        coords = np.mgrid[-distance_px:distance_px+1, -distance_px:distance_px+1]
-        struct = np.linalg.norm(coords, axis=0) <= distance_px
-        
-    for i in range(mask_img.shape[2]):
-        if true_radius:
-            dilated_mask_img[:,:,i] = ndi.binary_dilation(mask_img[:,:,i], 
-                                                          structure=struct)
-        else:
-            dilated_mask_img[:,:,i] = ndi.binary_dilation(mask_img[:,:,i], 
-                                                           iterations=distance_px)
-    return dilated_mask_img
-
-
-def cleanup_mask_regions(mask_img, area_ratio_thresh=0.1):
-    ''' Removes, sectionwise, any binary mask regions whose areas are smaller
-    than the specified ratio, as compared to the largest region in the mask.
-    
-    Parameters
-    ----------
-    mask_img : array_like
-        stack of 2D binary mask, shape (x, y, n_sections)
-    area_ratio_thresh : float, default=0.1
-        threshold for this_region:largest_region area difference ratio; removes
-        any regions smaller than this threshold
-        
-    Returns
-    -------
-    new_mask_img
-        stack of 2D binary masks with too-small regions removed
-    '''
-    new_mask_img = np.zeros_like(mask_img)
-    for sec in range(mask_img.shape[2]):
-        mask_2d = mask_img[:,:,sec]
-        labeled_mask, n_regions = ndi.label(mask_2d)
-
-        # calculate the area of the largest region
-        largest_region = np.argmax(ndi.sum(mask_2d, labeled_mask, 
-                                           range(n_regions+1)))
-        largest_area = np.sum(labeled_mask==largest_region)
-
-        # filter out regions with area ratio smaller than the specified threshold
-        regions_to_keep = [label for label 
-                           in range(1, n_regions+1) 
-                           if ( (np.sum(labeled_mask==label) / largest_area) 
-                                >= area_ratio_thresh
-                              )
-                          ]
-        # make a new mask with only the remaining objects
-        new_mask_img[:,:,sec] = np.isin(labeled_mask, regions_to_keep)
-
-    return new_mask_img
-
-
+# TODO: remove this and references
 def label_masked_cells(cells_df, mask_img, coords, resolutions,
                                 field_name='TH_ZI_dataset'):
     '''Labels cells with coordinates inside a binary masked image region
@@ -551,6 +286,145 @@ def label_masked_cells(cells_df, mask_img, coords, resolutions,
     # tuple() makes this like calling mask_img[coords_index[:,0], coords_index[:,1], coords_index[:,2]]
     cells_df[field_name] = mask_img[tuple(coords_index.T)]
     return cells_df
+    
+def get_thalamus_names(level=None):
+    if level=='devccf':
+        return get_taxonomy_names(_DEVCCF_TOP_NODES_THALAMUS, level=level)
+    else:
+        return get_taxonomy_names(_CCF_TOP_NODES_THALAMUS, level=level)
+    
+def get_thalamus_substructure_names():
+    return get_thalamus_names(level='substructure')
+
+# load cluster-nucleus annotations
+try:
+    nuclei_df_manual = pd.read_csv("/code/resources/prong1_cluster_annotations_by_nucleus.csv", index_col=0)
+    nuclei_df_manual = nuclei_df_manual.fillna("")
+    nuclei_df_auto = pd.read_csv("/code/resources/annotations_from_eroded_counts.csv",  index_col=0)
+    found_annotations = True
+except:
+    found_annotations = False
+
+def get_obs_from_annotated_clusters(name, obs, by='id', include_shared_clusters=False, manual_annotations=True):
+    if not found_annotations:
+        raise UserWarning("Can't access annotations sheet from this environment.")
+    # if name not in nuclei_df.index:
+    #     raise UserWarning("Name not found in annotations sheet")
+    nuclei_df = nuclei_df_manual if manual_annotations else nuclei_df_auto
+    if include_shared_clusters:
+        names = [x for x in nuclei_df.index if any(name in y and not 'pc' in y
+                                                    for y in x.split(" "))]
+    else: 
+        names = [x for x in nuclei_df.index if name in x 
+                 and not (' ' in x or 'pc' in x)]
+    
+    dfs = []
+    field = "cluster_alias" if by=='alias' else "cluster_ids_CNN20230720"
+    clusters = chain(*[nuclei_df.loc[name, field].split(', ') for name in names])
+    if by=='alias':
+        obs = obs.loc[lambda df: df['cluster_alias'].isin(clusters)]
+    elif by=='id':
+        obs = obs.loc[lambda df: df['cluster'].str[:4].isin(clusters)]
+    return obs
+
+    
+def get_color_dictionary(labels, taxonomy_level, label_format='id_label',
+                         version='20230830', as_list=False):
+    ''' Returns a color dictionary for the specified cell types labels.
+    
+    Parameters
+    ----------
+    labels : list of strings
+        list of strings containing the cell type labels to be converted
+    taxonomy_level : {'cluster', 'supertype', 'subclass', 'class'}
+        specifies the taxonomy level to which 'labels' belong
+    label_format : string, {'id_label', 'id', 'label'}, default='id_label'
+        indicates format of 'labels' parameter; currently only supports full
+        id+label strings, e.g. "1130 TH Prkcd Grin2c Glut_1"
+        [TODO: support 'id'-only ("1130") & 
+               'label'-only ("TH Prkcd Grin2c Glut_1") user inputs]
+    version : str, default='20230830'
+        ABC Atlas version of the labels; cannot get colors from a different
+        version than your labels; to do that, first use convert_taxonomy_labels())
+    
+    Results
+    -------
+    color_dict : dict
+        dictionary mapping input 'labels' to their official ABC Atlas hex colors
+    '''
+    # load metadata csv files
+    pivot_file = 'cluster_to_cluster_annotation_membership_pivoted.csv'
+    color_file = 'cluster_to_cluster_annotation_membership_color.csv'
+    pivot_df = pd.read_csv(
+                    ABC_ROOT/f'metadata/WMB-taxonomy/{version}/views/{pivot_file}'
+                    )
+    color_df = pd.read_csv(
+                    ABC_ROOT/f'metadata/WMB-taxonomy/{version}/views/{color_file}'
+                    )
+    
+    # get cluster_alias list, which is stable between ABC atlas taxonomy versions
+    pivot_query_df = pivot_df.set_index(taxonomy_level).loc[labels].reset_index()
+    # clusters are unique, but other taxonomy levels exist in multiple rows
+    if taxonomy_level=='cluster':
+        cluster_alias_list = pivot_query_df['cluster_alias'].to_list()
+    else:
+        # dict() only keeps the last instance of a key due to overwriting,
+        # which I'm exploiting to remove duplicates while maintaining order
+        cluster_alias_list = list(dict(zip(pivot_query_df[taxonomy_level],
+                                           pivot_query_df['cluster_alias'])
+                                      ).values())
+    # use cluster_alias to map to colors
+    color_query_df = color_df.set_index('cluster_alias').loc[cluster_alias_list].reset_index()
+    colors_list = color_query_df[taxonomy_level+'_color'].to_list()
+    
+    if as_list:
+        return colors_list
+    else:
+        color_dict = dict(zip(labels,colors_list))
+        return color_dict
+    
+        
+def get_taxonomy_label_from_alias(aliases, taxonomy_level, version='20230830',
+                                  label_format='id_label',
+                                  output_as_dict=False):
+    ''' Converts cell type labels between taxonomy versions of the ABC Atlas.
+    
+    Parameters
+    ----------
+    aliases : list of strings
+        list of strings containing the cluster aliases
+    taxonomy_level : {'cluster', 'supertype', 'subclass', 'class'}
+        specifies the taxonomy level to retrieve
+    label_format : string, {'id_label', 'id', 'label'}, default='id_label'
+        indicates format of 'labels' parameter; currently only supports full
+        id+label strings, e.g. "1130 TH Prkcd Grin2c Glut_1"
+        [TODO: support 'id'-only ("1130") & 
+               'label'-only ("TH Prkcd Grin2c Glut_1") user inputs]
+    version : str, default='20230830'
+        ABC Atlas version the alias should be converted to
+    output_as_dict : bool, default=False
+        specifies whether output is a list (False, default) or dictionary (True)
+    
+    Results
+    -------
+    labels
+        list of taxonomy labels or dictionary mapping from alias to taxonomy
+        labels
+    '''
+    
+    # load in the specified version of cluster annotation membership CSV files
+    file = 'cluster_to_cluster_annotation_membership_pivoted.csv'
+    pivot_df = pd.read_csv(
+                    ABC_ROOT/f'metadata/WMB-taxonomy/{version}/views/{file}',
+                    dtype='str')
+    # reindexing ensures that label_list is in same order as input aliases
+    query_df = pivot_df.set_index('cluster_alias').loc[aliases].reset_index()
+    label_list = query_df[taxonomy_level].to_list()
+    if output_as_dict:
+        labels_dict = dict(zip(aliases, label_list))
+        return labels_dict
+    else:
+        return label_list
 
 
 def convert_taxonomy_labels(input_labels, taxonomy_level, 
@@ -613,205 +487,3 @@ def convert_taxonomy_labels(input_labels, taxonomy_level,
         return out_labels_dict
     else:
         return out_labels_list
-
-    
-def get_taxonomy_label_from_alias(aliases, taxonomy_level, version='20230830',
-                                  label_format='id_label',
-                                  output_as_dict=False):
-    ''' Converts cell type labels between taxonomy versions of the ABC Atlas.
-    
-    Parameters
-    ----------
-    aliases : list of strings
-        list of strings containing the cluster aliases
-    taxonomy_level : {'cluster', 'supertype', 'subclass', 'class'}
-        specifies the taxonomy level to retrieve
-    label_format : string, {'id_label', 'id', 'label'}, default='id_label'
-        indicates format of 'labels' parameter; currently only supports full
-        id+label strings, e.g. "1130 TH Prkcd Grin2c Glut_1"
-        [TODO: support 'id'-only ("1130") & 
-               'label'-only ("TH Prkcd Grin2c Glut_1") user inputs]
-    version : str, default='20230830'
-        ABC Atlas version the alias should be converted to
-    output_as_dict : bool, default=False
-        specifies whether output is a list (False, default) or dictionary (True)
-    
-    Results
-    -------
-    labels
-        list of taxonomy labels or dictionary mapping from alias to taxonomy
-        labels
-    '''
-    
-    # load in the specified version of cluster annotation membership CSV files
-    file = 'cluster_to_cluster_annotation_membership_pivoted.csv'
-    pivot_df = pd.read_csv(
-                    ABC_ROOT/f'metadata/WMB-taxonomy/{version}/views/{file}',
-                    dtype='str')
-    # reindexing ensures that label_list is in same order as input aliases
-    query_df = pivot_df.set_index('cluster_alias').loc[aliases].reset_index()
-    label_list = query_df[taxonomy_level].to_list()
-    if output_as_dict:
-        labels_dict = dict(zip(aliases, label_list))
-        return labels_dict
-    else:
-        return label_list
-    
-def get_color_dictionary(labels, taxonomy_level, label_format='id_label',
-                         version='20230830', as_list=False):
-    ''' Returns a color dictionary for the specified cell types labels.
-    
-    Parameters
-    ----------
-    labels : list of strings
-        list of strings containing the cell type labels to be converted
-    taxonomy_level : {'cluster', 'supertype', 'subclass', 'class'}
-        specifies the taxonomy level to which 'labels' belong
-    label_format : string, {'id_label', 'id', 'label'}, default='id_label'
-        indicates format of 'labels' parameter; currently only supports full
-        id+label strings, e.g. "1130 TH Prkcd Grin2c Glut_1"
-        [TODO: support 'id'-only ("1130") & 
-               'label'-only ("TH Prkcd Grin2c Glut_1") user inputs]
-    version : str, default='20230830'
-        ABC Atlas version of the labels; cannot get colors from a different
-        version than your labels; to do that, first use convert_taxonomy_labels())
-    
-    Results
-    -------
-    color_dict : dict
-        dictionary mapping input 'labels' to their official ABC Atlas hex colors
-    '''
-    # load metadata csv files
-    pivot_file = 'cluster_to_cluster_annotation_membership_pivoted.csv'
-    color_file = 'cluster_to_cluster_annotation_membership_color.csv'
-    pivot_df = pd.read_csv(
-                    ABC_ROOT/f'metadata/WMB-taxonomy/{version}/views/{pivot_file}'
-                    )
-    color_df = pd.read_csv(
-                    ABC_ROOT/f'metadata/WMB-taxonomy/{version}/views/{color_file}'
-                    )
-    
-    # get cluster_alias list, which is stable between ABC atlas taxonomy versions
-    pivot_query_df = pivot_df.set_index(taxonomy_level).loc[labels].reset_index()
-    # clusters are unique, but other taxonomy levels exist in multiple rows
-    if taxonomy_level=='cluster':
-        cluster_alias_list = pivot_query_df['cluster_alias'].to_list()
-    else:
-        # dict() only keeps the last instance of a key due to overwriting,
-        # which I'm exploiting to remove duplicates while maintaining order
-        cluster_alias_list = list(dict(zip(pivot_query_df[taxonomy_level],
-                                           pivot_query_df['cluster_alias'])
-                                      ).values())
-    # use cluster_alias to map to colors
-    color_query_df = color_df.set_index('cluster_alias').loc[cluster_alias_list].reset_index()
-    colors_list = color_query_df[taxonomy_level+'_color'].to_list()
-    
-    if as_list:
-        return colors_list
-    else:
-        color_dict = dict(zip(labels,colors_list))
-        return color_dict
-
-@lru_cache
-def get_ccf_metadata():
-    # this metadata hasn't been updated in other versions
-    ccf_df = pd.read_csv(
-            ABC_ROOT/"metadata/Allen-CCF-2020/20230630/parcellation_to_parcellation_term_membership.csv"
-            )
-    ccf_df = ccf_df.replace("ZI-unassigned", "ZI")
-    return ccf_df
-
-@lru_cache
-def get_devccf_metadata():
-    devccf_index = pd.read_csv("/data/KimLabDevCCFv001/KimLabDevCCFv001_MouseOntologyStructure.csv",
-                           dtype={'ID':int, 'Parent ID':str})
-    # some quotes have both single and double
-    for x in ['Acronym','Name']:
-        devccf_index[x] = devccf_index[x].str.replace("'","")
-    return devccf_index
-
-import networkx as nx
-@lru_cache
-def get_thalamus_names(level=None):
-    if level=='devccf':
-        devccf_index = get_devccf_metadata().copy()
-        devccf_index['ID'] = devccf_index['ID'].astype(str)
-        th_top_level = ['ZIC', 'CZI', 'RtC', 'Th']
-        g = nx.from_pandas_edgelist(devccf_index, source='Parent ID', target='ID', 
-                            create_using=nx.DiGraph())
-        devccf_index = devccf_index.set_index('Acronym')
-        th_ids = list(set.union(*(set(nx.descendants(g, devccf_index.loc[x, 'ID'])) 
-                        for x in th_top_level)))
-        th_names = devccf_index.reset_index().set_index('ID').loc[th_ids, 'Acronym']
-    else:
-        ccf_df = get_ccf_metadata()
-        th_zi_ind = np.hstack(
-                (ccf_df.loc[ccf_df['parcellation_term_acronym']=='TH', 
-                            'parcellation_index'].unique(),
-                    ccf_df.loc[ccf_df['parcellation_term_acronym']=='ZI', 
-                            'parcellation_index'].unique())
-        )
-        ccf_labels = ccf_df.pivot(index='parcellation_index', values='parcellation_term_acronym', columns='parcellation_term_set_name')
-        if level is not None:
-            th_names = ccf_labels.loc[th_zi_ind, level].values
-        else:
-            th_names = list(set(ccf_labels.loc[th_zi_ind, :].values.flatten()))
-    return th_names
-
-def get_thalamus_substructure_names():
-    return get_thalamus_names(level='substructure')
-
-@lru_cache
-def get_ccf_index(level='structure'):
-    if level=='devccf':
-        ccf_df = get_devccf_metadata()
-        index = ccf_df.set_index('ID')['Acronym']
-    else:
-        ccf_df = get_ccf_metadata()
-        # parcellation_index to acronym
-        index = ccf_df.query(f"parcellation_term_set_name=='{level}'").set_index('parcellation_index')['parcellation_term_acronym']
-    return index
-
-@lru_cache
-def _get_cluster_annotations(version=CURRENT_VERSION):
-    df = pd.read_csv(
-        ABC_ROOT/f"metadata/WMB-taxonomy/{version}/cluster_to_cluster_annotation_membership.csv"
-    )
-    return df
-
-@lru_cache
-def get_taxonomy_palette(taxonomy_level, version=CURRENT_VERSION):
-    df = _get_cluster_annotations(version=version)
-    df = df[df["cluster_annotation_term_set_name"]==taxonomy_level]
-    palette = df.set_index('cluster_annotation_term_name')['color_hex_triplet'].to_dict()
-    return palette
-
-try:
-    nuclei_df_manual = pd.read_csv("/code/resources/prong1_cluster_annotations_by_nucleus.csv", index_col=0)
-    nuclei_df_manual = nuclei_df_manual.fillna("")
-    nuclei_df_auto = pd.read_csv("/code/resources/annotations_from_eroded_counts.csv",  index_col=0)
-    found_annotations = True
-except:
-    found_annotations = False
-
-def get_obs_from_annotated_clusters(name, obs, by='id', include_shared_clusters=False, manual_annotations=True):
-    if not found_annotations:
-        raise UserWarning("Can't access annotations sheet from this environment.")
-    # if name not in nuclei_df.index:
-    #     raise UserWarning("Name not found in annotations sheet")
-    nuclei_df = nuclei_df_manual if manual_annotations else nuclei_df_auto
-    if include_shared_clusters:
-        names = [x for x in nuclei_df.index if any(name in y and not 'pc' in y
-                                                    for y in x.split(" "))]
-    else: 
-        names = [x for x in nuclei_df.index if name in x 
-                 and not (' ' in x or 'pc' in x)]
-    
-    dfs = []
-    field = "cluster_alias" if by=='alias' else "cluster_ids_CNN20230720"
-    clusters = chain(*[nuclei_df.loc[name, field].split(', ') for name in names])
-    if by=='alias':
-        obs = obs.loc[lambda df: df['cluster_alias'].isin(clusters)]
-    elif by=='id':
-        obs = obs.loc[lambda df: df['cluster'].str[:4].isin(clusters)]
-    return obs

@@ -7,6 +7,8 @@ from colorcet import glasbey, glasbey_light, glasbey_dark, glasbey_warm, glasbey
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, to_rgb
 
+from .ccf_images import image_index_from_coords
+                         
 CMAP = ListedColormap(['white'] + glasbey)
 
 def lighten(hex):
@@ -63,10 +65,6 @@ def from_hom(x):
 
 def apply_affine_left(M, x):
     return from_hom(to_hom(x.T) @ M.T).T
-
-def image_index_from_coords(coord_values, res=10e-3):
-    coords_index = np.rint(np.array(coord_values) / res).astype(int)
-    return tuple(coords_index.T)
 
 def calculate_quicknii_transform(scale=25):
     """Get affine matrix for transformation from quicknii pixel coordinates

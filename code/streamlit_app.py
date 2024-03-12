@@ -4,8 +4,8 @@ import pandas as pd
 from thalamus_merfish_analysis import ccf_plots as cplots
 from thalamus_merfish_analysis import ccf_images as cimg
 from thalamus_merfish_analysis import abc_load as abc
-# from abc_load import get_ccf_metadata
-# get_ccf_metadata = st.cache_data(get_ccf_metadata)
+# from abc_load import _get_ccf_metadata
+# _get_ccf_metadata = st.cache_data(_get_ccf_metadata)
 
 version = "20230830"
 realigned = st.radio("CCF alignment", [False, True], index=0,

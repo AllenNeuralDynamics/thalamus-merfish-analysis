@@ -2,6 +2,83 @@
 import scipy.ndimage as ndi
 import numpy as np
 
+
+def sectionwise_dilation(mask_img, distance_px, true_radius=False):
+    '''Dilates a stack of 2D binary masks by a specified radius (in px).
+    
+    Parameters
+    ----------
+    mask_img : array_like
+        stack of 2D binary mask, shape (x, y, n_sections)
+    distance_px : int
+        dilation radius in pixels
+    true_radius : bool, default=False
+        specifies the method used by ndimage's binary_dilation to dilate
+          - False: dilates by 1 px per iteration for iterations=distance_px
+          - True: dilates once using a structure of radius=distance_px
+        both return similar results but true_radius=False is significantly faster
+
+    Returns
+    -------
+    dilated_mask_img 
+        3D np array, stack of dilated 2D binary masks
+    '''
+    dilated_mask_img = np.zeros_like(mask_img)
+    
+    if true_radius:
+        # generate a circular structure for dilation
+        coords = np.mgrid[-distance_px:distance_px+1, -distance_px:distance_px+1]
+        struct = np.linalg.norm(coords, axis=0) <= distance_px
+        
+    for i in range(mask_img.shape[2]):
+        if true_radius:
+            dilated_mask_img[:,:,i] = ndi.binary_dilation(mask_img[:,:,i], 
+                                                          structure=struct)
+        else:
+            dilated_mask_img[:,:,i] = ndi.binary_dilation(mask_img[:,:,i], 
+                                                           iterations=distance_px)
+    return dilated_mask_img
+
+
+def cleanup_mask_regions(mask_img, area_ratio_thresh=0.1):
+    ''' Removes, sectionwise, any binary mask regions whose areas are smaller
+    than the specified ratio, as compared to the largest region in the mask.
+    
+    Parameters
+    ----------
+    mask_img : array_like
+        stack of 2D binary mask, shape (x, y, n_sections)
+    area_ratio_thresh : float, default=0.1
+        threshold for this_region:largest_region area difference ratio; removes
+        any regions smaller than this threshold
+        
+    Returns
+    -------
+    new_mask_img
+        stack of 2D binary masks with too-small regions removed
+    '''
+    new_mask_img = np.zeros_like(mask_img)
+    for sec in range(mask_img.shape[2]):
+        mask_2d = mask_img[:,:,sec]
+        labeled_mask, n_regions = ndi.label(mask_2d)
+
+        # calculate the area of the largest region
+        largest_region = np.argmax(ndi.sum(mask_2d, labeled_mask, 
+                                           range(n_regions+1)))
+        largest_area = np.sum(labeled_mask==largest_region)
+
+        # filter out regions with area ratio smaller than the specified threshold
+        regions_to_keep = [label for label 
+                           in range(1, n_regions+1) 
+                           if ( (np.sum(labeled_mask==label) / largest_area) 
+                                >= area_ratio_thresh
+                              )
+                          ]
+        # make a new mask with only the remaining objects
+        new_mask_img[:,:,sec] = np.isin(labeled_mask, regions_to_keep)
+
+    return new_mask_img
+
 def sectionwise_label_erosion(label_img, distance_px, fill_val=0, return_edges=False, section_list=None):
     '''Erodes a stack of 2D label images by a specified radius (in px).
     
@@ -55,3 +132,7 @@ def map_label_values(label_img, mapping, section_list=None):
     full_result = np.zeros_like(label_img)
     full_result[:,:,section_list] = result_img
     return full_result
+
+def image_index_from_coords(coord_values, res=10e-3):
+    coords_index = np.rint(np.array(coord_values) / res).astype(int)
+    return tuple(coords_index.T)
