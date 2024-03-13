@@ -404,12 +404,11 @@ def _get_devccf_names(top_nodes):
     names = devccf_index.reset_index().set_index('ID').loc[th_ids, 'Acronym']
     return names
 
-@lru_cache
 def _get_ccf_names(top_nodes, level=None):
     ccf_df = _get_ccf_metadata()
     th_zi_ind = np.hstack(
-            (ccf_df.loc[ccf_df['parcellation_term_acronym']==x, 
-                        'parcellation_index'].unique() for x in top_nodes)
+            [ccf_df.loc[ccf_df['parcellation_term_acronym']==x, 
+                        'parcellation_index'].unique() for x in top_nodes]
     )
     ccf_labels = ccf_df.pivot(index='parcellation_index', values='parcellation_term_acronym', columns='parcellation_term_set_name')
     if level is not None:
@@ -418,7 +417,7 @@ def _get_ccf_names(top_nodes, level=None):
         names = list(set(ccf_labels.loc[th_zi_ind, :].values.flatten()))
     return names
 
-def get_ccf_names(top_nodes, level=None):
+def get_ccf_names(top_nodes=None, level=None):
     """Get the names of all CCF regions that are children of the 
     specified list of top-level regions
 
@@ -435,7 +434,9 @@ def get_ccf_names(top_nodes, level=None):
     Returns
     -------
         list of region names
-    """    
+    """
+    if top_nodes is None:
+        return get_ccf_index(level=level).unique()
     if level=='devccf':
         return _get_devccf_names(top_nodes)
     else:
@@ -464,7 +465,9 @@ def get_ccf_index(level='substructure'):
     else:
         ccf_df = _get_ccf_metadata()
         # parcellation_index to acronym
-        index = ccf_df.query(f"parcellation_term_set_name=='{level}'").set_index('parcellation_index')['parcellation_term_acronym']
+        if level is not None:
+            ccf_df = ccf_df.query(f"parcellation_term_set_name=='{level}'")
+        index = ccf_df.set_index('parcellation_index')['parcellation_term_acronym']
     return index
 
 @lru_cache

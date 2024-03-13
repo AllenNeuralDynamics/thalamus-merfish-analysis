@@ -286,12 +286,13 @@ def label_masked_cells(cells_df, mask_img, coords, resolutions,
     # tuple() makes this like calling mask_img[coords_index[:,0], coords_index[:,1], coords_index[:,2]]
     cells_df[field_name] = mask_img[tuple(coords_index.T)]
     return cells_df
-    
+
+@lru_cache
 def get_thalamus_names(level=None):
     if level=='devccf':
-        return get_taxonomy_names(_DEVCCF_TOP_NODES_THALAMUS, level=level)
+        return get_ccf_names(_DEVCCF_TOP_NODES_THALAMUS, level=level)
     else:
-        return get_taxonomy_names(_CCF_TOP_NODES_THALAMUS, level=level)
+        return get_ccf_names(_CCF_TOP_NODES_THALAMUS, level=level)
     
 def get_thalamus_substructure_names():
     return get_thalamus_names(level='substructure')
