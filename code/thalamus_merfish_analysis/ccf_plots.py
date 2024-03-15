@@ -438,7 +438,22 @@ def plot_ccf_shapes(imdata, index, boundary_img=None, regions=None,
 # ------------------------- DataFrame Preprocessing ------------------------- #
 
 def _filter_by_xy_lims(data, x_col, y_col, custom_xy_lims):
-    '''custom_xy_lims =[xlim, xlim, ylim, ylim]'''
+    ''' Filter a DataFrame by custom x and y limits.
+    
+    Need to explicitly filter the DataFrame. Can't rely only on set_xlim/ylim,
+    because that only masks out the data points but still plots them, so they
+    are present & taking up space in a savefig() pdf output (i.e. generates  
+    large files that are laggy in Illustrator due to having many indiv elements).
+    
+    Parameters
+    ----------
+    data : pd.DataFrame
+        DataFrame to filter
+    x_col, y_col : str
+        Column names in data for the x and y coordinates of cells
+    custom_xy_lims : list of float, [xmin, xmax, ymin, ymax]
+        Custom x and y limits for the plot
+    '''
     # need to detect min & max because of how the abc atlas coordinates are 
     # oriented, i.e. abs(ymin) > abs(ymax) but ymin=bottom & ymax=top
     xmin = min(custom_xy_lims[:2])
@@ -518,6 +533,20 @@ def _palette_to_rgba_lookup(palette, index):
 # ----------------------------- Plot Formatting ----------------------------- #
 
 def _format_image_axes(ax, axes=False, set_lims='whole', custom_xy_lims=[]):
+    ''' Format the axes of a plot.
+    
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axes to format
+    axes : bool
+        Whether to display the axes and spines
+    set_lims : bool or str, {'whole', 'left_hemi', 'right_hemi'}
+        Whether to set the x and y limits of the plot to the whole brain,
+        the left hemisphere, or the right hemisphere
+    custom_xy_lims : list of float, [xmin, xmax, ymin, ymax]
+        Custom x and y limits for the plot
+    '''
     ax.axis('image')
     if not axes:
         sns.despine(left=True, bottom=True)
@@ -526,6 +555,7 @@ def _format_image_axes(ax, axes=False, set_lims='whole', custom_xy_lims=[]):
     ax.set_xlabel(None)
     ax.set_ylabel(None)
     # (set_lims==True) is for backwards compatibility
+    # TODO: allow for easier whole-coronal vs TH+ZI axis formatting
     if (set_lims=='whole') | (set_lims==True):
         ax.set_xlim([2.5, 8.5])
         ax.set_ylim([7, 4])
