@@ -43,22 +43,22 @@ def get_data(version, ccf_label):
 @st.cache_data
 def get_image_volumes(realigned, sections_all, lump_structures=True, edge_width=2):
     section_list = np.rint(np.array(sections_all)/0.2).astype(int)
-    ccf_polygons = abc.get_ccf_labels_image(resampled=True, realigned=realigned)
+    ccf_images = abc.get_ccf_labels_image(resampled=True, realigned=realigned)
     
     if lump_structures:
         ccf_index = abc.get_ccf_index(level='structure')
         reverse_index = ccf_index.reset_index().groupby('parcellation_term_acronym')['parcellation_index'].first()
         mapping = ccf_index.map(reverse_index).to_dict()
-        ccf_polygons = cimg.map_label_values(ccf_polygons, mapping, section_list=section_list)
+        ccf_images = cimg.map_label_values(ccf_images, mapping, section_list=section_list)
         
     ccf_boundaries = cimg.sectionwise_label_erosion(
-        ccf_polygons, edge_width, fill_val=0, return_edges=True,
+        ccf_images, edge_width, fill_val=0, return_edges=True,
         section_list=section_list
         )
-    return ccf_polygons, ccf_boundaries
+    return ccf_images, ccf_boundaries
 
 obs_th_neurons, sections_all, subclasses_all = get_data(version, ccf_label)
-ccf_polygons, ccf_boundaries = get_image_volumes(realigned, sections_all, lump_structures=False)
+ccf_images, ccf_boundaries = get_image_volumes(realigned, sections_all, lump_structures=False)
 
 kwargs = dict(
     bg_cells=obs_th_neurons,
@@ -66,14 +66,15 @@ kwargs = dict(
     x_col = 'x_'+coords,
     y_col = 'y_'+coords,
     s=3, 
-    shape_palette='dark_outline',
+    face_palette=None,
+    edge_color='grey',
     boundary_img=ccf_boundaries
 )
 
 
 # @st.cache_resource
 def plot(obs, sections, regions=None, point_hue='subclass'):
-    return cplots.plot_ccf_overlay(obs, ccf_polygons, 
+    return cplots.plot_ccf_overlay(obs, ccf_images, 
                                    ccf_names=regions,
                                     point_hue=celltype_label, 
                                     sections=sections,
@@ -102,7 +103,7 @@ with tab2:
         palette = palettes[celltype_label]
     obs = obs_th_neurons.loc[lambda df: df['subclass'].isin(subclasses_all)]
     if len(sections)>0 and len(obs)>0:
-        plots = cplots.plot_ccf_overlay(obs, ccf_polygons, 
+        plots = cplots.plot_ccf_overlay(obs, ccf_images, 
                                     ccf_names=None,
                                         ccf_level=ccf_level,
                                         point_hue=celltype_label, 
@@ -162,7 +163,7 @@ with tab1:
             if len(obs2)>0:
                 regions = [x for x in th_subregion_names if any((name in x and not 'pc' in x) or (name==x) 
                                                                 for name in nuclei)]
-                plots = cplots.plot_ccf_overlay(obs2, ccf_polygons, 
+                plots = cplots.plot_ccf_overlay(obs2, ccf_images, 
                                             ccf_names=regions,
                                             ccf_level=ccf_level,
                                             # highlight=nuclei, TODO: fix highlight for raster plots
