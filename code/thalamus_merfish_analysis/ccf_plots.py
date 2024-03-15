@@ -20,7 +20,7 @@ def plot_ccf_overlay(obs, ccf_images, sections=None,
                      point_hue='CCF_acronym', point_palette=None, # controls foreground cells
                      categorical=True, s=2, min_group_count=10,
                      bg_cells=None, # controls background cells
-                     ccf_names=None, ccf_level='substructure', # controls CCF regions
+                     ccf_names=None, ccf_highlight=[], ccf_level='substructure', # controls CCF regions
                      boundary_img=None, face_palette=None, edge_color='grey',
                      section_col='section', min_section_count=20, # sections
                      x_col='cirro_x', y_col='cirro_y', custom_xy_lims=[], # xy coords
@@ -51,6 +51,8 @@ def plot_ccf_overlay(obs, ccf_images, sections=None,
         DataFrame of background cells to display
     ccf_names : list of str
         List of CCF region names to display
+    ccf_highlight : list of str
+        List of CCF region names to highlight with a darker outline for ccf_names
     ccf_level : str, {'substructure', 'structure'}
         Level of CCF to be displayed
     boundary_img : np.ndarray, optional
@@ -128,6 +130,12 @@ def plot_ccf_overlay(obs, ccf_images, sections=None,
                          structure_index=get_ccf_index(level=ccf_level), 
                          face_palette=face_palette, edge_color=edge_color,
                          legend=(legend=='ccf'), ax=ax)
+        if ccf_highlight!=[]:
+            plot_ccf_section(ccf_images, section, boundary_img=boundary_img,
+                             ccf_region_names=ccf_highlight, 
+                             structure_index=get_ccf_index(level=ccf_level), 
+                             face_palette=None, edge_color=EDGE_COLOR_HIGHLIGHT,
+                             ax=ax)
 
         # display background cells in grey
         if bg_cells is not None:
@@ -267,14 +275,10 @@ def plot_expression_ccf_section(adata_or_obs, gene, ccf_images,
         fig = plt.gcf()
 
     # Plot ccf annotation in front of gene expression
-    if highlight==[]:
-        plot_ccf_section(ccf_images, section_z, ccf_region_names=nuclei, 
-                         face_palette=None, edge_color=edge_color,
-                         boundary_img=boundary_img, ax=ax, **kwargs)
-    elif highlight!=[]:
-        plot_ccf_section(ccf_images, section_z, ccf_region_names=nuclei, 
-                         face_palette=None, edge_color=edge_color,
-                         boundary_img=boundary_img, ax=ax, **kwargs)
+    plot_ccf_section(ccf_images, section_z, ccf_region_names=nuclei, 
+                     face_palette=None, edge_color=edge_color,
+                     boundary_img=boundary_img, ax=ax, **kwargs)
+    if highlight!=[]:
         plot_ccf_section(ccf_images, section_z, ccf_region_names=highlight, 
                          face_palette=None, edge_color=EDGE_COLOR_HIGHLIGHT, 
                          ax=ax, **kwargs)
