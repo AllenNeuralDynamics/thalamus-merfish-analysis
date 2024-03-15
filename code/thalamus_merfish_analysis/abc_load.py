@@ -123,13 +123,13 @@ def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
                                                 realigned=realigned)
         # subset to TH+ZI dataset
         if subset_to_TH_ZI:
-            cells_md_df, _ = label_thalamus_spatial_subset(cells_md_df,
-                                                           flip_y=flip_y,
-                                                           distance_px=20,
-                                                           cleanup_mask=True,
-                                                           drop_end_sections=True,
-                                                           filter_cells=True,
-                                                           realigned=realigned)
+            cells_md_df = label_thalamus_spatial_subset(cells_md_df,
+                                                        flip_y=flip_y,
+                                                        distance_px=20,
+                                                        cleanup_mask=True,
+                                                        drop_end_sections=True,
+                                                        filter_cells=True,
+                                                        realigned=realigned)
         cell_labels = adata.obs_names.intersection(cells_md_df.index)
         adata = adata[cell_labels]
         adata = adata.to_memory()
@@ -175,12 +175,12 @@ def add_tiled_obsm(adata, offset=10, coords_name='section', obsm_field='coords_t
 def filter_by_thalamus_coords(obs, realigned=False, buffer=0):
     # TODO: modify to accept adata or obs
     if buffer > 0:
-        obs, _ = label_thalamus_spatial_subset(obs,
-                                               distance_px=buffer,
-                                               cleanup_mask=True,
-                                               drop_end_sections=True,
-                                               filter_cells=True,
-                                               realigned=realigned)
+        obs = label_thalamus_spatial_subset(obs,
+                                            distance_px=buffer,
+                                            cleanup_mask=True,
+                                            drop_end_sections=True,
+                                            filter_cells=True,
+                                            realigned=realigned)
     else:
         ccf_label = 'parcellation_structure_realigned' if realigned else 'parcellation_structure'
         th_names = get_thalamus_names(level='structure')
@@ -442,9 +442,9 @@ def label_thalamus_spatial_subset(cells_df, flip_y=False, distance_px=20,
                                 & (cells_df[coords[2]] < 8.39))
     # optionally, remove non-TH+ZI cells from df
     if filter_cells:
-        return cells_df[cells_df[field_name]].copy().drop(columns=[field_name]), mask_img
+        return cells_df[cells_df[field_name]].copy().drop(columns=[field_name]) #, mask_img
     else:
-        return cells_df, mask_img
+        return cells_df #, mask_img
 
 
 def sectionwise_dilation(mask_img, distance_px, true_radius=False):
