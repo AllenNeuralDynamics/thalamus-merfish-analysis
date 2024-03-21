@@ -144,14 +144,16 @@ def filter_by_class(obs, exclude=NN_CLASSES, include=None):
     obs = obs[~obs['class'].isin(exclude)]
     return obs
 
-def filter_by_section_range(obs, start=0, stop=15, spacing=0.2):
-    ''' Filters cell metadata (obs) dataframe by a numeric section coordinate column,
+def filter_by_coordinate_range(obs, coord_col, start=None, stop=None):
+    ''' Filters cell metadata (obs) dataframe by a numeric coordinate column,
     restricting to a range from start to stop (inclusive)
     '''
-    section_col='z_section'
-    sections = np.arange(start, stop + spacing*0.1, spacing)
-    obs = obs[obs[section_col].isin(sections)]
+    if start is not None:
+        obs = obs[obs[coord_col] >= start]
+    if stop is not None:
+        obs = obs[obs[coord_col] <= stop]
     return obs
+
 
 def get_combined_metadata(
     version=CURRENT_VERSION,
@@ -277,13 +279,44 @@ def get_ccf_labels_image(resampled=True, realigned=False,
     return imdata
 
 
+def label_outlier_celltypes(obs, type_col, min_group_count=5, max_num_groups=None,
+                            outlier_label='other', filter_cells=False):
+    primary_celltypes = obs[type_col].value_counts().loc[lambda x: x>min_group_count].index
+    if max_num_groups is not None and len(primary_celltypes) > max_num_groups:
+        primary_celltypes = primary_celltypes[:max_num_groups]
+    if filter_cells:
+        obs = obs[obs[type_col].isin(primary_celltypes)]
+    else:
+        if obs[type_col].dtype == 'categorical':
+            obs[type_col] = obs[type_col].cat.add_categories(outlier_label)
+        obs.loc[~obs[type_col].isin(primary_celltypes), type_col] = outlier_label
+    return obs
+
+# TODO: move these to ccf_plots?
+def preprocess_gene_plot(adata, gene):
+    obs = adata.obs.copy()
+    obs[gene] = adata[gene]
+    return obs
+                                
+def preprocess_categorical_plot(obs, type_col, 
+                                section_col='z_section',
+                                min_group_count=10, 
+                                min_section_count=20,
+                                min_group_count_section=5):
+    sections = obs[section_col].value_counts().loc[lambda x: x>min_section_count].index
+    obs = obs[obs[section_col].isin(sections)].copy()
+    obs = label_outlier_celltypes(obs, type_col, min_group_count=min_group_count)
+    obs = obs.groupby(section_col).apply(lambda x: 
+        label_outlier_celltypes(x, type_col, min_group_count=min_group_count_section))
+    return obs
+    
 def label_ccf_spatial_subset(cells_df, ccf_regions,
                              ccf_level='substructure',
                              flip_y=False, distance_px=20, 
-                                cleanup_mask=True,
-                                filter_cells=False,
-                                realigned=False,
-                                field_name='region_mask'):
+                             cleanup_mask=True,
+                             filter_cells=False,
+                             realigned=False,
+                             field_name='region_mask'):
     '''Labels cells that are in a spatial subset of the ABC atlas.
     
     Turns a rasterized image volume into a binary mask, then expands the mask

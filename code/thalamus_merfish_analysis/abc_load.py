@@ -117,8 +117,11 @@ def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
 
 def filter_by_thalamus_coords(obs, **kwargs):
     obs = filter_by_ccf_region(obs, ['TH', 'ZI'], **kwargs)
-    obs = filter_by_section_range(obs, 5.0, 8.21, 0.2)
+    obs = filter_thalamus_sections(obs)
     return obs
+
+def filter_thalamus_sections(obs):
+    return obs.query("5.0 <= z_section <= 8.2")
 
 def label_thalamus_spatial_subset(cells_df, drop_end_sections=True,
                                   field_name='TH_ZI_dataset', **kwargs):
@@ -155,7 +158,7 @@ def label_thalamus_spatial_subset(cells_df, drop_end_sections=True,
     # exclude the 1 anterior-most and 1 posterior-most thalamus sections due to
     # poor overlap between mask & thalamic cells
     if drop_end_sections:
-        cells_df = filter_by_section_range(cells_df, 5.0, 8.21, 0.2)
+        cells_df = filter_thalamus_sections(cells_df)
     return cells_df
 
 
