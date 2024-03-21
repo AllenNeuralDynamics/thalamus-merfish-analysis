@@ -24,76 +24,58 @@ BRAIN_LABEL = 'C57BL6J-638850'
 NN_CLASSES = ['30 Astro-Epen', '31 OPC-Oligo', '33 Vascular',
                         '34 Immune']
 
-def load_adata(version=CURRENT_VERSION, transform='log2cpv', 
-               load_metadata=True, flip_y=True, round_z=True, 
-               from_metadata=None):
-    '''Load ABC Atlas MERFISH dataset as an anndata object.
+def load_adata(version=CURRENT_VERSION, transform='log2cpm', 
+               with_metadata=True, from_metadata=None,
+               drop_blanks=True, **kwargs):
+    '''
+    Load ABC Atlas MERFISH dataset as an anndata object.
     
     Parameters
     ----------
     version : str, default=CURRENT_VERSION
         which release version of the ABC Atlas to load
-    transform : {'log2cpv', 'log2cpm', 'raw', 'both'}, default='log2'
+    transform : {'log2cpm', 'log2cpv', 'raw'}, default='log2cpm'
         which transformation of the gene counts to load from the expression matrices.
-        if 'both', log2 is stored in X and log2 & raw are stored in adata.layers.
-        use both if writing to a permanent file or performing mapping on the 
-        output; log2 for a smaller object for plotting & most other analyses.
-    load_metadata : bool, default=True
+    with_metadata : bool, default=True
         include cell metadata in adata
-    flip_y : bool, default=True
-        flip y-axis coordinates so positive is up (coronal section appears 
-        right-side up as expected)
-    round_z : bool, default=True
-        rounds z_section, z_reconstructed coords to nearest 10ths place to
-        correct for overprecision in a handful of z coords
     from_metadata : DataFrame, default=None
         preloaded metadata DataFrame to merge into AnnData, loading cells in this 
-        DataFrame only
+        DataFrame only (in this case with_metadata is ignored)
+    drop_blanks : bool, default=True
+        drop 'blank' gene counts from the dataset
+        (blanks are barcodes not actually used in the library, counted for QC purposes)
+    **kwargs
+        passed to `get_combined_metadata`
         
     Results
     -------
     adata
         anndata object containing the ABC Atlas MERFISH dataset
     '''
-    if transform == 'both':
-        # takes ~4 min + ~9 GB of memory to load both 
-        adata_log2 = ad.read_h5ad(ABC_ROOT/f"expression_matrices/MERFISH-{BRAIN_LABEL}/{version}/{BRAIN_LABEL}-log2.h5ad", 
-                                  backed='r')
-        adata_raw = ad.read_h5ad(ABC_ROOT/f"expression_matrices/MERFISH-{BRAIN_LABEL}/{version}/{BRAIN_LABEL}-raw.h5ad", 
-                                 backed='r')
-        # store log2 counts in X
-        adata = adata_log2.to_memory()
-        # add both log2 & raw counts to layers
-        adata.layers['log2p'] = adata.X
-        adata.layers['raw'] = adata_raw.X
-        # clean up to reduce memory usage
-        del adata_log2
-        del adata_raw
-    else:
-        # takes ~2 min + ~3 GB of memory to load one set of counts
-        adata = ad.read_h5ad(ABC_ROOT/f"expression_matrices/MERFISH-{BRAIN_LABEL}/{version}/{BRAIN_LABEL}-{transform}.h5ad",
-                             backed='r')
+    transform_load = 'raw' if transform=='log2cpm' else transform
+    adata = ad.read_h5ad(ABC_ROOT/f"expression_matrices/MERFISH-{BRAIN_LABEL}/{version}/{BRAIN_LABEL}-{transform_load}.h5ad",
+                        backed='r')
         
-    if load_metadata or (from_metadata is not None):
+    if drop_blanks:
+        genes = [gene for gene in adata.var_names if 'Blank' not in gene]
+        adata = adata[:,gene_list]
+        
+    if with_metadata or (from_metadata is not None):
         if from_metadata is not None:
             cells_md_df = from_metadata
         else:
-            cells_md_df = get_combined_metadata(flip_y=flip_y,
-                                                round_z=round_z,
-                                                version=version)
+            cells_md_df = get_combined_metadata(version=version, **kwargs)
         cell_labels = adata.obs_names.intersection(cells_md_df.index)
         adata = adata[cell_labels]
         adata = adata.to_memory()
         # add metadata to obs
         adata.obs = adata.obs.join(cells_md_df.loc[cell_labels, cells_md_df.columns.difference(adata.obs.columns)])
-    
-    if adata.isbacked:
+    else:
         adata = adata.to_memory()
     
     if transform == 'log2cpm':
-        adata_glut_log2CPM.X = np.asarray(
-            np.log2(1 + adata_th_zi_glut.X
-                    *1e6/np.sum(adata_th_zi_glut.X.toarray(), axis=1, keepdims=True)
+        adata.X = np.asarray(
+            np.log2(1 + adata.X*1e6 / np.sum(adata.X.toarray(), axis=1, keepdims=True)
                     ))
     # access genes by short symbol vs longer names
     adata.var_names = adata.var['gene_symbol']
@@ -111,7 +93,7 @@ def filter_by_ccf_region(obs, regions, buffer=0,
     Parameters
     ----------
     obs
-        dataframe containing the ABC Atlas MERFISH dataset (i.e. adata.obs)
+        dataframe containing cell metadata (i.e. adata.obs)
     ccf_regions : list(str)
         list of (abbreviated) CCF region names to select
     buffer, optional
@@ -126,7 +108,6 @@ def filter_by_ccf_region(obs, regions, buffer=0,
     obs
         filtered dataframe
     """    
-    # TODO: modify to accept adata or obs
     if include_children:
         regions = get_ccf_names(regions)
     if buffer > 0:
@@ -140,14 +121,14 @@ def filter_by_ccf_region(obs, regions, buffer=0,
         obs = obs[obs[ccf_label].isin(regions)]
     return obs
 
-def filter_by_class(adata, exclude=NN_CLASSES, include=None):
-    ''' Filters anndata object or dataframe by cell type taxonomy 
+def filter_by_class(obs, exclude=NN_CLASSES, include=None):
+    ''' Filters cell metadata (obs) dataframe by cell type taxonomy 
     classes. Note that these labels may change across dataset versions!
 
     Parameters
     ----------
-    adata
-        anndata object or dataframe containing the ABC Atlas MERFISH dataset
+    obs
+        dataframe containing cell metadata (i.e. adata.obs)
     exclude : list(str), default=NN_CLASSES
         list of classes to filter out
     include : list(str), default=None
@@ -158,24 +139,26 @@ def filter_by_class(adata, exclude=NN_CLASSES, include=None):
     adata
         the anndata object, filtered to only include cells from specific classes
     '''
-    if hasattr(adata, 'obs'):
-        obs = adata.obs
-    else:
-        obs = adata
     if include is not None:
-        subset = obs['class'].isin(include)
-    else:
-        subset = ~obs['class'].isin(exclude)
-    return adata[subset]
+        obs = obs[obs['class'].isin(include)]
+    obs = obs[~obs['class'].isin(exclude)]
+    return obs
 
+def filter_by_section_range(obs, start=0, stop=15, spacing=0.2):
+    ''' Filters cell metadata (obs) dataframe by a numeric section coordinate column,
+    restricting to a range from start to stop (inclusive)
+    '''
+    section_col='z_section'
+    sections = np.arange(start, stop + spacing*0.1, spacing)
+    obs = obs[obs[section_col].isin(sections)]
+    return obs
 
 def get_combined_metadata(
     version=CURRENT_VERSION,
     realigned=False,
     drop_unused=True, 
     flip_y=False, 
-    round_z=True, 
-    cirro_names=False
+    round_z=True
     ):
     '''Load the cell metadata csv, with memory/speed improvements.
     Selects correct dtypes and optionally renames and drops columns
@@ -194,12 +177,10 @@ def get_combined_metadata(
     round_z : bool, default=True
         rounds z_section, z_reconstructed coords to nearest 10ths place to
         correct for overprecision in a handful of z coords
-    cirro_names : bool, default=False
-        rename columns to match older cirro anndata names
 
     Returns
     -------
-        cells_df pandas dataframe
+        pandas.DataFrame
     '''
     float_columns = [
         'average_correlation_score', 
@@ -238,8 +219,6 @@ def get_combined_metadata(
     if round_z:
         cells_df['z_section'] = cells_df['z_section'].round(1)
         cells_df['z_reconstructed'] = cells_df['z_reconstructed'].round(1)
-    if cirro_names:
-        cells_df = cells_df.rename(columns=_CIRRO_COLUMNS)
         
     cells_df["left_hemisphere"] = cells_df["z_ccf"] < 5.7
     if realigned:
@@ -304,7 +283,7 @@ def label_ccf_spatial_subset(cells_df, ccf_regions,
                                 cleanup_mask=True,
                                 filter_cells=False,
                                 realigned=False,
-                                field_name='spatial_subset'):
+                                field_name='region_mask'):
     '''Labels cells that are in a spatial subset of the ABC atlas.
     
     Turns a rasterized image volume into a binary mask, then expands the mask
@@ -330,7 +309,7 @@ def label_ccf_spatial_subset(cells_df, ccf_regions,
         in the binary mask, is lower than 0.1
     realigned : bool, default=False
         use realigned CCF coordinates and image volume
-    field_name : bool, default='spatial_subset'
+    field_name : bool, default='region_mask'
         column to store annotation in (if not filtering)
         
     Returns
@@ -366,13 +345,15 @@ def label_ccf_spatial_subset(cells_df, ccf_regions,
     if cleanup_mask:
         mask_img = cleanup_mask_regions(mask_img, area_ratio_thresh=0.1)
     # label cells that fall within dilated TH+ZI mask; by default, 
-    cells_df[field_name] = mask_img[
-        image_index_from_coords(cells_df[coords], resolutions)
-        ]
+    cells_df = _label_masked_cells(cells_df, mask_img, coords, resolutions, field_name=field_name)
     if filter_cells:
         return cells_df[cells_df[field_name]].copy().drop(columns=[field_name]), mask_img
     else:
-        return cells_df, mask_img
+        return cells_df
+
+def _label_masked_cells(cells_df, mask_img, coords, resolutions, field_name='region_mask'):
+    cells_df[field_name] = mask_img[image_index_from_coords(cells_df[coords], resolutions)]
+    return cells_df
 
 @lru_cache
 def _get_ccf_metadata():

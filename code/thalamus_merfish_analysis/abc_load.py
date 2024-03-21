@@ -1,6 +1,5 @@
 from .abc_load_base import *
 
-
 _DEVCCF_TOP_NODES_THALAMUS = ['ZIC', 'CZI', 'RtC', 'Th']
 _CCF_TOP_NODES_THALAMUS = ['TH', 'ZI']
 
@@ -14,102 +13,61 @@ _CIRRO_COLUMNS = {
     'parcellation_substructure':'CCF_acronym'
 }
 
-def load_adata(version=CURRENT_VERSION, transform='log2', subset_to_TH_ZI=True,
-               with_metadata=True, flip_y=True, round_z=True, cirro_names=False, 
-               with_colors=False,
-               realigned=False,
-               loaded_metadata=None):
+def load_adata_thalamus(subset_to_TH_ZI=True, 
+               version=CURRENT_VERSION, transform='log2cpv', 
+               with_metadata=True, drop_blanks=True, 
+               flip_y=False, realigned=False, 
+               **kwargs):
     '''Load ABC Atlas MERFISH dataset as an anndata object.
     
     Parameters
     ----------
-    version : str, default=CURRENT_VERSION
-        which release version of the ABC Atlas to load
-    transform : {'log2', 'raw', 'both'}, default='log2'
-        which transformation of the gene counts to load from the expression matrices.
-        if 'both', log2 is stored in X and log2 & raw are stored in adata.layers.
-        use both if writing to a permanent file or performing mapping on the 
-        output; log2 for a smaller object for plotting & most other analyses.
     subset_to_TH_ZI : bool, default=True
         returns adata that only includes cells in the TH+ZI dataset, as subset
         by label_thalamus_spatial_subset()
+    version : str, default=CURRENT_VERSION
+        which release version of the ABC Atlas to load
+    transform : {'log2cpm', 'log2cpv', 'raw'}, default='log2cpm'
+        which transformation of the gene counts to load from the expression matrices.
     with_metadata : bool, default=True
         include cell metadata in adata
+    from_metadata : DataFrame, default=None
+        preloaded metadata DataFrame to merge into AnnData, loading cells in this 
+        DataFrame only (in this case with_metadata is ignored)
+    drop_blanks : bool, default=True
+        drop 'blank' gene counts from the dataset
+        (blanks are barcodes not actually used in the library, counted for QC purposes)
     flip_y : bool, default=True
         flip y-axis coordinates so positive is up (coronal section appears 
         right-side up as expected)
-    round_z : bool, default=True
-        rounds z_section, z_reconstructed coords to nearest 10ths place to
-        correct for overprecision in a handful of z coords
-    cirro_names : bool, default=False
-        changes metadata field names according to _CIRRO_COLUMNS dictionary
-    with_colors : bool, default=False
-        imports all colors with the metadata (will take up more space)
     realigned : bool, default=False
         load and use for subsetting the metadata from realignment results data asset,
         containing 'ccf_realigned' coordinates 
-    loaded_metadata : DataFrame, default=None
-        already loaded metadata DataFrame to merge into AnnData, loading cells in this 
-        DataFrame only
+    **kwargs
+        passed to `get_combined_metadata`
         
     Results
     -------
     adata
         anndata object containing the ABC Atlas MERFISH dataset
     '''
-    # TODO: add option for true CPM? (vs log2CPV?)
-    if transform=='both':
-        # takes ~4 min + ~9 GB of memory to load both 
-        adata_log2 = ad.read_h5ad(ABC_ROOT/f"expression_matrices/MERFISH-{BRAIN_LABEL}/{version}/{BRAIN_LABEL}-log2.h5ad", 
-                                  backed='r')
-        adata_raw = ad.read_h5ad(ABC_ROOT/f"expression_matrices/MERFISH-{BRAIN_LABEL}/{version}/{BRAIN_LABEL}-raw.h5ad", 
-                                 backed='r')
-        # store log2 counts in X
-        adata = adata_log2.to_memory()
-        # add both log2 & raw counts to layers
-        adata.layers['log2p'] = adata.X
-        adata.layers['raw'] = adata_raw.X
-        # clean up to reduce memory usage
-        del adata_log2
-        del adata_raw
+    if subset_to_TH_ZI:
+        cells_md_df = get_combined_metadata(
+            version=version, realigned=realigned, flip_y=flip_y, **kwargs
+            )
+        cells_md_df = label_thalamus_spatial_subset(cells_md_df,
+                                                    flip_y=flip_y,
+                                                    realigned=realigned,
+                                                    distance_px=20,
+                                                    cleanup_mask=True,
+                                                    drop_end_sections=True,
+                                                    filter_cells=True,)
+        adata = load_adata(version=version, transform=transform, drop_blanks=drop_blanks,
+                           from_metadata=cells_md_df)
     else:
-        # takes ~2 min + ~3 GB of memory to load one set of counts
-        adata = ad.read_h5ad(ABC_ROOT/f"expression_matrices/MERFISH-{BRAIN_LABEL}/{version}/{BRAIN_LABEL}-{transform}.h5ad",
-                             backed='r')
-        
-    if with_metadata or subset_to_TH_ZI or subset_to_left_hemi:
-        if loaded_metadata is not None:
-            cells_md_df = loaded_metadata
-        else:
-            cells_md_df = get_combined_metadata(cirro_names=cirro_names, 
-                                                flip_y=flip_y,
-                                                round_z=round_z,
-                                                drop_unused=(not with_colors),
-                                                version=version,
-                                                realigned=realigned)
-        # subset to TH+ZI dataset
-        if subset_to_TH_ZI:
-            cells_md_df, _ = label_thalamus_spatial_subset(cells_md_df,
-                                                           flip_y=flip_y,
-                                                           distance_px=20,
-                                                           cleanup_mask=True,
-                                                           drop_end_sections=True,
-                                                           filter_cells=True,
-                                                           realigned=realigned)
-        cell_labels = adata.obs_names.intersection(cells_md_df.index)
-        adata = adata[cell_labels]
-        adata = adata.to_memory()
-        # add metadata to obs
-        adata.obs = adata.obs.join(cells_md_df.loc[cell_labels, cells_md_df.columns.difference(adata.obs.columns)])
-    
-    if adata.isbacked:
-        adata = adata.to_memory()
-        
-    # access genes by short symbol vs longer names
-    adata.var_names = adata.var['gene_symbol']
-
-    # note what counts transform is in X
-    adata.uns['counts_transform'] = transform
+        adata = load_adata(version=version, transform=transform, drop_blanks=drop_blanks,
+                           with_metadata=with_metadata, 
+                           flip_y=flip_y, realigned=realigned, **kwargs)
     
     return adata
 
@@ -144,43 +102,26 @@ def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
     # always keep th_zi_dataset_classes
     classes_to_keep = th_zi_dataset_classes.copy()
 
+    obs = getattr(th_zi_adata, 'obs', th_zi_adata)
     # optionally include midbrain and/or nonneuronal classes
     if not filter_midbrain:
         classes_to_keep += midbrain_classes
     if not filter_nonneuronal:
         classes_to_keep += nonneuronal_classes
     if filter_others:
-        if hasattr(th_zi_adata, 'obs'):
-            subset = th_zi_adata.obs['class'].isin(classes_to_keep)
-        else:
-            subset = th_zi_adata['class'].isin(classes_to_keep)
+        obs = filter_by_class(obs, include=classes_to_keep)
     else:
         classes_to_exclude = set(midbrain_classes+nonneuronal_classes) - classes_to_keep
-        if hasattr(th_zi_adata, 'obs'):
-            subset = ~th_zi_adata.obs['class'].isin(classes_to_exclude)
-        else:
-            subset = ~th_zi_adata['class'].isin(classes_to_exclude)
-    return th_zi_adata[subset]
+        obs = filter_by_class(obs, exclude=classes_to_exclude)
+    return th_zi_adata[obs.index, :]
 
-def filter_by_thalamus_coords(obs, realigned=False, buffer=0):
-    # TODO: modify to accept adata or obs
-    if buffer > 0:
-        obs, _ = label_thalamus_spatial_subset(obs,
-                                               distance_px=buffer,
-                                               cleanup_mask=True,
-                                               drop_end_sections=True,
-                                               filter_cells=True,
-                                               realigned=realigned)
-    else:
-        ccf_label = 'parcellation_structure_realigned' if realigned else 'parcellation_structure'
-        names = get_thalamus_names(level='structure')
-        obs = obs[obs[ccf_label].isin(names)]
+def filter_by_thalamus_coords(obs, **kwargs):
+    obs = filter_by_ccf_region(obs, ['TH', 'ZI'], **kwargs)
+    obs = filter_by_section_range(obs, 5.0, 8.21, 0.2)
     return obs
 
-def label_thalamus_spatial_subset(cells_df, flip_y=False, distance_px=20, 
-                                  cleanup_mask=True, drop_end_sections=True,
-                                  filter_cells=False,
-                                  realigned=False):
+def label_thalamus_spatial_subset(cells_df, drop_end_sections=True,
+                                  field_name='TH_ZI_dataset', **kwargs):
     '''Labels cells that are in the thalamus spatial subset of the ABC atlas.
     
     Turns a rasterized image volume that includes all thalamus (TH) and zona
@@ -209,83 +150,14 @@ def label_thalamus_spatial_subset(cells_df, flip_y=False, distance_px=20,
     cells_df 
         with a new boolean column specifying which cells are in the TH+ZI dataset
     '''
-    field_name='TH_ZI_dataset'
-    # use reconstructed (in MERFISH space) coordinates from cells_df
-    if realigned:
-        coords = ['x_section','y_section','z_section']
-    else:
-        coords = ['x_reconstructed','y_reconstructed','z_reconstructed']
-    resolutions = np.array([10e-3, 10e-3, 200e-3])
-    
-    # load 'resampled CCF' (rasterized, in MERFISH space) image volumes from the
-    # ABC Atlas dataset (z resolution limited to merscope slices)
-    ccf_img = get_ccf_labels_image(resampled=True, realigned=realigned)
-    
-    # ccf_img voxels are labelled by brain structure parcellation_index, so need
-    # to get a list of all indices that correspond to TH or ZI (sub)structures
-    ccf_df = pd.read_csv(
-            ABC_ROOT/"metadata/Allen-CCF-2020/20230630/parcellation_to_parcellation_term_membership.csv"
-            )
-    th_zi_ind = np.hstack(
-                    (ccf_df.loc[ccf_df['parcellation_term_acronym']=='TH', 
-                                'parcellation_index'].unique(),
-                     ccf_df.loc[ccf_df['parcellation_term_acronym']=='ZI', 
-                                'parcellation_index'].unique())
-                )
-    
-    # generate binary mask
-    th_mask = np.isin(ccf_img, th_zi_ind) # takes about 5 sec
-    # flip y-axis to match flipped cell y-coordinates
-    if flip_y:
-        th_mask = np.flip(th_mask, axis=1)
-    # dilate by 200um to try to capture more TH/ZI cells
-    mask_img = sectionwise_dilation(th_mask, distance_px, true_radius=False)
-    # remove too-small mask regions that are likely mistaken parcellations
-    if cleanup_mask:
-        mask_img = cleanup_mask_regions(mask_img, area_ratio_thresh=0.1)
-    # label cells that fall within dilated TH+ZI mask; by default, 
-    cells_df = label_masked_cells(cells_df, mask_img, coords,  
-                                           resolutions, field_name=field_name)
+    ccf_regions = ['TH','ZI']
+    cells_df = label_ccf_spatial_subset(cells_df, ccf_regions, field_name=field_name, **kwargs)
     # exclude the 1 anterior-most and 1 posterior-most thalamus sections due to
     # poor overlap between mask & thalamic cells
     if drop_end_sections:
-        cells_df[field_name] = (cells_df[field_name] 
-                                & (4.81 < cells_df[coords[2]]) 
-                                & (cells_df[coords[2]] < 8.39))
-    # optionally, remove non-TH+ZI cells from df
-    if filter_cells:
-        return cells_df[cells_df[field_name]].copy().drop(columns=[field_name]), mask_img
-    else:
-        return cells_df, mask_img
-
-# TODO: remove this and references
-def label_masked_cells(cells_df, mask_img, coords, resolutions,
-                                field_name='TH_ZI_dataset'):
-    '''Labels cells with coordinates inside a binary masked image region
-    
-    Parameters
-    ----------
-    cells_df : pandas dataframe
-        dataframe of cell metadata
-    mask_img : array_like
-        stack of 2D binary masks, shape (x, y, n_sections)
-    coords : list
-        column names in cells_df that contain the cells xyz coordinates, 
-        list of strings of length 3
-    resolutions : array
-        xyz resolutions used to compare coords to mask_img positions
-    field_name : str
-        name for column containing the thalamus dataset boolean flag
-
-    Returns
-    -------
-    cells_df 
-        with a new boolean column specifying which cells are in the thalamus dataset
-    '''
-    coords_index = np.rint(cells_df[coords].values / resolutions).astype(int)
-    # tuple() makes this like calling mask_img[coords_index[:,0], coords_index[:,1], coords_index[:,2]]
-    cells_df[field_name] = mask_img[tuple(coords_index.T)]
+        cells_df = filter_by_section_range(cells_df, 5.0, 8.21, 0.2)
     return cells_df
+
 
 @lru_cache
 def get_thalamus_names(level=None):
