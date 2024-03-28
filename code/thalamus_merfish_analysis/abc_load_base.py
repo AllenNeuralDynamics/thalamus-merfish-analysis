@@ -55,10 +55,9 @@ def load_adata(version=CURRENT_VERSION, transform='log2cpm',
     transform_load = 'raw' if transform=='log2cpm' else transform
     adata = ad.read_h5ad(ABC_ROOT/f"expression_matrices/MERFISH-{BRAIN_LABEL}/{version}/{BRAIN_LABEL}-{transform_load}.h5ad",
                         backed='r')
-        
+    genes = adata.var_names
     if drop_blanks:
-        genes = [gene for gene in adata.var_names if 'Blank' not in gene]
-        adata = adata[:,gene_list]
+        genes = [gene for gene in genes if 'Blank' not in gene]
         
     if with_metadata or (from_metadata is not None):
         if from_metadata is not None:
@@ -66,12 +65,12 @@ def load_adata(version=CURRENT_VERSION, transform='log2cpm',
         else:
             cells_md_df = get_combined_metadata(version=version, **kwargs)
         cell_labels = adata.obs_names.intersection(cells_md_df.index)
-        adata = adata[cell_labels]
+        adata = adata[cell_labels, genes]
         adata = adata.to_memory()
         # add metadata to obs
         adata.obs = adata.obs.join(cells_md_df.loc[cell_labels, cells_md_df.columns.difference(adata.obs.columns)])
     else:
-        adata = adata.to_memory()
+        adata = adata[:, genes].to_memory()
     
     if transform == 'log2cpm':
         adata.X = np.asarray(
@@ -312,6 +311,7 @@ def preprocess_categorical_plot(obs, type_col,
     
 def label_ccf_spatial_subset(cells_df, ccf_regions,
                              ccf_level='substructure',
+                             include_children=True,
                              flip_y=False, distance_px=20, 
                              cleanup_mask=True,
                              filter_cells=False,
@@ -363,6 +363,8 @@ def label_ccf_spatial_subset(cells_df, ccf_regions,
     
     # ccf_img voxels are labelled by brain structure parcellation_index, so need
     # to get a list of all indices 
+    if include_children:
+        ccf_regions = get_ccf_names(top_nodes=ccf_regions, level=ccf_level)
     ccf_index = get_ccf_index(level=ccf_level)
     reverse_lookup = pd.Series(ccf_index.index.values, index=ccf_index)
     index_values = reverse_lookup.loc[ccf_regions]
@@ -380,7 +382,7 @@ def label_ccf_spatial_subset(cells_df, ccf_regions,
     # label cells that fall within dilated TH+ZI mask; by default, 
     cells_df = _label_masked_cells(cells_df, mask_img, coords, resolutions, field_name=field_name)
     if filter_cells:
-        return cells_df[cells_df[field_name]].copy().drop(columns=[field_name]), mask_img
+        return cells_df[cells_df[field_name]].copy().drop(columns=[field_name])
     else:
         return cells_df
 

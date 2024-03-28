@@ -18,6 +18,7 @@ def load_adata_thalamus(subset_to_TH_ZI=True,
                version=CURRENT_VERSION, transform='log2cpv', 
                with_metadata=True, drop_blanks=True, 
                flip_y=False, realigned=False, 
+               with_colors=False,
                **kwargs):
     '''Load ABC Atlas MERFISH dataset as an anndata object.
     
@@ -54,7 +55,8 @@ def load_adata_thalamus(subset_to_TH_ZI=True,
     '''
     if subset_to_TH_ZI:
         cells_md_df = get_combined_metadata(
-            version=version, realigned=realigned, flip_y=flip_y, **kwargs
+            version=version, realigned=realigned, flip_y=flip_y, 
+            drop_unused=not with_colors, **kwargs
             )
         cells_md_df = label_thalamus_spatial_subset(cells_md_df,
                                                     flip_y=flip_y,
