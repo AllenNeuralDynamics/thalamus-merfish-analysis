@@ -35,7 +35,8 @@ def load_adata(version=CURRENT_VERSION, transform='log2cpm',
     version : str, default=CURRENT_VERSION
         which release version of the ABC Atlas to load
     transform : {'log2cpm', 'log2cpv', 'raw'}, default='log2cpm'
-        which transformation of the gene counts to load from the expression matrices.
+        which transformation of the gene counts to load and/or calculate from 
+        the expression matrices
     with_metadata : bool, default=True
         include cell metadata in adata
     from_metadata : DataFrame, default=None
@@ -52,7 +53,9 @@ def load_adata(version=CURRENT_VERSION, transform='log2cpm',
     adata
         anndata object containing the ABC Atlas MERFISH dataset
     '''
-    transform_load = 'raw' if transform=='log2cpm' else transform
+    # 'log2cpv' is labelled just 'log2' in the ABC atlas; for 'log2cpm', we load
+    # 'raw' counts and then do the transform manually later
+    transform_load = 'log2' if transform=='log2cpv' else 'raw'
     adata = ad.read_h5ad(ABC_ROOT/f"expression_matrices/MERFISH-{BRAIN_LABEL}/{version}/{BRAIN_LABEL}-{transform_load}.h5ad",
                         backed='r')
     genes = adata.var_names
