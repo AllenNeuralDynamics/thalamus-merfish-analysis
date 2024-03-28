@@ -1,3 +1,7 @@
+# functions used in abc_load.py: (load_adata, filter_by_ccf_region, 
+#                                 filter_by_class, get_combined_metadata,
+#                                 label_ccf_spatial_subset, get_ccf_names)
+# all others are imported for backwards compatibility access via abc.FUNC_NAME()
 from .abc_load_base import *
 from itertools import chain
 
@@ -13,6 +17,61 @@ _CIRRO_COLUMNS = {
     'brain_section_label':'section',
     'parcellation_substructure':'CCF_acronym'
 }
+
+# hardcoded class categories for v20230830
+TH_ZI_CLASSES = ['12 HY GABA', '17 MH-LH Glut', '18 TH Glut']
+MB_CLASSES = ['19 MB Glut', '20 MB GABA'] # midbrain
+# NN_CLASSES already defined in abc_load_base.py
+
+def load_standard_thalamus(data_structure='adata'):
+    ''' Loads a preprocessed, neuronal thalamus subset of the ABC Atlas MERFISH dataset.
+    
+    Standardizes parameters for load_adata_thalamus() / get_combined_metadata(), 
+    filter_by_class_thalamus(), & filter_by_thalamus_coords() for consistency in 
+    the exact data loaded across capsules & notebooks. 
+    Also ensures loading full anndata vs just obs metadata returns the same 
+    subset of cells.
+    
+    Parameters
+    ----------
+    data_structure : {'adata', 'obs'}, default='adata'
+        load the full AnnData object with gene expression in .X and cell 
+        metadata DataFrame in .obs ('adata') OR load just the cell metadata 
+        DataFrame ('obs') to same time/memory
+    
+    Results
+    -------
+    data_th
+        AnnData object or DataFrame containing the ABC Atlas MERFISH dataset
+    
+    '''
+    # load
+    if data_structure=='adata':
+        data_th = load_adata_thalamus(subset_to_TH_ZI=True, 
+                                      version=CURRENT_VERSION, 
+                                      transform='log2cpm', with_metadata=True, 
+                                      drop_blanks=True, flip_y=False, 
+                                      realigned=False)
+    elif data_structure=='obs':
+        # still contains all cells; filter_by_thalamus_coords() subsets to TH+ZI
+        data_th = get_combined_metadata(version=CURRENT_VERSION, 
+                                        drop_unused=True, realigned=False,
+                                        flip_y=False, round_z=True)
+        data_th = label_thalamus_spatial_subset(data_th, flip_y=False,
+                                                realigned=False,
+                                                cleanup_mask=True,
+                                                filter_cells=True)
+    else:
+        raise ValueError('data_structure must be ''adata'' or ''obs''.')
+        
+    # preprocessing
+    # filter: non-neuronal
+    data_th = filter_by_class_thalamus(data_th, filter_nonneuronal=True, 
+                                       filter_midbrain=False, 
+                                       filter_other_nonTH=True)
+    data_th = filter_by_thalamus_coords(data_th, buffer=0, realigned=False)
+    
+    return data_th
 
 def load_adata_thalamus(subset_to_TH_ZI=True, 
                version=CURRENT_VERSION, transform='log2cpv', 
@@ -64,7 +123,7 @@ def load_adata_thalamus(subset_to_TH_ZI=True,
                                                     distance_px=20,
                                                     cleanup_mask=True,
                                                     drop_end_sections=True,
-                                                    filter_cells=True,)
+                                                    filter_cells=True)
         adata = load_adata(version=version, transform=transform, drop_blanks=drop_blanks,
                            from_metadata=cells_md_df)
     else:
@@ -75,8 +134,8 @@ def load_adata_thalamus(subset_to_TH_ZI=True,
     return adata
 
 
-def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
-                          filter_midbrain=True, filter_others=True):
+def filter_by_class_thalamus(th_zi_adata, filter_nonneuronal=True,
+                             filter_midbrain=True, filter_other_nonTH=True):
     ''' Filters anndata object to only include cells from specific taxonomy 
     classes.
 
@@ -96,35 +155,57 @@ def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
         the anndata object, filtered to only include cells from specific 
         thalamic & zona incerta + optional (midbrain & nonneuronal) classes
     '''
-    # hardcoded class categories for v20230830
-    th_zi_dataset_classes = ['12 HY GABA', '17 MH-LH Glut', '18 TH Glut']
-    midbrain_classes = ['19 MB Glut', '20 MB GABA']
-    nonneuronal_classes = ['30 Astro-Epen', '31 OPC-Oligo', '33 Vascular',
-                           '34 Immune']
-
-    # always keep th_zi_dataset_classes
-    classes_to_keep = th_zi_dataset_classes.copy()
     dataframe_input = hasattr(th_zi_adata, 'loc')
     obs = th_zi_adata if dataframe_input else th_zi_adata.obs
+    
+    # always keep TH+ZI classes
+    classes_to_keep = TH_ZI_CLASSES.copy()
     # optionally include midbrain and/or nonneuronal classes
     if not filter_midbrain:
-        classes_to_keep += midbrain_classes
+        classes_to_keep += MB_CLASSES
     if not filter_nonneuronal:
-        classes_to_keep += nonneuronal_classes
-    if filter_others:
+        classes_to_keep += NN_CLASSES
+    if filter_other_nonTH:
         obs = filter_by_class(obs, include=classes_to_keep)
     else:
-        classes_to_exclude = set(midbrain_classes+nonneuronal_classes) - classes_to_keep
+        classes_to_exclude = set(MB_CLASSES+NN_CLASSES) - classes_to_keep
         obs = filter_by_class(obs, exclude=classes_to_exclude)
+    
     return obs if dataframe_input else th_zi_adata[obs.index, :]
 
-def filter_by_thalamus_coords(obs, **kwargs):
-    obs = filter_by_ccf_region(obs, ['TH', 'ZI'], **kwargs)
+def filter_by_thalamus_coords(data, buffer=0, **kwargs):
+    ''' Filters to only include cells within thalamus CCF boundaries +/- a buffer.
+
+    Parameters
+    ----------
+    data : AnnData or DataFrame
+        object containing the ABC Atlas MERFISH metadata; if AnnData, .obs
+        should contain the metadata
+    **kwargs
+        passed to 'filter_by_ccf_region'
+    
+    Returns 
+    -------
+    data
+        the filtered AnnData or DataFrame object
+    '''
+    dataframe_input = hasattr(data, 'loc')
+    obs = data if dataframe_input else data.obs
+    
+    obs = filter_by_ccf_region(obs, ['TH', 'ZI'], buffer=buffer, **kwargs)
     obs = filter_thalamus_sections(obs)
-    return obs
+    
+    return obs if dataframe_input else data[obs.index, :]
+
 
 def filter_thalamus_sections(obs):
+    '''Filters anterior-to-posterior coordinates to include only sections containing thalamus.
+    
+    Includes filtering for 1 anterior-most & 1 posterior-most section with poor  
+    alignment between thalamus CCF structure and mapped thalamic cells.
+    '''
     return obs.query("5.0 <= z_section <= 8.2")
+
 
 def label_thalamus_spatial_subset(cells_df, drop_end_sections=True,
                                   field_name='TH_ZI_dataset', **kwargs):
