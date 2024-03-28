@@ -101,8 +101,8 @@ def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
 
     # always keep th_zi_dataset_classes
     classes_to_keep = th_zi_dataset_classes.copy()
-
-    obs = getattr(th_zi_adata, 'obs', th_zi_adata)
+    dataframe_input = hasattr(th_zi_adata, 'loc')
+    obs = th_zi_adata if dataframe_input else th_zi_adata.obs
     # optionally include midbrain and/or nonneuronal classes
     if not filter_midbrain:
         classes_to_keep += midbrain_classes
@@ -113,7 +113,7 @@ def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
     else:
         classes_to_exclude = set(midbrain_classes+nonneuronal_classes) - classes_to_keep
         obs = filter_by_class(obs, exclude=classes_to_exclude)
-    return th_zi_adata[obs.index, :]
+    return obs if dataframe_input else th_zi_adata[obs.index, :]
 
 def filter_by_thalamus_coords(obs, **kwargs):
     obs = filter_by_ccf_region(obs, ['TH', 'ZI'], **kwargs)
