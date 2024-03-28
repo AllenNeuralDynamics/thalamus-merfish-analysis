@@ -1,4 +1,5 @@
 from .abc_load_base import *
+from itertools import chain
 
 _DEVCCF_TOP_NODES_THALAMUS = ['ZIC', 'CZI', 'RtC', 'Th']
 _CCF_TOP_NODES_THALAMUS = ['TH', 'ZI']
