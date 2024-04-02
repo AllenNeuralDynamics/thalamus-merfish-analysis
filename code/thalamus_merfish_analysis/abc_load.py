@@ -71,7 +71,7 @@ def load_standard_thalamus(data_structure='adata'):
                                        filter_other_nonTH=True)
     data_th = filter_by_thalamus_coords(data_th, buffer=0, realigned=False)
     
-    return data_th
+    return data_th.copy()
 
 def load_adata_thalamus(subset_to_TH_ZI=True, 
                version=CURRENT_VERSION, transform='log2cpv', 
