@@ -13,7 +13,7 @@ ABC Atlas MERFISH dataset.
 functions:
     load_adata:
         loads ABC Atlas MERFISH dataset as an anndata object
-    filter_adata_by_class:
+    filter_by_class_thalamus:
         filters anndata obj to only include cells from TH & ZI taxonomy classes
     get_combined_metadata:
         loads the cell metadata csv, with memory/speed improvements
@@ -105,8 +105,8 @@ def load_adata(version=CURRENT_VERSION, transform='log2', with_metadata=True):
     return adata
 
 
-def filter_adata_by_class(th_zi_adata, filter_nonneuronal=True,
-                          filter_midbrain=True):
+def filter_by_class_thalamus(th_zi_adata, filter_nonneuronal=True,
+                             filter_midbrain=True):
     ''' Filters anndata object to only include cells from specific taxonomy 
     classes.
 
@@ -434,9 +434,9 @@ if __name__=="__main__":
     th_zi_adata = load_adata(version=CURRENT_VERSION, transform='log2', 
                              with_metadata=True)
     
-    th_zi_adata_neurons = filter_adata_by_class(th_zi_adata, 
-                                                filter_nonneuronal=True,
-                                                filter_midbrain=True)
+    th_zi_adata_neurons = filter_by_class_thalamus(th_zi_adata, 
+                                                   filter_nonneuronal=True,
+                                                   filter_midbrain=True)
     
     th_zi_adata_neurons.write_h5ad(Path(WRITE_DIR,
                                         ('abc_atlas_merfish_'+BRAIN_LABEL+'_v'
