@@ -74,11 +74,11 @@ def load_standard_thalamus(data_structure='adata'):
     return data_th
 
 def load_adata_thalamus(subset_to_TH_ZI=True, 
-               version=CURRENT_VERSION, transform='log2cpv', 
-               with_metadata=True, drop_blanks=True, 
-               flip_y=False, realigned=False, 
-               with_colors=False,
-               **kwargs):
+                        version=CURRENT_VERSION, transform='log2cpm', 
+                        with_metadata=True, drop_blanks=True, 
+                        flip_y=False, realigned=False, 
+                        with_colors=False,
+                        **kwargs):
     '''Load ABC Atlas MERFISH dataset as an anndata object.
     
     Parameters
@@ -135,7 +135,7 @@ def load_adata_thalamus(subset_to_TH_ZI=True,
 
 
 def filter_by_class_thalamus(th_zi_adata, filter_nonneuronal=True,
-                             filter_midbrain=True, filter_other_nonTH=True):
+                             filter_midbrain=False, filter_other_nonTH=True):
     ''' Filters anndata object to only include cells from specific taxonomy 
     classes.
 
