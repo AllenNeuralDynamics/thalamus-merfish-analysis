@@ -2,16 +2,13 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import shapely
 import seaborn as sns
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 import matplotlib
 from colorcet import glasbey
-from matplotlib.colors import ListedColormap, to_rgba, to_rgb
-from scipy.ndimage import binary_dilation
+from matplotlib.colors import to_rgba
 
-from .abc_load import get_thalamus_names, get_ccf_index, get_color_dictionary, CURRENT_VERSION
+from .abc_load import get_ccf_names, get_ccf_index, get_color_dictionary, CURRENT_VERSION
 from . import ccf_images as cci
 
 
@@ -36,31 +33,31 @@ def plot_ccf_overlay(obs, ccf_images, sections=None,
         3D array of CCF parcellation regions
     sections : list of numbers, optional
         Section(s) to display. Must be a list even for single section. 
-        If None, all sections in obs[section_col].unique() are displayed
+        If None, all sections that contain cells in obs are displayed
     point_hue : str
         Column name in obs to color cells by
     point_palette : dict, optional
         Dictionary of point_hue categories and colors
-    categorical : bool
+    categorical : bool, default=True
         Whether point_hue is a categorical variable
-    s : int
+    s : int, default=2
         Size of foreground cell scatter points (background cells set to 0.8*s)
     min_group_count : int
         Minimum number of cells in a group to be displayed
     bg_cells : pd.DataFrame, optional
         DataFrame of background cells to display
-    ccf_names : list of str
+    ccf_names : list of str, optional
         List of CCF region names to display
-    ccf_highlight : list of str
+    ccf_highlight : list of str, optional
         List of CCF region names to highlight with a darker outline for ccf_names
-    ccf_level : str, {'substructure', 'structure'}
+    ccf_level : str, {'substructure', 'structure'}, default='substructure'
         Level of CCF to be displayed
     boundary_img : np.ndarray, optional
         3D array of CCF parcellation boundaries; if None, calculated on the fly
-    face_palette : {None, dict, 'glasbey'}
+    face_palette : {None, dict, 'glasbey'}, default=None
         Sets face color of CCF region shapes in plot_ccf_section(), see that 
         function's docstring for more details
-    edge_color : str
+    edge_color : str, default='grey'
         Sets outline/boundary color of CCF region shapes in plot_ccf_section()
     section_col : str, {'z_section', 'z_reconstructed', 'z_realigned'}
         Column name in obs for the section numbers in 'sections'; must be a col 
@@ -79,14 +76,13 @@ def plot_ccf_overlay(obs, ccf_images, sections=None,
     '''
     obs = obs.copy()
     # Set variables not specified by user
-    # TODO: update logic to specify all brain regions vs just thalamus regions
     if ccf_names is None:
-        ccf_names = get_thalamus_names(level=ccf_level)
+        ccf_names = get_ccf_names(level=ccf_level)
     if sections is None:
         sections = sorted(obs[section_col].unique())
 
     if isinstance(sections[0], str):
-        raise Exception('str type detected for ''sections''. You must use ''z_section'' OR ''z_reconstructed'' as your ''section_col'' in order to plot the rasterized CCF volumes.')
+        raise TypeError('str type detected for ''sections''. You must use ''z_section'' OR ''z_reconstructed'' as your ''section_col'' in order to plot the rasterized CCF volumes.')
         
     # Clean up point hue column    
     # string type (not categorical) allows adding 'other' to data slice by slice
@@ -126,16 +122,10 @@ def plot_ccf_overlay(obs, ccf_images, sections=None,
         
         # display CCF shapes
         plot_ccf_section(ccf_images, section, boundary_img=boundary_img,
-                         ccf_region_names=ccf_names, 
-                         structure_index=get_ccf_index(level=ccf_level), 
+                         ccf_region_names=ccf_names, highlight_region_names=ccf_highlight,
+                         ccf_level=ccf_level, 
                          face_palette=face_palette, edge_color=edge_color,
                          legend=(legend=='ccf'), ax=ax)
-        if ccf_highlight!=[]:
-            plot_ccf_section(ccf_images, section, boundary_img=boundary_img,
-                             ccf_region_names=ccf_highlight, 
-                             structure_index=get_ccf_index(level=ccf_level), 
-                             face_palette=None, edge_color=EDGE_COLOR_HIGHLIGHT,
-                             ax=ax)
 
         # display background cells in grey
         if bg_cells is not None:
@@ -250,6 +240,7 @@ def plot_metrics_ccf(ccf_img, metric_series, sections,
 
 # ----------------------- Single-Section Plot Elements ----------------------- #
 
+# TODO: make thalamus-specific version with thalamus names default nuclei
 def plot_expression_ccf_section(adata_or_obs, gene, ccf_images, 
                         section, nuclei=None, highlight=[], 
                         s=0.5, cmap='Blues', show_outline=False, 
@@ -260,7 +251,7 @@ def plot_expression_ccf_section(adata_or_obs, gene, ccf_images,
                         label=None, colorbar=True, ax=None,
                         **kwargs):
     if nuclei is None:
-        nuclei = get_thalamus_names()
+        nuclei = get_ccf_names()
 
     obs_df = type(adata_or_obs) is pd.DataFrame
     obs = adata_or_obs if obs_df else adata_or_obs.obs
@@ -310,34 +301,37 @@ def plot_expression_ccf_section(adata_or_obs, gene, ccf_images,
     return fig
 
 
-def plot_ccf_section(ccf_img, section_z, ccf_region_names=None,
+def plot_ccf_section(ccf_img, section_z, 
+                     ccf_region_names=None, highlight_region_names=None,
                      face_palette=None, edge_color='grey',
-                     boundary_img=None, structure_index=None, 
+                     boundary_img=None, ccf_level='substructure', 
                      z_resolution=200e-3, legend=True, ax=None):
-    ''' Display CCF parcellations for a single section
+    ''' Display CCF parcellations for a single section from an 
+    image volume of region labels
+    
     Parameters
     ----------
     ccf_img : np.ndarray
         3D array of CCF parcellations
     section_z : int
         Section number
-    ccf_region_names : list of str
-        List of CCF region names to display
+    ccf_region_names : list of str, optional
+        Subset of CCF regions to display
+    highlight_region_names : list of str, optional
+        Subset of CCF regions to highlight with darkened edges
     face_palette : {None, dict, 'glasbey'}
         Sets face color of CCF region shapes; 
         None to have no face color, or a dictionary of CCF region names and 
         colors, or 'glasbey' to generate a color palette from the 
         colorcet.glasbey color map
-    edge_color : str
+    edge_color : str, default='grey'
         Sets outline/boundary color of all CCF region shapes; any valid 
         matplotlib color
     boundary_img : np.ndarray, optional
         2D array of CCF parcellation boundaries; if None, calculated on the fly
-    structure_index : pd.Series
-        Series of CCF region names and their corresponding IDs
-    z_resolution : float
+    z_resolution : float, default=200e-3
         Resolution of the CCF in the z-dimension
-    legend : bool
+    legend : bool, default=True
         Whether to display a legend for the CCF region shapes
     ax : matplotlib.axes.Axes, optional
         Existing Axes to plot on; if None, a new figure and axes are created
@@ -347,39 +341,33 @@ def plot_ccf_section(ccf_img, section_z, ccf_region_names=None,
     img = ccf_img[:,:, index_z].T
     boundary_img = boundary_img[:,:, index_z].T if boundary_img is not None else None
     
-    # selection CCF regions to plot
-    if structure_index is None:
-        structure_index = get_ccf_index()
-    region_nums = np.unique(img)
-    section_region_names = [structure_index[i] for i in region_nums if i in structure_index.index]
-    if (ccf_region_names is None) or ((isinstance(ccf_region_names, str)) 
-                                      and (ccf_region_names=='all')):
-        ccf_region_names = list(set(section_region_names).intersection(get_thalamus_names()))
-    else:
-        ccf_region_names = list(set(section_region_names).intersection(ccf_region_names))
+    # select CCF regions to plot
+    # TODO: could allow names from other levels and translate all to specified level...
+    structure_index = get_ccf_index(level=ccf_level)
+    section_region_names = [structure_index[i] for i in np.unique(img) if i in structure_index.index]
+    
+    if ccf_region_names is not None:
+        section_region_names = list(set(section_region_names).intersection(ccf_region_names))
 
+    # TODO: consider removing generate option?
     if face_palette=='glasbey':
-        face_palette = _generate_palette(ccf_region_names)
-    
-    regions = ccf_region_names if face_palette is None else [x for x in ccf_region_names 
-                                                             if x in face_palette
-                                                            ]
-    
+        face_palette = _generate_palette(section_region_names)
+    else:
+        face_palette = {x: y for x, y in face_palette.items() if x in section_region_names}
+
+    edge_palette = {x: EDGE_COLOR_HIGHLIGHT if x in highlight_region_names else edge_color
+                    for x in section_region_names}
+            
     # plot CCF shapes
     plot_ccf_shapes(img, structure_index, boundary_img=boundary_img, 
-                    regions=regions, face_palette=face_palette, 
-                    edge_color=edge_color, ax=ax)
+                    face_palette=face_palette, edge_palette=edge_palette,
+                    ax=ax, legend=legend)
     
-    # generate "empty" matplotlib handles to be used by plt.legend() call in 
-    # plot_ccf_overlay() (NB: that supercedes any call to plt.legend here)
-    if legend and (face_palette is not None):
-        handles = [plt.plot([], marker="o", ls="", color=face_palette[name], label=name)[0] 
-                   for name in regions]
 
     
-def plot_ccf_shapes(imdata, index, boundary_img=None, regions=None, 
-                    face_palette=None, edge_color='black', edge_width=1,  
-                    alpha=1, ax=None, resolution=10e-3):
+def plot_ccf_shapes(imdata, index, boundary_img=None,
+                    face_palette=None, edge_palette=None, edge_width=1,  
+                    alpha=1, ax=None, resolution=10e-3, legend=True):
     ''' Plot face & boundary for CCF region shapes specified
 
     Parameters
@@ -391,53 +379,45 @@ def plot_ccf_shapes(imdata, index, boundary_img=None, regions=None,
     boundary_img : np.ndarray, optional
         2D array of CCF parcellation boundaries; if None, calculated on the fly
     regions : list of str, optional
-        List of CCF region names to display; if None, ??????
+        List of CCF region names to display; if None, display all
     face_palette : dict, optional
-        Dictionary of CCF region names and colors
-    edge_color : str, optional
-        Sets outline/boundary color of all CCF region shapes; any valid
-        matplotlib color
-    edge_width : int, optional
-        Width of the CCF region shape outlines
-    alpha : float, optional
+        Dictionary of CCF region names and colors; if None, faces are not colored
+    edge_palette : dict, optional
+        Dictionary of CCF region names and colors; if None, edges are not colored
+    edge_width : int, default=1
+        Width of the CCF region shape outlines (used only if boundary_img is None)
+    alpha : float, default=1
         Opacity of the CCF region shapes' face and edge colors
     ax : matplotlib.axes.Axes, optional
         Existing Axes to plot on; if None, a new figure and axes are created
-    resolution : float, optional
-        Resolution of the CCF in the z-dimension
+    resolution : float, default=10e-3
+        Resolution of the CCF in the image plane, used to set correct image extent
+    legend : bool, default=True
+        Whether to display a legend for the CCF region shapes
     '''
-    # TODO: move index logic and boundary_img creation out to plot_ccf_section, pass rgba lookups
+    # TODO: use xarray for applying palette, plotting, storing boundaries
     extent = resolution * (np.array([0, imdata.shape[0], imdata.shape[1], 0]) - 0.5)
-    kwargs = dict(extent=extent, interpolation="none", alpha=alpha)
+    imshow_args = dict(extent=extent, interpolation="none", alpha=alpha)
     
     # Plot face shapes of CCF regions
     if face_palette is not None:
-        if regions:
-            face_palette = {x: y for x, y in face_palette.items() if x in regions}
         rgba_lookup = _palette_to_rgba_lookup(face_palette, index)
         im_regions = rgba_lookup[imdata, :]
-        ax.imshow(im_regions, **kwargs)
+        ax.imshow(im_regions, **imshow_args)
     
     # Plot boundaries of CCF regions    
-    if edge_color is not None:
+    if edge_palette is not None:
         if boundary_img is None:
             boundary_img = cci.label_erosion(imdata, edge_width, fill_val=0, 
                                              return_edges=True)
-            
-        # filter edges by face_palette or CCF regions if present
-        if face_palette is not None:
-            im_edges = rgba_lookup[boundary_img, 3] != 0
-        elif regions is not None:
-            edge_palette = {x: 'k' for x in regions}
-            rgba_lookup = _palette_to_rgba_lookup(edge_palette, index)
-            im_edges = rgba_lookup[boundary_img, 3] != 0
-        else:
-            im_edges = boundary_img
-        
-        im_edges = np.where(im_edges[:,:,None]!=0, np.array(to_rgba(edge_color), ndmin=3), 
-                            np.zeros((1,1,4)))
-        ax.imshow(im_edges, **kwargs)
+        rgba_lookup = _palette_to_rgba_lookup(edge_palette, index)
+        im_edges = rgba_lookup[boundary_img, :]
+        ax.imshow(im_edges, **imshow_args)
 
+    # generate "empty" matplotlib handles for legend
+    if legend and (face_palette is not None):
+        for name, color in face_palette.items():
+            plt.plot([], marker="o", ls="", color=color, label=name)
 
 # ------------------------- DataFrame Preprocessing ------------------------- #
 
