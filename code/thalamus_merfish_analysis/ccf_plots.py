@@ -8,7 +8,7 @@ import matplotlib
 from colorcet import glasbey
 from matplotlib.colors import to_rgba
 
-from .abc_load import get_ccf_names, get_ccf_index, get_color_dictionary, CURRENT_VERSION
+from .abc_load import get_ccf_names, get_ccf_index, get_color_dictionary, label_outlier_celltypes
 from . import ccf_images as cci
 
 
@@ -87,36 +87,27 @@ def plot_ccf_overlay(obs, ccf_images, sections=None,
     # Clean up point hue column    
     # string type (not categorical) allows adding 'other' to data slice by slice
     if categorical:
-        obs[point_hue] = obs[point_hue].astype(str)
-        # drop groups below min_group_count and sort by size
-        # currently across all of obs, not just selected sections
-        point_group_names = obs[point_hue].value_counts().loc[lambda x: x>min_group_count].index
-        obs = obs[obs[point_hue].isin(point_group_names)]
+        obs = preprocess_categorical_plot(obs, point_hue, section_col=section_col,
+                                            min_group_count=min_group_count,
+                                            min_section_count=min_section_count)
         
         # Set color palette for cell scatter points
-        if point_palette is None:
-            # if point_hue is a taxonomy level, no need to pass in pre-generated
-            # palette as a parameter, just calculate it on the fly
-            if point_hue in ['class','subclass','supertype','cluster']:
-                hue_categories = obs[point_hue].unique().tolist() #.cat.categories.tolist()
-                point_palette = get_color_dictionary(hue_categories, 
-                                                     point_hue, 
-                                                     version=CURRENT_VERSION)
-            else:
-                point_palette = _generate_palette(point_group_names)
-        else:
-            point_palette = point_palette.copy()
-        point_palette.update(other='grey')
-    
+        point_palette = _get_modified_categorical_palette(
+            point_palette, obs[point_hue].unique().tolist(), point_hue
+        )
+
+    # add background cells with NA values
     if bg_cells is not None:
-        bg_cells = bg_cells.loc[bg_cells.index.difference(obs.index)]
+        obs = pd.concat(
+            [obs, 
+             bg_cells.loc[bg_cells.index.difference(obs.index)]
+             .assign(**{point_hue: np.nan})]
+        )
     
     # Display each section as a separate plot
     figs = []
     for section in sections:
-        secdata = obs.loc[lambda df: (df[section_col]==section)].copy()
-        if len(secdata) < min_section_count:
-            continue
+        secdata = obs.loc[lambda df: (df[section_col]==section)]
         fig, ax = plt.subplots(figsize=(8,4))
         ax.set_title('z='+str(section)+'\n'+point_hue)
         
@@ -127,28 +118,9 @@ def plot_ccf_overlay(obs, ccf_images, sections=None,
                          face_palette=face_palette, edge_color=edge_color,
                          legend=(legend=='ccf'), ax=ax)
 
-        # display background cells in grey
-        if bg_cells is not None:
-            bg_s = s*0.8 if (s<=2) else 2
-            if custom_xy_lims!=[]:
-                bg_cells = _filter_by_xy_lims(bg_cells, x_col, y_col, custom_xy_lims)
-            sns.scatterplot(bg_cells.loc[lambda df: (df[section_col]==section)], 
-                            x=x_col, y=y_col, c='grey', s=bg_s, alpha=0.5, 
-                            linewidth=0)
-        # lump small groups if legend list is too long
-        if categorical:
-            sec_group_counts = secdata[point_hue].value_counts(ascending=True)
-            if len(sec_group_counts) > 10:
-                point_groups_section = sec_group_counts.loc[lambda x: x>min_group_count].index
-                secdata.loc[lambda df: ~df[point_hue].isin(point_groups_section), point_hue] = 'other'
-            secdata[point_hue] = pd.Categorical(secdata[point_hue])
-        # display foreground cells according to point_hue
-        if len(secdata) > 0:
-            if custom_xy_lims!=[]:
-                secdata = _filter_by_xy_lims(secdata, x_col, y_col, custom_xy_lims)
-            sns.scatterplot(secdata, x=x_col, y=y_col, hue=point_hue,
-                            s=s, palette=point_palette, linewidth=0,
-                            legend=(legend in ['cells', 'both']))
+        plot_cells_scatter(secdata, x_col, y_col, point_hue, 
+                    s, point_palette, legend,
+                    custom_xy_lims)
         # plot formatting
         if legend is not None:
             ncols = 4 if (legend=='ccf') else 2 # cell type names require more horizontal space
@@ -159,6 +131,21 @@ def plot_ccf_overlay(obs, ccf_images, sections=None,
         figs.append(fig)
     return figs
             
+
+def plot_cells_scatter(secdata, x_col, y_col, point_hue, 
+                        s, point_palette, legend,
+                        custom_xy_lims=[]):
+    if custom_xy_lims!=[]:
+        secdata = _filter_by_xy_lims(secdata, x_col, y_col, custom_xy_lims)
+    sns.scatterplot(secdata, x=x_col, y=y_col, hue=point_hue,
+                    s=s, palette=point_palette, linewidth=0,
+                    legend=(legend in ['cells', 'both']))
+    
+    bg_s = s*0.8 if (s<=2) else 2
+    # TODO: make BACKGROUND_COLOR constant, add to palettes
+    sns.scatterplot(secdata.loc[secdata[point_hue].isna()], 
+                    x=x_col, y=y_col, c='grey', s=bg_s, alpha=0.5, 
+                    linewidth=0)
             
 def plot_nucleus_cluster_comparison_slices(obs, ccf_images, nuclei, 
                                            bg_cells=None, 
@@ -420,6 +407,22 @@ def plot_ccf_shapes(imdata, index, boundary_img=None,
             plt.plot([], marker="o", ls="", color=color, label=name)
 
 # ------------------------- DataFrame Preprocessing ------------------------- #
+def preprocess_gene_plot(adata, gene):
+    obs = adata.obs.copy()
+    obs[gene] = adata[gene]
+    return obs
+                                
+def preprocess_categorical_plot(obs, type_col, 
+                                section_col='z_section',
+                                min_group_count=10, 
+                                min_section_count=20,
+                                min_group_count_section=5):
+    sections = obs[section_col].value_counts().loc[lambda x: x>min_section_count].index
+    obs = obs[obs[section_col].isin(sections)].copy()
+    obs = label_outlier_celltypes(obs, type_col, min_group_count=min_group_count)
+    obs = obs.groupby(section_col).apply(lambda x: 
+        label_outlier_celltypes(x, type_col, min_group_count=min_group_count_section))
+    return obs
 
 def _filter_by_xy_lims(data, x_col, y_col, custom_xy_lims):
     ''' Filter a DataFrame by custom x and y limits.
@@ -445,17 +448,7 @@ def _filter_by_xy_lims(data, x_col, y_col, custom_xy_lims):
     ymin = min(custom_xy_lims[2:])
     ymax = max(custom_xy_lims[2:])
     
-    # can handle both adata or obs
-    if hasattr(data, 'obs'):
-        adata = data
-        subset = ((adata.obs[x_col] >= xmin) & (adata.obs[x_col] <= xmax) &
-                  (adata.obs[y_col] >= ymin) & (adata.obs[y_col] <= ymax)
-                 )
-    else:
-        obs = data
-        subset = ((obs[x_col] >= xmin) & (obs[x_col] <= xmax) &
-                  (obs[y_col] >= ymin) & (obs[y_col] <= ymax)
-                 )
+    obs = filter_by_coordinate_range(obs, x_col, xmin, xmax)
         
     return data[subset]
 
@@ -483,6 +476,18 @@ def _generate_palette(ccf_names):
     
     return palette_dict
 
+def _get_modified_categorical_palette(palette, hue_categories, hue_label):
+    if palette is None:
+        # if hue is a taxonomy level, no need to pass in pre-generated
+        # palette as a parameter, just calculate it on the fly
+        if hue_label in ['class','subclass','supertype','cluster']:
+            palette = get_color_dictionary(hue_categories, hue_label)
+        else:
+            palette = _generate_palette(hue_categories)
+    else:
+        palette = palette.copy()
+    palette.update(other='grey')
+    return palette
 
 def _palette_to_rgba_lookup(palette, index):
     ''' Convert a color palette dict to an RGBA lookup table.
