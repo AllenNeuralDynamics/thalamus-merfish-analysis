@@ -1,29 +1,12 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/python
 {
 	"name": "Code Ocean capsule",
-	"build": {
-		"dockerfile": "../environment/Dockerfile"
-	},
-	"workspaceMount": "source=${localWorkspaceFolder},target=/root/capsule,type=bind,consistency=cached",
-	"workspaceFolder": "/root/capsule",
-	// should work, but volume opts not passed through
-	// "mounts": [
-	// 	{ 
-	// 		"target": "/data/abc_atlas", 
-	// 		"type": "volume",
-	// 		"volume-driver": "rclone",
-	// 		"volume-opt": "remote=:s3:allen-brain-cell-atlas"
-	// 	}
-	// ]
-	"runArgs": [
-		"--mount", 
-		"source=abc_atlas,target=/data/abc_atlas,type=volume,volume-driver=rclone,readonly,volume-opt=remote=:s3:allen-brain-cell-atlas,volume-opt=vfs-cache-mode=full,volume-opt=vfs-cache-max-size=100g,volume-opt=vfs-read-ahead=64m,volume-opt=dir-cache-time=1h,volume-opt=no-checksum=true,volume-opt=poll-interval=0"
-	],
+    "dockerComposeFile": "../environment/docker-compose.yml",
+    "service": "devcontainer",
+    "workspaceFolder": "/root/capsule",
+    "overrideCommand": true,
 	"remoteEnv": {
-		"PATH": "${containerEnv:PATH}:/root/.local/bin"
+		"PATH": "${containerEnv:PATH}:/root/.local/bin:/root/capsule/code"
 	},
-	"onCreateCommand": "pip install --no-deps -e .",
 	"customizations": {
 		"vscode": {
 			"extensions": [
