@@ -1,0 +1,23 @@
+{
+	"name": "Code Ocean capsule",
+    "dockerComposeFile": "../environment/docker-compose.yml",
+    "service": "devcontainer",
+    "workspaceFolder": "/root/capsule",
+    "overrideCommand": true,
+	"remoteEnv": {
+		"PATH": "${containerEnv:PATH}:/root/.local/bin:/root/capsule/code"
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.vscode-pylance",
+				"ms-python.python",
+				"ms-toolsai.jupyter",
+				"ms-python.isort",
+				"kevinrose.vsc-python-indent",
+				"njpwerner.autodocstring",
+				"mhutchie.git-graph"
+			]
+		}
+	}
+}

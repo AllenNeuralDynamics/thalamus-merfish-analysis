@@ -1,22 +1,45 @@
 {
 	"name": "Code Ocean capsule",
-    "dockerComposeFile": "../environment/docker-compose.yml",
-    "service": "devcontainer",
-    "workspaceFolder": "/root/capsule",
-    "overrideCommand": true,
+	"build": {
+		"dockerfile": "../environment/Dockerfile"
+	},
+	"workspaceFolder": "/root/capsule",
 	"remoteEnv": {
 		"PATH": "${containerEnv:PATH}:/root/.local/bin:/root/capsule/code"
 	},
+	"features": {
+		"ghcr.io/devcontainers-contrib/features/rclone:1": {}
+	},
+	"privileged": true,
+	"onCreateCommand": {
+		"mkdir": "mkdir -p /data/abc_atlas",
+		"fuse3": "apt-get update && apt-get install -y fuse3"
+	},
+	"postStartCommand": [
+		"rclone", "mount", 
+		":s3:allen-brain-cell-atlas", "/data/abc_atlas", 
+		"--allow-non-empty",
+		"--allow-other",
+		"--s3-provider", "AWS",
+		"--s3-region", "us-west-2",
+		"--read-only", 
+		"--vfs-cache-mode", "full", 
+		"--vfs-cache-max-size", "100g", 
+		"--vfs-read-ahead", "64m", 
+		"--buffer-size", "32m", 
+		"--dir-cache-time", "1h", 
+		"--no-checksum", 
+		"--poll-interval", "0", 
+		"--checkers", "36",
+		"--daemon"
+	],
 	"customizations": {
 		"vscode": {
 			"extensions": [
 				"ms-python.vscode-pylance",
 				"ms-python.python",
 				"ms-toolsai.jupyter",
-				"ms-python.isort",
-				"kevinrose.vsc-python-indent",
 				"njpwerner.autodocstring",
-				"mhutchie.git-graph"
 			]
 		}
 	}
