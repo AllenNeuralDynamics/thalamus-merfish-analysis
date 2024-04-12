@@ -3,7 +3,7 @@
 	"build": {
 		"dockerfile": "../environment/Dockerfile"
 	},
-	"workspaceFolder": "/root/capsule",
+	// "workspaceFolder": "/root/capsule",
 	"remoteEnv": {
 		"PATH": "${containerEnv:PATH}:/root/.local/bin:/root/capsule/code"
 	},
@@ -13,6 +13,7 @@
 	"privileged": true,
 	"onCreateCommand": {
 		"mkdir": "mkdir -p /data/abc_atlas",
+		"capsule path": "ln -s ${workspaceFolder} /root/capsule",
 		"fuse3": "apt-get update && apt-get install -y fuse3"
 	},
 	"postStartCommand": [
