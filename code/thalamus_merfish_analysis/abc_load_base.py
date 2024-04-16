@@ -328,21 +328,25 @@ def label_ccf_spatial_subset(cells_df, ccf_regions,
     
     Parameters
     ----------
-    cells_df : pandas dataframe
+    cells_df : pandas DataFrame
         dataframe of cell metadata (e.g. adata.obs)
     ccf_regions : list(str)
         list of (abbreviated) CCF region names to select
-    distance_px : int, default=20
-        dilation radius in pixels (1px = 10um)
-    filter_cells : bool, default=False
-        filters cells_df to only cells in spatial subset
+    ccf_level: {'division', 'structure', 'substructure'}, default='substructure'
+        level of the CCF hierarchy to return labels from
+    include_children : bool, default=True
+        include all subregions of the specified ccf_regions
     flip_y : bool, default=False
         flip y-axis orientation of th_mask so coronal section is right-side up.
         This MUST be set to true if flip_y=True in get_combined_metadata() so
         the cell coordinates and binary mask have the same y-axis orientation
+    distance_px : int, default=20
+        dilation radius in pixels (1px = 10um)
     cleanup_mask : bool, default=True
         removes any regions whose area ratio, as compared to the largest region
         in the binary mask, is lower than 0.1
+    filter_cells : bool, default=False
+        filters cells_df to only cells in spatial subset
     realigned : bool, default=False
         use realigned CCF coordinates and image volume
     field_name : bool, default='region_mask'
@@ -350,7 +354,8 @@ def label_ccf_spatial_subset(cells_df, ccf_regions,
         
     Returns
     -------
-    cells_df 
+    cells_df : pandas DataFrame
+        with a new boolean column specifying which cells are in ccf_regions
     '''
     
     # use reconstructed (in MERFISH space) coordinates from cells_df
@@ -431,9 +436,9 @@ def _get_ccf_names(top_nodes, level=None):
     )
     ccf_labels = ccf_df.pivot(index='parcellation_index', values='parcellation_term_acronym', columns='parcellation_term_set_name')
     if level is not None:
-        names = ccf_labels.loc[th_zi_ind, level].values
+        names = sorted(ccf_labels.loc[th_zi_ind, level].values)
     else:
-        names = list(set(ccf_labels.loc[th_zi_ind, :].values.flatten()))
+        names = sorted(list(set(ccf_labels.loc[th_zi_ind, :].values.flatten())))
     return names
 
 def get_ccf_names(top_nodes=None, level=None):
@@ -455,7 +460,7 @@ def get_ccf_names(top_nodes=None, level=None):
         list of region names
     """
     if top_nodes is None:
-        return get_ccf_index(level=level).unique()
+        return sorted(get_ccf_index(level=level).unique())
     if level=='devccf':
         return _get_devccf_names(top_nodes)
     else:
