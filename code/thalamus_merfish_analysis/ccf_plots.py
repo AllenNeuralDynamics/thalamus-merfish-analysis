@@ -305,7 +305,7 @@ def plot_expression_ccf_section(adata_or_obs, gene, ccf_images,
                 label="log2(CPM+1)"
         plt.colorbar(sc, label=label, fraction=0.046, pad=0.01)
     
-    ax.set_title(gene)
+    ax.set_title(f'{gene}\nz={str(section_z)}')
     _format_image_axes(ax=ax, custom_xy_lims=custom_xy_lims)
     return fig
 
