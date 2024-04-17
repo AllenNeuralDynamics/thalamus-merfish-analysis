@@ -300,8 +300,8 @@ def plot_expression_ccf_section(adata_or_obs, gene, ccf_images,
     if nuclei is None:
         nuclei = get_thalamus_names()
 
-    obs_df = type(adata_or_obs) is pd.DataFrame
-    obs = adata_or_obs if obs_df else adata_or_obs.obs
+    is_obs_df = type(adata_or_obs) is pd.DataFrame
+    obs = adata_or_obs if is_obs_df else adata_or_obs.obs
     # need to parse both string & num sections so can't use query()
     sec_obs = obs[obs[section_col]==section] 
     section_z = sec_obs['z_section'].iloc[0]
@@ -327,20 +327,24 @@ def plot_expression_ccf_section(adata_or_obs, gene, ccf_images,
         sec_obs = _filter_by_xy_lims(sec_obs, x_col, y_col, 
                                         custom_xy_lims)
     # Plot gene expression
-    if obs_df:
+    if is_obs_df:
         c = sec_obs[gene].values
     else:
         c = adata_or_obs[sec_obs.index, gene].X.toarray().squeeze()
     sc = ax.scatter(x=sec_obs[x_col], y=sec_obs[y_col], c=c, 
                     s=s, cmap=cmap, vmin=cb_vmin_vmax[0], vmax=cb_vmin_vmax[1], 
                     zorder=-1) # force sc to very bottom of plot
-    # are we plotting raw counts or log2p counts?
     if colorbar:
         if label is None:
-            if all([i.is_integer() for i in c]):
-                label="CPM"
+            # if adata from load_adata(), counts_transform is recorded in .uns
+            if hasattr(adata_or_obs, 'uns') & ('counts_transform' in adata_or_obs.uns):
+                label = 'gene counts ('+adata_or_obs.uns['counts_transform']+')'
+            # if we don't have .uns['counts_transform'], check if we have raw counts or not
             else:
-                label="log2(CPM+1)"
+                if all(i.is_integer() for i in c):  # no [] around loop == stops at 1st non-integer encounter
+                    label = 'gene counts (raw)'
+                else:
+                    label = 'gene counts (unknown transform)'
         plt.colorbar(sc, label=label, fraction=0.046, pad=0.01)
     
     ax.set_title(gene)
