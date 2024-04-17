@@ -76,9 +76,15 @@ def load_adata(version=CURRENT_VERSION, transform='log2cpm',
         adata = adata[:, genes].to_memory()
     
     if transform == 'log2cpm':
+        # transform calculation converts sparse 'log2' matrix to dense array
         adata.X = np.asarray(
             np.log2(1 + adata.X*1e6 / np.sum(adata.X.toarray(), axis=1, keepdims=True)
                     ))
+    else:
+        # convert sparse matrix (how 'log2' & 'raw' counts are stored in h5ad 
+        # file) to dense array to match 'log2cpm' transform option
+        adata.X = adata.X.toarray()
+
     # access genes by short symbol vs longer names
     adata.var_names = adata.var['gene_symbol']
 
