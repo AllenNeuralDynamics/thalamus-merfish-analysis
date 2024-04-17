@@ -218,6 +218,44 @@ def plot_expression_ccf(adata, gene, ccf_images,
         figs.append(fig)
     return figs
 
+def plot_hcr(adata, genes, sections=None, section_col='section', 
+             x_col='cirro_x', y_col='cirro_y', bg_color='white'):
+    '''Display separate, and overlay, expression of 3 genes in multiple sections.
+    
+    Parameters
+    ----------
+    adata : AnnData
+        cells to display; gene expression in .X and spatial coordinates in .obs
+    genes : list of str
+        list of genes to display
+    section : list of float
+        sections to display.
+        if passing in a single section, still must be in a list, e.g. [7.2].
+    section_col : str
+        column in adata.obs that contains the section values
+    x_col, y_col : str
+        columns in adata.obs that contains the x- & y-coordinates
+    bg_color : str, default='white'
+        background color of the plot. Can use any color str that is recognized  
+        by matplotlib; passed on to plt.subplots(..., facecolor=bg_color) and
+        ax.set_facecolor(bg_color).
+        'black' / 'k' / '#000000' changes font colors to 'white'.
+
+    Returns
+    -------
+    figs : list of matplotlib.figure.Figure
+    '''
+    # set variable(s) not specified at input
+    if sections is None:
+        sections = adata.obs[section_col].unique()
+    # plot
+    figs = []
+    for section in sections:
+        fig = plot_hcr_section(adata, genes, section, section_col=section_col, 
+                               x_col=x_col, y_col=y_col, bg_color=bg_color)
+        figs.append(fig)
+    return figs
+
 
 def plot_metrics_ccf(ccf_img, metric_series, sections, 
                             structure_index=None,
@@ -307,6 +345,78 @@ def plot_expression_ccf_section(adata_or_obs, gene, ccf_images,
     
     ax.set_title(f'{gene}\nz={str(section_z)}')
     _format_image_axes(ax=ax, custom_xy_lims=custom_xy_lims)
+    return fig
+
+
+def plot_hcr_section(adata, genes, section, section_col='section',
+                     x_col='cirro_x', y_col='cirro_y', bg_color='white'):
+    '''Display separate, and overlay, expression of 3 genes in a single section.
+    
+    Parameters
+    ---------
+    adata : AnnData
+        cells to display; gene expression in .X and spatial coordinates in .obs
+    genes : list of str
+        list of genes to display
+    section : float
+        section to display
+    section_col : str
+        column in adata.obs that contains the section values
+    x_col, y_col : str
+        columns in adata.obs that contains the x- & y-coordinates
+    bg_color : str, default='white'
+        background color of the plot. Can use any color str that is recognized  
+        by matplotlib; passed on to plt.subplots(..., facecolor=bg_color) and
+        ax.set_facecolor(bg_color).
+        'black' / 'k' / '#000000' changes font colors to 'white'.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+    '''
+    
+    # Subset based on requested section
+    sec_adata = adata[adata.obs[section_col]==section]
+
+    # Set font color based on bg_color
+    if (bg_color=='black') | (bg_color=='k') | (bg_color=='#000000'):
+        font_color = 'white'
+    else:
+        font_color = 'black'
+    fontsize = 16
+    
+    # Get normalized expression of each gene
+    gene1_norm = sec_adata[:,genes[0]].X / sec_adata[:,genes[0]].X.max()
+    gene2_norm = sec_adata[:,genes[1]].X / sec_adata[:,genes[1]].X.max()
+    gene3_norm = sec_adata[:,genes[2]].X / sec_adata[:,genes[2]].X.max()
+
+    # Convert each genes normalized expression into an RGB value
+    colorR = np.concatenate((gene1_norm, np.zeros([gene1_norm.shape[0],2])),axis=1)
+    colorG = np.concatenate((np.zeros([gene1_norm.shape[0],1]),gene2_norm,np.zeros([gene1_norm.shape[0],1])),axis=1)
+    colorB = np.concatenate((np.zeros([gene1_norm.shape[0],2]),gene3_norm),axis=1)
+    # combine each gene into a single RGB color for overlay
+    colorRGB = np.concatenate((gene1_norm, gene2_norm, gene3_norm),axis=1)
+    # add overlay to list of colors & gene labels
+    cell_colors = (colorR, colorG, colorB, colorRGB)
+    genes.append('Overlay') # Append for labeling purposes
+
+    # Plot spatial expression for each channel (3 genes + overlay), 
+    fig, axes = plt.subplots(1,4, figsize=(24,3), dpi=80, facecolor=bg_color)
+    axes = axes.flatten()
+    for i, cell_color in enumerate(cell_colors):
+        ax = axes[i]
+        ax.scatter(sec_adata.obs[x_col],
+                   sec_adata.obs[y_col],
+                   s=10, marker='.', color=cell_color)
+        ax.set_title(genes[i], color=font_color, fontsize=fontsize)
+        _format_image_axes(ax)
+        ax.set_facecolor(bg_color)  # must be set AFTER _format_image_axes to take effect
+
+    counts_str = adata.uns['counts_transform']    
+    plt.suptitle(f'{section=}\ncounts={counts_str}', y=1.2, 
+                 color=font_color, fontsize=fontsize)
+    plt.show()
+    
     return fig
 
 
