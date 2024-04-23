@@ -107,8 +107,11 @@ def plot_ccf_overlay(
             min_group_count=min_group_count,
         )
         # Set color palette for cell scatter points
-        point_palette = _get_modified_categorical_palette(
-            point_palette, obs[point_hue].unique().tolist(), point_hue
+        point_palette = _generate_palette(
+            obs[point_hue].unique().tolist(), 
+            hue_label=point_hue,
+            palette=point_palette,
+            other=OTHER_CATEGORY_COLOR,
         )
 
     # add background cells with NA values
@@ -239,14 +242,13 @@ def _plot_cells_scatter(
         **kwargs,
     )
     bg_s = s * 0.8 if (s <= 2) else 2
-    # TODO: make BACKGROUND_COLOR constant, add to palettes
+    # TODO: add background cells to legend?
     sns.scatterplot(
         secdata.loc[secdata[point_hue].isna()],
         x=x_col,
         y=y_col,
-        c="grey",
+        c=BACKGROUND_POINT_COLOR,
         s=bg_s,
-        alpha=0.5,
         linewidth=0,
     )
 
@@ -319,6 +321,7 @@ def plot_expression_ccf_section(
     gene,
     ccf_images,
     section,
+    # TODO: rename the below to be consistent with other functions?
     nuclei=None,
     highlight=[],
     s=0.5,
@@ -475,13 +478,7 @@ def plot_ccf_section(
             set(section_region_names).intersection(ccf_region_names)
         )
 
-    # TODO: consider removing glasbey option?
-    if face_palette == "glasbey":
-        face_palette = _generate_palette(section_region_names)
-    else:
-        face_palette = {
-            x: y for x, y in face_palette.items() if x in section_region_names
-        }
+    face_palette = _generate_palette(section_region_names, palette=face_palette)
 
     edge_palette = {
         x: EDGE_COLOR_HIGHLIGHT if x in highlight_region_names else edge_color
@@ -659,37 +656,33 @@ def _integrate_background_cells(obs, point_hue, bg_cells):
 
 # Pre-set edge_colors for common situations
 EDGE_COLOR_HIGHLIGHT = "black"
+EDGE_COLOR_HIGHLIGHT = "black"
+OTHER_CATEGORY_COLOR = "grey"
+BACKGROUND_POINT_COLOR = "lightgrey"
 
-def _generate_palette(ccf_names, palette=glasbey):
-    """Generate a color palette dict for a given list of CCF regions.
+
+def _generate_palette(categories, palette=glasbey, hue_label=None, **items):
+    """Generate a color palette dict for a given list of categories.
 
     Parameters
     ----------
-    ccf_names : list of str
-        List of CCF region names
+    categories : list of str
+        List of category names
 
     Returns
     -------
-    palette_dict : dict of (str, RGB tuples)
-        Dictionary of CCF region names and colors
+    palette : dict of (str, RGB tuples)
     """
-    sns_palette = sns.color_palette(palette, n_colors=len(ccf_names))
-    palette_dict = dict(zip(ccf_names, sns_palette))
-
-    return palette_dict
-
-def _get_modified_categorical_palette(palette, hue_categories, hue_label):
-    if palette is None:
-        # if hue is a taxonomy level, no need to pass in pre-generated
-        # palette as a parameter, just calculate it on the fly
-        if hue_label in ["class", "subclass", "supertype", "cluster"]:
-            # subset to hue_categories only?
-            palette = abc.get_taxonomy_palette(hue_label)
-        else:
-            palette = _generate_palette(hue_categories)
-    else:
-        palette = palette.copy()
-    palette.update(other="grey")
+    # if hue is a taxonomy level, no need to pass in pre-generated
+    # palette as a parameter, just calculate it on the fly
+    if palette is None and hue_label in ["class", "subclass", "supertype", "cluster"]:
+        palette = abc.get_taxonomy_palette(hue_label)
+    try:
+        palette = {x: palette[x] for x in palette if x in categories}
+    except:
+        sns_palette = sns.color_palette(palette, n_colors=len(categories))
+        palette = dict(zip(categories, sns_palette))
+    palette.update(**items)
     return palette
 
 
