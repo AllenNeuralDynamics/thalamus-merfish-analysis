@@ -265,24 +265,63 @@ try:
 except:
     found_annotations = False
 
-def get_obs_from_annotated_clusters(name, obs, by='id', include_shared_clusters=False, manual_annotations=True):
+def get_obs_from_annotated_clusters(nuclei_names, obs, by='id', 
+                                    include_shared_clusters=False, 
+                                    manual_annotations=True):
+    ''' Get cells from specific thalamic nucle(i) based on manual nuclei:cluster
+    annotations.
+
+    Parameters
+    ----------
+    nuclei_names : str or list of str
+        name(s) of thalamic nuclei to search for in the manual annotations resource
+    obs : DataFrame
+        cell metadata DataFrame
+    by : {'id', 'alias'}, default='id'
+        whether to search for name in cluster_id (4-digits at the start of each
+        cluster label, specific to a taxonomy version) or cluster_alias (unique
+        ID # for each cluster, consistent across taxonomy versions) column
+    include_shared_clusters : bool, default=False
+        whether to include clusters that are shared with multiple thalamic nuclei
+    manual_annotations : bool, default=True
+        whether to use manual annotations or automatic annotations CSV
+
+    Returns
+    -------
+    obs
+        cell metadata DataFrame with only cells from the specified cluster(s)
+    '''
+
     if not found_annotations:
         raise UserWarning("Can't access annotations sheet from this environment.")
-    # if name not in nuclei_df.index:
-    #     raise UserWarning("Name not found in annotations sheet")
-    nuclei_df = nuclei_df_manual if manual_annotations else nuclei_df_auto
-    if include_shared_clusters:
-        names = [x for x in nuclei_df.index if any(name in y and not 'pc' in y
-                                                    for y in x.split(" "))]
-    else: 
-        names = [x for x in nuclei_df.index if name in x 
-                 and not (' ' in x or 'pc' in x)]
     
+    nuclei_df = nuclei_df_manual if manual_annotations else nuclei_df_auto
+
+    # if single name, convert to list
+    nuclei_names = [nuclei_names] if isinstance(nuclei_names, str) else nuclei_names
+    all_names = []
+    for name in nuclei_names:
+        if include_shared_clusters:
+            # 'name in y' condition returns e.g. ['AD','IAD'] if name='AD' but
+            # 'name==y' only returns 'AD' (but is now suseptible to typos like
+            # extra spaces - maybe there's a better solution?)
+            curr_names = [x for x in nuclei_df.index if any(y==name for y in x.split(" "))]
+        else: 
+            curr_names = [x for x in nuclei_df.index if x==name and not (' ' in x or 'pc' in x)]
+        all_names.extend(curr_names)
+    
+        if curr_names==[]:
+            unique_nuclei = sorted(set(nucleus 
+                                       for entry in nuclei_df.index
+                                       for nucleus in entry.split()))
+            raise UserWarning(f'Nuclei name(s) not found in annotations sheet. Please select from valid nuclei names below:\n{unique_nuclei=}')
+
     dfs = []
     field = "cluster_alias" if by=='alias' else "cluster_ids_CNN20230720"
-    clusters = chain(*[nuclei_df.loc[name, field].split(', ') for name in names])
+    clusters = chain(*[nuclei_df.loc[name, field].split(', ') for name in all_names])
     if by=='alias':
         obs = obs.loc[lambda df: df['cluster_alias'].isin(clusters)]
     elif by=='id':
+        # cluster id is the first 4 digits of 'cluster' column entries
         obs = obs.loc[lambda df: df['cluster'].str[:4].isin(clusters)]
     return obs
