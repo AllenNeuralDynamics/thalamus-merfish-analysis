@@ -18,25 +18,31 @@ def plot_ccf_overlay(
     obs,
     ccf_images,
     sections=None,
-    point_hue="CCF_acronym",
+    # column names
     section_col="section",
     x_col="cirro_x",
     y_col="cirro_y",
-    point_palette=None,  # controls foreground cells
+    point_hue="CCF_acronym",
+    # point props
+    point_palette=None, 
+    s=2, # TODO: rename 's' arg!
+    # point selection
     categorical=True,
     min_group_count=10,
     min_section_count=20,
-    bg_cells=None,  # controls background cells
-    ccf_names=None,
-    ccf_highlight=[],
-    ccf_level="substructure",  # controls CCF regions
-    boundary_img=None,
+    bg_cells=None,
+    # shape props
     face_palette=None,
     edge_color="grey",
-    s=2,
-    custom_xy_lims=[],  # xy coords
-    axes=False,
-    legend="cells",  # plot formatting
+    # shape selection
+    ccf_names=None,
+    ccf_highlight=None,
+    ccf_level="substructure",
+    # formatting
+    legend="cells",
+    custom_xy_lims=None,  
+    show_axes=False,
+    boundary_img=None,
 ):
     """
     Parameters
@@ -48,45 +54,45 @@ def plot_ccf_overlay(
     sections : list of numbers, optional
         Section(s) to display. Must be a list even for single section.
         If None, all sections that contain cells in obs are displayed
-    ccf_names : list of str, optional
-        List of CCF region names to display
-    point_hue : str
-        Column name in obs to color cells by
     section_col : str, {'z_section', 'z_reconstructed', 'z_realigned'}
         Column name in obs for the section numbers in 'sections'; must be a col
         that allows for indexing into ccf_images
     x_col, y_col : str
         Column names in obs for the x and y coordinates of cells
+    point_hue : str
+        Column name in obs to color cells by
     point_palette : dict, optional
         Dictionary of point_hue categories and colors
-    categorical : bool, default=True
-        Whether point_hue is a categorical variable
     s : int, default=2
         Size of foreground cell scatter points (background cells set to 0.8*s)
+    categorical : bool, default=True
+        Whether point_hue is a categorical variable
     min_group_count : int
         Minimum number of cells in a group to be displayed
+    min_section_count : int
+        Minimum number of cells in a section to be displayed
     bg_cells : pd.DataFrame, optional
         DataFrame of background cells to display
-    ccf_highlight : list of str, optional
-        List of CCF region names to highlight with a darker outline for ccf_names
-    ccf_level : str, {'substructure', 'structure'}, default='substructure'
-        Level of CCF to be displayed
-    boundary_img : np.ndarray, optional
-        3D array of CCF parcellation boundaries; if None, calculated on the fly
     face_palette : {None, dict, 'glasbey'}, default=None
         Sets face color of CCF region shapes in plot_ccf_section(), see that
         function's docstring for more details
     edge_color : str, default='grey'
         Sets outline/boundary color of CCF region shapes in plot_ccf_section()
-    min_section_count : int
-        Minimum number of cells in a section to be displayed
-    custom_xy_lims : list of float, [xmin, xmax, ymin, ymax]
-        Custom x and y limits for the plot
-    axes : bool
-        Whether to display the axes and spines
+    ccf_names : list of str, optional
+        List of CCF region names to display
+    ccf_highlight : list of str, optional
+        List of CCF region names to highlight with a darker outline for ccf_names
+    ccf_level : str, {'substructure', 'structure'}, default='substructure'
+        Level of CCF to be displayed
     legend : str, {'ccf', 'cells', 'both', None}
         Whether to display a legend for the CCF region shapes, the cell types,
         both, or neither
+    custom_xy_lims : list of float, [xmin, xmax, ymin, ymax]
+        Custom x and y limits for the plot
+    show_axes : bool
+        Whether to display the show_axes and spines
+    boundary_img : np.ndarray, optional
+        3D array of CCF parcellation boundaries; if None, calculated on the fly
     """
     # Set variables not specified by user
     if ccf_names is None:
@@ -114,7 +120,7 @@ def plot_ccf_overlay(
             other=OTHER_CATEGORY_COLOR,
         )
 
-    # add background cells with NA values
+    # add background cells as NA values
     if bg_cells is not None:
         obs = _integrate_background_cells(obs, point_hue, bg_cells)
 
@@ -124,19 +130,20 @@ def plot_ccf_overlay(
             obs,
             ccf_images,
             section,
-            boundary_img=boundary_img,
-            ccf_names=ccf_names,
             section_col=section_col,
             x_col=x_col,
             y_col=y_col,
             point_hue=point_hue,
             point_palette=point_palette,
+            s=s,
             face_palette=face_palette,
             edge_color=edge_color,
+            ccf_names=ccf_names,
             ccf_highlight=ccf_highlight,
             ccf_level=ccf_level,
+            boundary_img=boundary_img,
             custom_xy_lims=custom_xy_lims,
-            axes=axes,
+            show_axes=show_axes,
             legend=legend,
         )
         for section in sections
@@ -148,24 +155,30 @@ def plot_section_overlay(
     obs,
     ccf_images,
     section,
+    # column names
     section_col="section",
     x_col="cirro_x",
     y_col="cirro_y",
     point_hue="CCF_acronym",
-    point_palette=None,  
+    # point props
+    point_palette=None,
+    s=2,
+    # shape props
     face_palette=None,
     edge_color="grey",
+    # shape selection
     ccf_names=None,
-    ccf_highlight=[],
+    ccf_highlight=None,
     ccf_level="substructure",  
+    # formatting
+    legend="cells",
     custom_xy_lims=None,  
-    axes=False,
-    legend="cells",  # plot formatting
-    show=True,
-    ax=None,
+    show_axes=False,
     colorbar=False,
+    boundary_img=None,
     scatter_args={},
     cb_args={},
+    ax=None,
 ):
     ax, fig = _get_figure_handles(ax)
     secdata = obs.loc[lambda df: (df[section_col] == section)]
@@ -178,8 +191,8 @@ def plot_section_overlay(
         ccf_images,
         section,
         boundary_img=boundary_img,
-        ccf_region_names=ccf_names,
-        highlight_region_names=ccf_highlight,
+        ccf_names=ccf_names,
+        ccf_highlight=ccf_highlight,
         ccf_level=ccf_level,
         face_palette=face_palette,
         edge_color=edge_color,
@@ -193,6 +206,7 @@ def plot_section_overlay(
         y_col=y_col,
         point_hue=point_hue,
         point_palette=point_palette,
+        s=s,
         legend=(legend in ["cells", "both"]),
         custom_xy_lims=custom_xy_lims,
         ax=ax,
@@ -211,10 +225,9 @@ def plot_section_overlay(
         img.set_visible(False)
         plt.colorbar(img, orientation="vertical", **cb_args)
         
-    _format_image_axes(ax=ax, axes=axes, custom_xy_lims=custom_xy_lims)
+    _format_image_axes(ax=ax, show_axes=show_axes, custom_xy_lims=custom_xy_lims)
     ax.set_title("z=" + str(section) + "\n" + point_hue)
-    if show:
-        plt.show()
+    plt.show()
     return fig
 
 
@@ -263,7 +276,7 @@ def plot_expression_ccf(
     s=0.5,
     cmap="Blues",
     show_outline=False,
-    axes=False,
+    show_axes=False,
     edge_color="lightgrey",
     section_col="section",
     x_col="cirro_x",
@@ -289,7 +302,7 @@ def plot_expression_ccf(
             s=s,
             cmap=cmap,
             show_outline=show_outline,
-            axes=axes,
+            show_axes=show_axes,
             edge_color=edge_color,
             section_col=section_col,
             x_col=x_col,
@@ -324,9 +337,10 @@ def plot_expression_ccf_section(
     # TODO: rename the below to be consistent with other functions?
     nuclei=None,
     highlight=[],
+    ccf_level='substructure',
     s=0.5,
     cmap="Blues",
-    axes=False,
+    show_axes=False,
     edge_color="lightgrey",
     section_col="section",
     x_col="cirro_x",
@@ -357,11 +371,11 @@ def plot_expression_ccf_section(
         point_hue=gene,
         point_palette=cmap,
         edge_color=edge_color,
-        ccf_names=ccf_names,
-        ccf_highlight=ccf_highlight,
+        ccf_names=nuclei,
+        ccf_highlight=highlight,
         ccf_level=ccf_level,
         custom_xy_lims=custom_xy_lims,
-        axes=axes,
+        show_axes=show_axes,
         legend=None,
         colorbar=colorbar,
         scatter_args=scatter_args,
@@ -382,7 +396,7 @@ def plot_metrics_ccf(
     cb_label="metric",
     vmin=None,
     vmax=None,
-    axes=False,
+    show_axes=False,
 ):
     if structure_index is None:
         structure_index = abc.get_ccf_index()
@@ -409,15 +423,15 @@ def plot_metrics_ccf(
             legend=False,
             ax=ax,
         )
-        _format_image_axes(ax=ax, axes=axes)
+        _format_image_axes(ax=ax, show_axes=show_axes)
         figs.append(fig)
     return figs
 
 def plot_ccf_section(
     ccf_img,
     section_z,
-    ccf_region_names=None,
-    highlight_region_names=None,
+    ccf_names=None,
+    ccf_highlight=None,
     face_palette=None,
     edge_color="grey",
     boundary_img=None,
@@ -435,9 +449,9 @@ def plot_ccf_section(
         3D array of CCF parcellations
     section_z : int
         Section number
-    ccf_region_names : list of str, optional
+    ccf_names : list of str, optional
         Subset of CCF regions to display
-    highlight_region_names : list of str, optional
+    ccf_highlight : list of str, optional
         Subset of CCF regions to highlight with darkened edges
     face_palette : {None, dict, 'glasbey'}
         Sets face color of CCF region shapes;
@@ -454,7 +468,7 @@ def plot_ccf_section(
     legend : bool, default=True
         Whether to display a legend for the CCF region shapes
     ax : matplotlib.axes.Axes, optional
-        Existing Axes to plot on; if None, a new figure and axes are created
+        Existing Axes to plot on; if None, a new figure and Axes are created
     """
 
     if isinstance(section_z, str):
@@ -473,15 +487,15 @@ def plot_ccf_section(
         structure_index[i] for i in np.unique(img) if i in structure_index.index
     ]
 
-    if ccf_region_names is not None:
+    if ccf_names is not None:
         section_region_names = list(
-            set(section_region_names).intersection(ccf_region_names)
+            set(section_region_names).intersection(ccf_names)
         )
 
     face_palette = _generate_palette(section_region_names, palette=face_palette)
 
     edge_palette = {
-        x: EDGE_COLOR_HIGHLIGHT if x in highlight_region_names else edge_color
+        x: EDGE_HIGHLIGHT_COLOR if x in ccf_highlight else edge_color
         for x in section_region_names
     }
 
@@ -529,7 +543,7 @@ def plot_ccf_shapes(
     alpha : float, default=1
         Opacity of the CCF region shapes' face and edge colors
     ax : matplotlib.axes.Axes, optional
-        Existing Axes to plot on; if None, a new figure and axes are created
+        Existing Axes to plot on; if None, a new figure and Axes are created
     resolution : float, default=10e-3
         Resolution of the CCF in the image plane, used to set correct image extent
     legend : bool, default=True
@@ -655,8 +669,7 @@ def _integrate_background_cells(obs, point_hue, bg_cells):
 # ------------------------- Color Palette Handling ------------------------- #
 
 # Pre-set edge_colors for common situations
-EDGE_COLOR_HIGHLIGHT = "black"
-EDGE_COLOR_HIGHLIGHT = "black"
+EDGE_HIGHLIGHT_COLOR = "black"
 OTHER_CATEGORY_COLOR = "grey"
 BACKGROUND_POINT_COLOR = "lightgrey"
 
@@ -718,22 +731,22 @@ def _palette_to_rgba_lookup(palette, index):
 # ----------------------------- Plot Formatting ----------------------------- #
 
 def _get_figure_handles(ax):
-    """Get the current figure and axes handles, or create new ones if ax is None."""
+    """Get the current figure and show_axes handles, or create new ones if ax is None."""
     if ax is None:
         fig, ax = plt.subplots(figsize=(8, 4))
     else:
         fig = plt.gcf()
     return ax, fig
 
-def _format_image_axes(ax, axes=False, set_lims="whole", custom_xy_lims=[]):
-    """Format the axes of a plot.
+def _format_image_axes(ax, show_axes=False, set_lims="whole", custom_xy_lims=[]):
+    """Format the show_axes of a plot.
 
     Parameters
     ----------
     ax : matplotlib.axes.Axes
         Axes to format
-    axes : bool
-        Whether to display the axes and spines
+    show_axes : bool
+        Whether to display the show_axes and spines
     set_lims : bool or str, {'whole', 'left_hemi', 'right_hemi'}
         Whether to set the x and y limits of the plot to the whole brain,
         the left hemisphere, or the right hemisphere
@@ -741,7 +754,7 @@ def _format_image_axes(ax, axes=False, set_lims="whole", custom_xy_lims=[]):
         Custom x and y limits for the plot, supercedes defaults from set_lims
     """
     ax.axis("image")
-    if not axes:
+    if not show_axes:
         sns.despine(left=True, bottom=True)
         ax.set_xticks([])
         ax.set_yticks([])
