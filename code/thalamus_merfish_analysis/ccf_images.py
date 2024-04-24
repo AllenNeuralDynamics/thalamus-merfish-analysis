@@ -1,4 +1,3 @@
-
 import scipy.ndimage as ndi
 import numpy as np
 
@@ -79,7 +78,8 @@ def cleanup_mask_regions(mask_img, area_ratio_thresh=0.1):
 
     return new_mask_img
 
-def sectionwise_label_erosion(label_img, distance_px, fill_val=0, return_edges=False, section_list=None):
+def sectionwise_label_erosion(label_img, distance_px, fill_val=0, 
+                              return_edges=False, section_list=None):
     '''Erodes a stack of 2D label images by a specified radius (in px).
     
     Parameters
@@ -121,17 +121,41 @@ def label_erosion(label_img, distance_px, fill_val=0, return_edges=False):
 
 
 def map_label_values(label_img, mapping, section_list=None):
+    ''' Maps label values in a 3D label image to new values.
+
+    Parameters
+    ----------
+    label_img : array_like
+        3D label image, shape (x, y, n_sections)
+    mapping : dict
+        mapping of old label values to new label values
+    section_list : list of float, default=None
+        list of sections to process, default=None processes all sections in label_img
+
+    Returns
+    -------
+    result_img : array_like
+        3D image, same shape as label_img, with values mapped according to the  
+        mapping dict. If only a subset of sections were mapped, values in all 
+        non-mapped sections are set to zero.
+    '''
+    # get sections to be mapped
     if section_list is None:
         section_list = range(label_img.shape[2])
-    subset = label_img[:,:,section_list]
-    label_vals = np.unique(subset)
-    result_img = np.zeros_like(subset)
-    for i in label_vals:
-        mask = (label_img[:,:,section_list]==i)
-        result_img += mapping[i]*mask
-    full_result = np.zeros_like(label_img)
-    full_result[:,:,section_list] = result_img
-    return full_result
+    subset = label_img[:,:,section_list].copy()
+    
+    # create an element-wise mapping function; .get(x, x) returns x if key x is
+    # not in the mapping dict
+    mapping_function = np.vectorize(lambda x: mapping.get(x, x))
+    subset_mapped = mapping_function(subset)
+    
+    # set labels in any section not mapped to zero
+    result_img = np.zeros_like(label_img)
+    # place the mapped subset back into an array of the original shape
+    result_img[:,:,section_list] = subset_mapped
+    
+    return result_img
+
 
 def image_index_from_coords(coord_values, res=10e-3):
     coords_index = np.rint(np.array(coord_values) / res).astype(int)
