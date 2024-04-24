@@ -20,6 +20,10 @@ ABC_ROOT = Path("/data/abc_atlas/")
 CURRENT_VERSION = "20230830"
 BRAIN_LABEL = 'C57BL6J-638850'
 
+# constants for spatial resolution of 'C57BL6J-638850' dataset
+X_RESOLUTION = Y_RESOLUTION = 10e-3
+Z_RESOLUTION = 200e-3
+
 # hardcoded non-neuronal class categories for v20230830
 NN_CLASSES = ['30 Astro-Epen', '31 OPC-Oligo', '33 Vascular',
                         '34 Immune']
@@ -364,7 +368,7 @@ def label_ccf_spatial_subset(cells_df, ccf_regions,
         coords = ['x_section','y_section','z_section']
     else:
         coords = ['x_reconstructed','y_reconstructed','z_reconstructed']
-    resolutions = np.array([10e-3, 10e-3, 200e-3])
+    resolutions = np.array([X_RESOLUTION, Y_RESOLUTION, Z_RESOLUTION])
     
     # load 'resampled CCF' (rasterized, in MERFISH space) image volumes from the
     # ABC Atlas dataset (z resolution limited to merscope slices)
