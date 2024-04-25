@@ -1,4 +1,3 @@
-import json
 from functools import lru_cache
 from pathlib import Path
 
@@ -7,7 +6,6 @@ import networkx as nx
 import nibabel
 import numpy as np
 import pandas as pd
-import scipy.ndimage as ndi
 
 from .ccf_images import (
     cleanup_mask_regions,
@@ -356,7 +354,10 @@ def label_outlier_celltypes(
     if filter_cells:
         obs = obs[obs[type_col].isin(primary_celltypes)]
     else:
-        if obs[type_col].dtype == "categorical":
+        if (
+            obs[type_col].dtype.name == "category"
+            and outlier_label not in obs[type_col].cat.categories
+        ):
             obs[type_col] = obs[type_col].cat.add_categories(outlier_label)
         obs.loc[~obs[type_col].isin(primary_celltypes), type_col] = outlier_label
     return obs

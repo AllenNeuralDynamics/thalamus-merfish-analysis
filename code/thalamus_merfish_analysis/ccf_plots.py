@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -11,8 +9,8 @@ from matplotlib.colors import to_rgba
 from . import abc_load as abc
 from . import ccf_images as cci
 
+CCF_REGIONS_DEFAULT = None
 
-# TODO: make thalamus-specific versions with thalamus names default nuclei
 # ------------------------- Multi-Section Plotting ------------------------- #
 def plot_ccf_overlay(
     obs,
@@ -24,8 +22,8 @@ def plot_ccf_overlay(
     y_col="cirro_y",
     point_hue="CCF_acronym",
     # point props
-    point_palette=None, 
-    s=2, # TODO: rename 's' arg!
+    point_palette=None,
+    s=2,  # TODO: rename 's' arg!
     # point selection
     categorical=True,
     min_group_count=10,
@@ -36,11 +34,11 @@ def plot_ccf_overlay(
     edge_color="grey",
     # shape selection
     ccf_names=None,
-    ccf_highlight=None,
+    ccf_highlight=[],
     ccf_level="substructure",
     # formatting
     legend="cells",
-    custom_xy_lims=None,  
+    custom_xy_lims=None,
     show_axes=False,
     boundary_img=None,
 ):
@@ -95,13 +93,14 @@ def plot_ccf_overlay(
         3D array of CCF parcellation boundaries; if None, calculated on the fly
     """
     # Set variables not specified by user
-    if ccf_names is None:
-        ccf_names = abc.get_ccf_names(level=ccf_level)
     if sections is None:
-        # TODO: intersect with sections for ccf_names if provided?
         sections = (
             obs[section_col].value_counts().loc[lambda x: x > min_section_count].index
         )
+        if ccf_names is not None:
+            sections = sections.intersection(
+                get_sections_for_ccf_regions(ccf_images, ccf_names)
+            )
     obs = obs[obs[section_col].isin(sections)]
 
     if categorical:
@@ -114,7 +113,7 @@ def plot_ccf_overlay(
         )
         # Set color palette for cell scatter points
         point_palette = _generate_palette(
-            obs[point_hue].unique().tolist(), 
+            obs[point_hue].unique().tolist(),
             hue_label=point_hue,
             palette=point_palette,
             other=OTHER_CATEGORY_COLOR,
@@ -151,6 +150,22 @@ def plot_ccf_overlay(
     return figs
 
 
+def get_sections_for_ccf_regions(
+    ccf_images,
+    ccf_names,
+    ccf_level="substructure",
+    z_resolution=200e-3,
+):
+    """Get the sections that contain cells from a list of CCF regions."""
+    structure_index = abc.get_ccf_index(level=ccf_level)
+    ccf_ids = [structure_index[region] for region in ccf_names]
+    sections = []
+    for i in range(ccf_images.shape[2]):
+        if np.any(np.isin(ccf_images[:, :, i], ccf_ids)):
+            sections.append(i * z_resolution)
+    return sections
+
+
 def plot_section_overlay(
     obs,
     ccf_images,
@@ -168,11 +183,11 @@ def plot_section_overlay(
     edge_color="grey",
     # shape selection
     ccf_names=None,
-    ccf_highlight=None,
-    ccf_level="substructure",  
+    ccf_highlight=[],
+    ccf_level="substructure",
     # formatting
     legend="cells",
-    custom_xy_lims=None,  
+    custom_xy_lims=None,
     show_axes=False,
     colorbar=False,
     boundary_img=None,
@@ -208,7 +223,6 @@ def plot_section_overlay(
         point_palette=point_palette,
         s=s,
         legend=(legend in ["cells", "both"]),
-        custom_xy_lims=custom_xy_lims,
         ax=ax,
         **scatter_args,
     )
@@ -224,7 +238,7 @@ def plot_section_overlay(
         img = ax.imshow(np.array([[0, 1]]), cmap="viridis")
         img.set_visible(False)
         plt.colorbar(img, orientation="vertical", **cb_args)
-        
+
     _format_image_axes(ax=ax, show_axes=show_axes, custom_xy_lims=custom_xy_lims)
     ax.set_title("z=" + str(section) + "\n" + point_hue)
     plt.show()
@@ -263,7 +277,23 @@ def _plot_cells_scatter(
         c=BACKGROUND_POINT_COLOR,
         s=bg_s,
         linewidth=0,
+        zorder=-1,
     )
+
+
+def _get_counts_label(adata, gene):
+    # if adata from load_adata(), counts_transform is recorded in .uns
+    if "counts_transform" in adata.uns:
+        label = f"gene counts ({adata.uns['counts_transform']})"
+    # if we don't have .uns['counts_transform'], check if we have raw counts or not
+    else:
+        if all(
+            i.is_integer() for i in adata[gene]
+        ):  # no [] around loop == stops at 1st non-integer encounter
+            label = "gene counts (raw)"
+        else:
+            label = "gene counts (unknown transform)"
+    return label
 
 
 def plot_expression_ccf(
@@ -272,72 +302,8 @@ def plot_expression_ccf(
     ccf_images,
     sections=None,
     nuclei=None,
-    highlight=[],
-    s=0.5,
-    cmap="Blues",
-    show_outline=False,
-    show_axes=False,
-    edge_color="lightgrey",
-    section_col="section",
-    x_col="cirro_x",
-    y_col="cirro_y",
-    boundary_img=None,
-    custom_xy_lims=[],
-    cb_vmin_vmax=[None, None],
-    **kwargs,
-):
-    # TODO: allow sections arg to be single section not list?
-    if sections is None:
-        sections = adata.obs[section_col].unique()
-    # Plot
-    figs = []
-    for section in sections:
-        fig = plot_expression_ccf_section(
-            adata,
-            gene,
-            ccf_images,
-            section,
-            nuclei=nuclei,
-            highlight=highlight,
-            s=s,
-            cmap=cmap,
-            show_outline=show_outline,
-            show_axes=show_axes,
-            edge_color=edge_color,
-            section_col=section_col,
-            x_col=x_col,
-            y_col=y_col,
-            boundary_img=boundary_img,
-            custom_xy_lims=custom_xy_lims,
-            cb_vmin_vmax=cb_vmin_vmax,
-        )
-        figs.append(fig)
-    return figs
-
-
-
-def _get_counts_label(adata, gene):
-    # if adata from load_adata(), counts_transform is recorded in .uns
-    if 'counts_transform' in adata.uns:
-        label = f'gene counts ({adata.uns['counts_transform']})'
-    # if we don't have .uns['counts_transform'], check if we have raw counts or not
-    else:
-        if all(i.is_integer() for i in adata[gene]):  # no [] around loop == stops at 1st non-integer encounter
-            label = 'gene counts (raw)'
-        else:
-            label = 'gene counts (unknown transform)'
-    return label
-
-# TODO: is single-section function needed?
-def plot_expression_ccf_section(
-    adata,
-    gene,
-    ccf_images,
-    section,
-    # TODO: rename the below to be consistent with other functions?
-    nuclei=None,
-    highlight=[],
-    ccf_level='substructure',
+    highlight=None,
+    ccf_level="substructure",
     s=0.5,
     cmap="Blues",
     show_axes=False,
@@ -346,45 +312,60 @@ def plot_expression_ccf_section(
     x_col="cirro_x",
     y_col="cirro_y",
     boundary_img=None,
-    custom_xy_lims=[],
-    cb_vmin_vmax=[None, None],
+    custom_xy_lims=None,
+    cb_vmin_vmax=None,
     label=None,
     colorbar=True,
-    ax=None,
-    **kwargs,
+    figsize=(5, 5),
+    **scatter_args,
 ):
-    fig, ax = _get_figure_handles(ax)
+    # TODO: rename these to be consistent with other functions
+    ccf_names = nuclei
+    ccf_highlight = highlight
+
     obs = preprocess_gene_plot(adata, gene)
-    scatter_args = dict(hue_norm=cb_vmin_vmax, **kwargs)
+    scatter_args = dict(hue_norm=cb_vmin_vmax, **scatter_args)
     if label is None:
         label = _get_counts_label(adata, gene)
     cb_args = dict(label=label, fraction=0.046, pad=0.01)
-    
-    plot_section_overlay(
-        obs,
-        ccf_images,
-        section,
-        boundary_img=boundary_img,
-        section_col=section_col,
-        x_col=x_col,
-        y_col=y_col,
-        point_hue=gene,
-        point_palette=cmap,
-        edge_color=edge_color,
-        ccf_names=nuclei,
-        ccf_highlight=highlight,
-        ccf_level=ccf_level,
-        custom_xy_lims=custom_xy_lims,
-        show_axes=show_axes,
-        legend=None,
-        colorbar=colorbar,
-        scatter_args=scatter_args,
-        cb_args=cb_args,
-        ax=ax,
-        s=s,
-    )
-    ax.set_title(gene)
-    return fig
+
+    # TODO: allow sections arg to be single section not list?
+    if sections is None:
+        sections = adata.obs[section_col].unique()
+        if ccf_names is not None:
+            sections = set(sections).intersection(
+                get_sections_for_ccf_regions(ccf_images, ccf_names)
+            )
+    # Plot
+    figs = []
+    for section in sections:
+        fig, ax = plt.subplots(figsize=figsize)
+        plot_section_overlay(
+            obs,
+            ccf_images,
+            section,
+            boundary_img=boundary_img,
+            section_col=section_col,
+            x_col=x_col,
+            y_col=y_col,
+            point_hue=gene,
+            point_palette=cmap,
+            edge_color=edge_color,
+            ccf_names=ccf_names,
+            ccf_highlight=ccf_highlight,
+            ccf_level=ccf_level,
+            custom_xy_lims=custom_xy_lims,
+            show_axes=show_axes,
+            legend=None,
+            colorbar=colorbar,
+            scatter_args=scatter_args,
+            cb_args=cb_args,
+            ax=ax,
+            s=s,
+        )
+        ax.set_title(gene)
+        figs.append(fig)
+    return figs
 
 
 def plot_metrics_ccf(
@@ -397,6 +378,7 @@ def plot_metrics_ccf(
     vmin=None,
     vmax=None,
     show_axes=False,
+    figsize=(8, 5),
 ):
     if structure_index is None:
         structure_index = abc.get_ccf_index()
@@ -409,7 +391,7 @@ def plot_metrics_ccf(
     figs = []
     for section_z in sections:
         print(section_z)
-        fig, ax = plt.subplots(figsize=(8, 5))
+        fig, ax = plt.subplots(figsize=figsize)
         # hidden image just to generate colorbar
         img = ax.imshow(np.array([[vmin, vmax]]), cmap=cmap)
         img.set_visible(False)
@@ -427,11 +409,13 @@ def plot_metrics_ccf(
         figs.append(fig)
     return figs
 
+
+# TODO: make multi-section option?
 def plot_ccf_section(
     ccf_img,
     section_z,
     ccf_names=None,
-    ccf_highlight=None,
+    ccf_highlight=[],
     face_palette=None,
     edge_color="grey",
     boundary_img=None,
@@ -487,12 +471,15 @@ def plot_ccf_section(
         structure_index[i] for i in np.unique(img) if i in structure_index.index
     ]
 
+    if ccf_names is None: ccf_names = CCF_REGIONS_DEFAULT
     if ccf_names is not None:
-        section_region_names = list(
-            set(section_region_names).intersection(ccf_names)
-        )
+        section_region_names = list(set(section_region_names).intersection(ccf_names))
 
-    face_palette = _generate_palette(section_region_names, palette=face_palette)
+    face_palette = (
+        _generate_palette(section_region_names, palette=face_palette)
+        if face_palette is not None
+        else None
+    )
 
     edge_palette = {
         x: EDGE_HIGHLIGHT_COLOR if x in ccf_highlight else edge_color
@@ -622,6 +609,7 @@ def preprocess_categorical_plot(
             x, type_col, min_group_count=min_group_count_section
         )
     )
+    obs[type_col] = obs[type_col].cat.remove_unused_categories()
     return obs
 
 
@@ -654,6 +642,7 @@ def _filter_by_xy_lims(obs, x_col, y_col, custom_xy_lims):
 
     return obs
 
+
 def _integrate_background_cells(obs, point_hue, bg_cells):
     """Add background cells to the DataFrame of cells to display,
     with NA values for the point_hue column."""
@@ -666,6 +655,8 @@ def _integrate_background_cells(obs, point_hue, bg_cells):
         ]
     )
     return obs
+
+
 # ------------------------- Color Palette Handling ------------------------- #
 
 # Pre-set edge_colors for common situations
@@ -728,17 +719,20 @@ def _palette_to_rgba_lookup(palette, index):
     rgba_lookup[0, :] = [1, 1, 1, 0]
     return rgba_lookup
 
+
 # ----------------------------- Plot Formatting ----------------------------- #
 
-def _get_figure_handles(ax):
+
+def _get_figure_handles(ax, figsize=(8, 4)):
     """Get the current figure and show_axes handles, or create new ones if ax is None."""
     if ax is None:
-        fig, ax = plt.subplots(figsize=(8, 4))
+        fig, ax = plt.subplots(figsize=figsize)
     else:
         fig = plt.gcf()
     return ax, fig
 
-def _format_image_axes(ax, show_axes=False, set_lims="whole", custom_xy_lims=[]):
+
+def _format_image_axes(ax, show_axes=False, set_lims="whole", custom_xy_lims=None):
     """Format the show_axes of a plot.
 
     Parameters
@@ -772,7 +766,7 @@ def _format_image_axes(ax, show_axes=False, set_lims="whole", custom_xy_lims=[])
         ax.set_xlim([5, 8.5])
         ax.set_ylim([7, 4])
     # custom_xy_lims supercedes set_lims
-    if custom_xy_lims != []:
+    if custom_xy_lims is not None:
         if len(custom_xy_lims) == 4:
             ax.set_xlim(custom_xy_lims[:2])
             ax.set_ylim(custom_xy_lims[2:])
