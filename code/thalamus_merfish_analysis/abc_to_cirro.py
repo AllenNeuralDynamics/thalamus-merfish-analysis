@@ -33,7 +33,7 @@ def export_h5ad_for_cirro():
     adata = add_umap_tsne_to_obsm(adata)
 
     # add unsupervised machine learning results
-    print('Adding unsupervised machine learning results')
+    print('Adding unsupervised machine learning results...')
     adata = add_spagcn_to_adata(adata)
     adata = add_nsf_to_obs(adata)
 
@@ -71,7 +71,7 @@ def add_montage_coords(adata,
                        x_col='x_reconstructed',
                        y_col='y_reconstructed',
                        new_coord_suffix='_cirro',
-                       n_cols=4):
+                       n_cols=3):
     ''' Creates 2D montage spatial coordinates from 2D+section coordinates and 
     adds them to adata.obs.
     
@@ -147,6 +147,8 @@ def add_coords_to_obsm(adata):
 
     if {'x_ccf','y_ccf','z_ccf'}.issubset(adata.obs.columns):
         adata.obsm['ccf_spatial_3d'] = adata.obs[['x_ccf','y_ccf','z_ccf']].to_numpy()
+        # flip y coords so data displays in correct orientation
+        adata.obsm['ccf_spatial_3d'][:,1] = -adata.obsm['ccf_spatial_3d'][:,1]
     else:
         UserWarning("No CCF spatial coordinates, ['x_ccf','y_ccf','z_ccf'], found in adata.obs.")
 
@@ -154,32 +156,28 @@ def add_coords_to_obsm(adata):
 
 
 def add_colors_to_uns(adata):
-    ''' Add ABC color palette dict to adata.uns for each taxonomy level in 
-    adata.obs.
+    ''' Add colors to adata.uns for each taxonomy level in adata.obs.
+
+    Clusters use custom color palette; all others use official ABC Atlas palettes.
 
     Cirrocumulus expects to find the colors for a given 'field' in .obs in the 
     key 'field_color' in adata.uns (e.g. adata.obs['cluster'] -> 
     adata.uns['cluster_colors']), stored as a numpy array of objects containing 
     colors as hex strings. It assumes the colors are in corresponding order to
     the order returned by adata.obs.my_column.cat.categories.
-
-    Parameters
-    ----------
-    adata : AnnData object
-        AnnData object with taxonomy levels in adata.obs.
-
-    Returns
-    -------
-    adata : AnnData object
-        with color palettes added to adata.uns for each taxonomy level in adata.obs.
     '''
-
-    taxonomy_levels = ['class', 'subclass', 'supertype', 'cluster']
+    # check that all taxonomy levels are present
+    taxonomy_levels = ['neurotransmitter', 'class', 'subclass', 'supertype', 'cluster']
     assert set(taxonomy_levels).issubset(adata.obs.columns), f"adata.obs.columns is missing at least one of: {taxonomy_levels}"
 
     for level in taxonomy_levels:
-        # get the full ABC color palette for this taxonomy level
-        abc_color_dict = get_taxonomy_palette(level)
+        if level=='cluster':
+            # use custom color palette for clusters
+            palette_df = pd.read_csv('/code/resources/cluster_palette_glasbey.csv')
+            abc_color_dict = dict(zip(palette_df['Unnamed: 0'], palette_df['0']))
+        else:
+            # get the official ABC color palette for all other taxonomy levels
+            abc_color_dict = get_taxonomy_palette(level)
 
         # get the categories that exist in this dataset
         # MUST be kept in the order returned by .cat.categories
@@ -192,8 +190,9 @@ def add_colors_to_uns(adata):
 
         # add colors as an array to adata.uns
         adata.uns[level+'_colors'] = np.array(cat_colors_array, dtype='object')
-    
+
     return adata
+
 
 def add_umap_tsne_to_obsm(adata):
     ''' Generate low dimensional embeddings via scanpy's UMAP and tSNE and add
@@ -287,13 +286,16 @@ def add_nsf_to_obs(adata):
     adata_nsf = ad.read_zarr("/root/capsule/data/nsf_2000_adata/nsf_2000_adata.zarr")
 
     # get NSF pattern columns from obs
-    nsf_cols = adata_nsf.obs.columns.str.startswith('nsf')
-    nsf_patterns_df = adata_nsf.obs.loc[:, nsf_cols]
+    nsf_cols_bool = adata_nsf.obs.columns.str.startswith('nsf')
+    nsf_cols_list = adata_nsf.obs.columns[nsf_cols_bool]
+    nsf_patterns_df = adata_nsf.obs.loc[:, nsf_cols_bool]
     
     # add NSF patterns to adata.obs
-    # done in two steps to avoid chained assignment errors
-    # TODO: NaNs must be filled with 0s to be displayed in Cirrocumulus
     obs_with_nsf = adata.obs.join(nsf_patterns_df, on='cell_label')
-    adata.obs = obs_with_nsf#.fillna(0) # this doesn't work ... TODO: figure out why
+
+    # NaNs resulting from .join must be filled with 0s in order to load into cirro
+    obs_with_nsf[nsf_cols_list] = obs_with_nsf[nsf_cols_list].fillna(0)
+
+    adata.obs = obs_with_nsf
 
     return adata
