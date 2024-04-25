@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import anndata as ad
 import scanpy as sc
@@ -37,8 +38,8 @@ def export_h5ad_for_cirro():
     adata = add_nsf_to_obs(adata)
 
     # save as h5ad
-    adata.write_h5ad('/results/abc_atlas_mouse_thalamus_cirro.h5ad',
-                     compression="gzip")
+    adata.write('/results/abc_atlas_mouse_thalamus_cirro.h5ad',
+                compression="gzip")
 
     return adata
 
@@ -156,12 +157,11 @@ def add_colors_to_uns(adata):
     ''' Add ABC color palette dict to adata.uns for each taxonomy level in 
     adata.obs.
 
-    Cirrocumulus expects to find a dict mapping an adata.obs column's categories   
-    to hex string colors stored in adata.uns. The dict keys MUST be in the order
-    returned by adata.obs.my_column.cat.categories.
-    e.g. if you want cirro to use custom colors for adata.obs['cluster'], then
-    the color dict containining {category: color} should be stored in 
-    adata.uns['cluster_colors'].
+    Cirrocumulus expects to find the colors for a given 'field' in .obs in the 
+    key 'field_color' in adata.uns (e.g. adata.obs['cluster'] -> 
+    adata.uns['cluster_colors']), stored as a numpy array of objects containing 
+    colors as hex strings. It assumes the colors are in corresponding order to
+    the order returned by adata.obs.my_column.cat.categories.
 
     Parameters
     ----------
@@ -186,10 +186,12 @@ def add_colors_to_uns(adata):
         curr_cats = adata.obs[level].cat.categories
 
         # make new color dict for only the categories that exist in this dataset
-        cat_color_dict = dict((cat, abc_color_dict[cat]) for cat in curr_cats if cat in abc_color_dict)
+        # cat_color_dict = dict((cat, abc_color_dict[cat]) for cat in curr_cats if cat in abc_color_dict)
+        cat_colors_array = [abc_color_dict[cat] if cat in abc_color_dict else '#ffffff' 
+                            for cat in curr_cats]
 
-        # add this color dict to adata.uns
-        adata.uns[level+'_colors'] = cat_color_dict
+        # add colors as an array to adata.uns
+        adata.uns[level+'_colors'] = np.array(cat_colors_array, dtype='object')
     
     return adata
 
@@ -224,7 +226,7 @@ def add_umap_tsne_to_obsm(adata):
 
     return adata
 
-def add_spagcn_to_adata(adata, domains_to_add='res1pt4', spagcn_col='spagcn_domains'):
+def add_spagcn_to_adata(adata, domains_to_add='res1pt4', spagcn_col='spagcn'):
     ''' Add result domains from SpaGCN package to adata.obs & custom color 
     palette to adata.uns.
 
@@ -234,7 +236,7 @@ def add_spagcn_to_adata(adata, domains_to_add='res1pt4', spagcn_col='spagcn_doma
     domains_to_add : str
         column name in spagcn_df with SpaGCN domains (just one for now)
     spagcn_col : str
-        name of new column to be added to adata.obs
+        name of new column to be added to adata.obs; must be a single word, no underscores
 
     Returns
     -------
@@ -257,18 +259,20 @@ def add_spagcn_to_adata(adata, domains_to_add='res1pt4', spagcn_col='spagcn_doma
     # add spagcn domains to copy of adata.obs
     obs_spagcn = adata.obs.join(spagcn_df[spagcn_col], on='cell_label')
 
-    # fill NaNs from .join with new 'no data' category
+    # fill NaNs from .join with new 'no data' category (added at the end of .cat.categories)
     obs_spagcn[spagcn_col] = obs_spagcn[spagcn_col].cat.add_categories('no data').fillna('no data')
 
-    # generate color palette for spagcn domains
+    # generate color array for spagcn domains
     spagcn_cats = obs_spagcn[spagcn_col].cat.categories
-    spg_colors = sns.color_palette(cc.glasbey, n_colors=len(spagcn_cats)).as_hex()
-    # set the 'no data' category color to white so it doesn't show up in cirro
+    spg_colors = np.array(cc.glasbey[:len(spagcn_cats)], dtype='object')
+    # set the 'no data' category (last category) color to white so it doesn't show up in cirro
     spg_colors[-1] = '#ffffff'
-    # combine cats & colors into dict
-    spg_palette = dict(zip(spagcn_cats, spg_colors))
+
     # add spagcn domain colors to adata.uns
-    adata.uns[spagcn_col+'_color'] = spg_palette
+    # cirrocumulus expects the key to be in the key: {.obs column name}+'_colors'
+    if '_' in spagcn_col:
+        raise ValueError("spagcn_col must be a single word, with no underscores")
+    adata.uns[spagcn_col+'_colors'] = spg_colors
 
     # add updated obs back into adata
     adata.obs = obs_spagcn
@@ -288,7 +292,8 @@ def add_nsf_to_obs(adata):
     
     # add NSF patterns to adata.obs
     # done in two steps to avoid chained assignment errors
+    # TODO: NaNs must be filled with 0s to be displayed in Cirrocumulus
     obs_with_nsf = adata.obs.join(nsf_patterns_df, on='cell_label')
-    adata.obs = obs_with_nsf
+    adata.obs = obs_with_nsf#.fillna(0) # this doesn't work ... TODO: figure out why
 
     return adata
