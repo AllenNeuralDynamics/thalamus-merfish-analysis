@@ -27,10 +27,11 @@ th_names = [x for x in abc.get_thalamus_names() if not 'unassigned' in x]
 th_subregion_names = [x for x in abc.get_thalamus_names(level=ccf_level) if not 'unassigned' in x]
 palettes = {level: abc.get_taxonomy_palette(level) for level in 
             ['subclass','supertype','cluster']}
+cplots.CCF_REGIONS_DEFAULT = th_subregion_names
 
 @st.cache_data
 def get_data(version, ccf_label):
-    obs = abc.get_combined_metadata(realigned=True, version=version, drop_unused=False)
+    obs = abc.get_combined_metadata(realigned=realigned, version=version, drop_unused=False)
     # remove non-neuronal and some other outlier non-thalamus types
     obs_neurons = abc.filter_by_class_thalamus(obs, filter_midbrain=False)
     obs_th = obs[obs[ccf_label].isin(th_names)]
