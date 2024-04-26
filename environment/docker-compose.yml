@@ -1,0 +1,36 @@
+services:
+  devcontainer:
+    depends_on:
+      - rclone
+    volumes:
+    - ..:/root/capsule:cached
+    - /mnt/data:/data/abc_atlas
+    build:
+      context: .
+      dockerfile: Dockerfile
+      
+  rclone:
+    image: rclone/rclone:latest
+    volumes:
+      - /mnt/data:/data/abc_atlas:rshared
+    devices:
+      - /dev/fuse
+    cap_add:
+      - SYS_ADMIN
+    command: [
+      "mount", 
+      ":s3:allen-brain-cell-atlas", "/data/abc_atlas", 
+      "--allow-non-empty",
+      "--allow-other",
+      "--s3-provider", "AWS",
+      "--s3-region", "us-west-2",
+      "--read-only", 
+      "--vfs-cache-mode", "full", 
+      "--vfs-cache-max-size", "100g", 
+      "--vfs-read-ahead", "64m", 
+      "--buffer-size", "32m", 
+      "--dir-cache-time", "1h", 
+      "--no-checksum", 
+      "--poll-interval", "0", 
+      "--checkers", "36"
+      ]
