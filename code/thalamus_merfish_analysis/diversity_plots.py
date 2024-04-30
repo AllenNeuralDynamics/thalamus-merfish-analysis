@@ -54,18 +54,32 @@ def barplot_dual_y_count_frac(th_metrics, level, gt5_only=True):
 
 def plot_metric_multiple_levels(th_metrics, 
                                 metric, 
-                                levels=['cluster','supertype','subclass']):
-    fig, ax1 = plt.subplots(figsize=(8,4))
+                                levels=['cluster','supertype','subclass'],
+                                ylabel=None):
 
-    # sort by the metric of the first item in levels list
-    th_metrics_sorted = th_metrics.sort_values(by="_".join([metric, levels[0]]), ascending=True)
-    for level in levels[::-1]:
-        ax1.scatter(th_metrics_sorted.index, th_metrics_sorted["_".join([metric, level])], 
-                     label=level, zorder=2) 
+    if ylabel is None:
+        ylabel = metric
+    
+    fig, ax1 = plt.subplots(figsize=(8,4))
+    
+    if levels==None:
+        # enable plotting of a single metric
+        th_metrics_sorted = th_metrics.sort_values(by=metric, ascending=True)
+        ax1.scatter(th_metrics_sorted.index, th_metrics_sorted[metric], zorder=2)
+    else:
+        # sort by the metric of the first item in levels list
+        th_metrics_sorted = th_metrics.sort_values(by="_".join([metric, levels[0]]), 
+                                                   ascending=True)
+        for level in levels[::-1]:
+            ax1.scatter(th_metrics_sorted.index, 
+                        th_metrics_sorted["_".join([metric, level])], 
+                        label=level, zorder=2) 
+        ax1.legend()
+
     ax1.set_xticks(th_metrics_sorted.index)
     ax1.set_xticklabels(th_metrics_sorted.index, rotation=90)
-    ax1.set_ylabel(metric)
-    ax1.legend()
+    ax1.set_xlabel('CCF structures')
+    ax1.set_ylabel(ylabel)
     plt.grid(visible=True, axis='both', zorder=0, color='whitesmoke')
     
     return fig
