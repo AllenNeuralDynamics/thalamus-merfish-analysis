@@ -256,6 +256,15 @@ def get_thalamus_names(level=None):
 def get_thalamus_substructure_names():
     return get_thalamus_names(level='substructure')
 
+def get_thalamus_ccf_indices():
+    th_ccf_names = get_thalamus_names(level='substructure')
+    # convert ccf names to the unique parcellation_index used in the image volume
+    ccf_index = get_ccf_index(level='substructure')
+    reverse_lookup = pd.Series(ccf_index.index.values, index=ccf_index)
+    th_index_values = reverse_lookup.loc[th_ccf_names]
+
+    return th_index_values
+
 # load cluster-nucleus annotations
 try:
     nuclei_df_manual = pd.read_csv("/code/resources/prong1_cluster_annotations_by_nucleus.csv", index_col=0)
