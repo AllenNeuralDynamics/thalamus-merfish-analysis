@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
 
+from sklearn.neighbors import NearestNeighbors
+from functools import partial
+from multiprocessing import Pool
 
 def calculate_diversity_metrics(obs_ccf, 
                                 ccf_label='parcellation_structure_eroded'):
@@ -132,3 +135,48 @@ def shannon_index(x):
     shannon_ind = (-1)*((p * np.log2(p)).sum())
     
     return shannon_ind
+
+
+def calculate_local_diversity_metric(obs_ccf,
+                                     function, 
+                                     metric_name,
+                                     n_neighbors=15,
+                                    #  ccf_label='parcellation_structure_eroded',
+                                    #  exclude=['unassigned','TH-unassigned'],
+                                    #  norm_fcn=None,
+                                     levels=['cluster','supertype','subclass']):
+
+    # Find the n nearest neighbors for each cell
+    # use ccf coordinates as the feature space
+    neigh_coords = [x+'_ccf' for x in 'xyz']
+    X = obs_ccf[neigh_coords].values
+    # initialize & fit nearest neighbors model
+    neigh = NearestNeighbors(n_neighbors=n_neighbors, n_jobs=-1)
+    neigh.fit(X)
+    # get the indices of n nearest neighbors for each cell
+    neighbors = neigh.kneighbors(X, n_neighbors=n_neighbors, return_distance=False)
+
+    # create a partial function to be able to pass obs, levels, & function in as 
+    # fixed arguments to calculate_function_locally, which MUST be defined as a 
+    # top-level function in order for p.map() to pickle it
+    partial_func = partial(calculate_function_locally,  # top-level function
+                           obs=obs_ccf, neighbors=neighbors, # fixed args
+                           levels=levels, function=function) # fixed args
+
+    # run calc_function_locally for each cell in obs_ccf, in parallel
+    with Pool() as p:
+        results = p.map(partial_func, range(len(obs_ccf)))
+    
+    # convert from pool list to dataframe
+    cellwise_metrics_df = pd.DataFrame.from_records(
+                            results, index=obs_ccf.index
+                            ).rename(columns=lambda x: "_".join(['local', metric_name, x]))
+
+    return cellwise_metrics_df
+
+
+def calculate_function_locally(i, obs, neighbors, levels, function):
+    '''Calculate the function using the ith cell + its n_neighbors.
+    Helper function for calculate_local_diversity_metric().
+    '''
+    return obs.iloc[neighbors[i]][levels].aggregate(function)
