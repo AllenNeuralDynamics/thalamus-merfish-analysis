@@ -101,6 +101,7 @@ def plot_ccf_overlay(
             sections = sections.intersection(
                 get_sections_for_ccf_regions(ccf_images, ccf_names)
             )
+        sections = sorted(sections)
     obs = obs[obs[section_col].isin(sections)]
 
     if categorical:
@@ -195,7 +196,7 @@ def plot_section_overlay(
     cb_args={},
     ax=None,
 ):
-    ax, fig = _get_figure_handles(ax)
+    fig, ax = _get_figure_handles(ax)
     secdata = obs.loc[lambda df: (df[section_col] == section)]
     if custom_xy_lims is not None:
         # TODO: apply at dataset level instead?
@@ -230,19 +231,27 @@ def plot_section_overlay(
     if legend is not None:
         # cell type names require more horizontal space
         # TODO: detect this from label text
-        ncols = 4 if (legend == "ccf") else 2
-        plt.legend(
-            ncols=ncols, loc="upper center", bbox_to_anchor=(0.5, 0), frameon=False
-        )
-    if colorbar:
-        img = ax.imshow(np.array([[0, 1]]), cmap="viridis")
-        img.set_visible(False)
-        plt.colorbar(img, orientation="vertical", **cb_args)
+        _add_legend(ncols = 4 if (legend == "ccf") else 2)
+    if colorbar: 
+        _add_colorbar(ax, **cb_args)
 
     _format_image_axes(ax=ax, show_axes=show_axes, custom_xy_lims=custom_xy_lims)
     ax.set_title("z=" + str(section) + "\n" + point_hue)
     plt.show()
     return fig
+
+def _add_legend(ncols=2, **kwargs):
+    args = dict(
+            ncols=ncols, loc="upper center", bbox_to_anchor=(0.5, 0), frameon=False
+        )
+    args.update(**kwargs)
+    plt.legend(**args)
+
+def _add_colorbar(ax, cb_vmin_vmax=[0,1], cmap="viridis", **kwargs):
+    sm = ax.scatter([], [], c=[], cmap=cmap, vmin=cb_vmin_vmax[0], vmax=cb_vmin_vmax[1])
+    args = dict(orientation="vertical")
+    args.update(**kwargs)
+    ax.figure.colorbar(sm, **kwargs)
 
 
 def _plot_cells_scatter(
@@ -256,7 +265,14 @@ def _plot_cells_scatter(
     ax=None,
     **kwargs,
 ):
-    sns.scatterplot(
+    if len(secdata)==0:
+        return
+    # remove missing types from legend
+    if legend and secdata[point_hue].dtype.name == "category":
+        secdata = secdata.copy()
+        secdata[point_hue] = secdata[point_hue].cat.remove_unused_categories()
+
+    sc = sns.scatterplot(
         secdata,
         x=x_col,
         y=y_col,
@@ -302,11 +318,10 @@ def plot_expression_ccf(
     ccf_images,
     sections=None,
     nuclei=None,
-    highlight=None,
+    highlight=[],
     ccf_level="substructure",
-    s=0.5,
+    s=1.5,
     cmap="Blues",
-    show_axes=False,
     edge_color="lightgrey",
     section_col="section",
     x_col="cirro_x",
@@ -316,7 +331,8 @@ def plot_expression_ccf(
     cb_vmin_vmax=None,
     label=None,
     colorbar=True,
-    figsize=(5, 5),
+    show_axes=False,
+    figsize=(8,4),
     **scatter_args,
 ):
     # TODO: rename these to be consistent with other functions
@@ -324,10 +340,12 @@ def plot_expression_ccf(
     ccf_highlight = highlight
 
     obs = preprocess_gene_plot(adata, gene)
+    if cb_vmin_vmax is None:
+        cb_vmin_vmax = (0, obs[gene].max())
     scatter_args = dict(hue_norm=cb_vmin_vmax, **scatter_args)
     if label is None:
         label = _get_counts_label(adata, gene)
-    cb_args = dict(label=label, fraction=0.046, pad=0.01)
+    cb_args = dict(cmap=cmap, cb_vmin_vmax=cb_vmin_vmax, label=label, fraction=0.046, pad=0.01)
 
     # TODO: allow sections arg to be single section not list?
     if sections is None:
@@ -364,6 +382,45 @@ def plot_expression_ccf(
             s=s,
         )
         ax.set_title(gene)
+        figs.append(fig)
+        plt.show()
+    return figs
+
+def plot_hcr(adata, genes, sections=None, section_col='section', 
+             x_col='cirro_x', y_col='cirro_y', bg_color='white'):
+    '''Display separate, and overlay, expression of 3 genes in multiple sections.
+    
+    Parameters
+    ----------
+    adata : AnnData
+        cells to display; gene expression in .X and spatial coordinates in .obs
+    genes : list of str
+        list of genes to display
+    section : list of float
+        sections to display.
+        if passing in a single section, still must be in a list, e.g. [7.2].
+    section_col : str
+        column in adata.obs that contains the section values
+    x_col, y_col : str
+        columns in adata.obs that contains the x- & y-coordinates
+    bg_color : str, default='white'
+        background color of the plot. Can use any color str that is recognized  
+        by matplotlib; passed on to plt.subplots(..., facecolor=bg_color) and
+        ax.set_facecolor(bg_color).
+        'black' / 'k' / '#000000' changes font colors to 'white'.
+
+    Returns
+    -------
+    figs : list of matplotlib.figure.Figure
+    '''
+    # set variable(s) not specified at input
+    if sections is None:
+        sections = adata.obs[section_col].unique()
+    # plot
+    figs = []
+    for section in sections:
+        fig = plot_hcr_section(adata, genes, section, section_col=section_col, 
+                               x_col=x_col, y_col=y_col, bg_color=bg_color)
         figs.append(fig)
     return figs
 
@@ -411,9 +468,10 @@ def plot_hcr_section(adata, genes, section, section_col='section',
     gene3_norm = sec_adata[:,genes[2]].X / sec_adata[:,genes[2]].X.max()
 
     # Convert each genes normalized expression into an RGB value
-    colorR = np.concatenate((gene1_norm, np.zeros([gene1_norm.shape[0],2])),axis=1)
-    colorG = np.concatenate((np.zeros([gene1_norm.shape[0],1]),gene2_norm,np.zeros([gene1_norm.shape[0],1])),axis=1)
-    colorB = np.concatenate((np.zeros([gene1_norm.shape[0],2]),gene3_norm),axis=1)
+    zeros = np.zeros([len(sec_adata),1])
+    colorR = np.concatenate((gene1_norm, zeros, zeros),axis=1)
+    colorG = np.concatenate((zeros, gene2_norm, zeros),axis=1)
+    colorB = np.concatenate((zeros, zeros, gene3_norm),axis=1)
     # combine each gene into a single RGB color for overlay
     colorRGB = np.concatenate((gene1_norm, gene2_norm, gene3_norm),axis=1)
     # add overlay to list of colors & gene labels
@@ -503,10 +561,7 @@ def plot_metrics_ccf(
     for section_z in sections:
         print(section_z)
         fig, ax = plt.subplots(figsize=figsize)
-        # hidden image just to generate colorbar
-        img = ax.imshow(np.array([[vmin, vmax]]), cmap=cmap)
-        img.set_visible(False)
-        plt.colorbar(img, orientation="vertical", label=cb_label, shrink=0.75)
+        _add_colorbar(ax, cb_vmin_vmax=[vmin, vmax], cmap=cmap, shrink=0.75)
 
         plot_ccf_section(
             ccf_img,
@@ -558,6 +613,8 @@ def plot_ccf_section(
         matplotlib color
     boundary_img : np.ndarray, optional
         2D array of CCF parcellation boundaries; if None, calculated on the fly
+    ccf_level : str, {'substructure', 'structure'}, default='substructure'
+        Level of CCF to be displayed
     z_resolution : float, default=200e-3
         Resolution of the CCF in the z-dimension
     legend : bool, default=True
@@ -565,7 +622,7 @@ def plot_ccf_section(
     ax : matplotlib.axes.Axes, optional
         Existing Axes to plot on; if None, a new figure and Axes are created
     """
-
+    fig, ax = _get_figure_handles(ax)
     if isinstance(section_z, str):
         raise TypeError(
             "str type detected for section var, numeric value required to plot rasterized CCF volumes."
@@ -606,6 +663,7 @@ def plot_ccf_section(
         ax=ax,
         legend=legend,
     )
+    ax.set_title("z=" + str(section_z) + "\n" + ccf_level)
 
 
 def plot_ccf_shapes(
@@ -647,6 +705,7 @@ def plot_ccf_shapes(
     legend : bool, default=True
         Whether to display a legend for the CCF region shapes
     """
+    fig, ax = _get_figure_handles(ax)
     # TODO: use xarray for applying palette, plotting, storing boundaries
     extent = resolution * (np.array([0, imdata.shape[0], imdata.shape[1], 0]) - 0.5)
     imshow_args = dict(extent=extent, interpolation="none", alpha=alpha)
@@ -671,12 +730,14 @@ def plot_ccf_shapes(
     if legend and (face_palette is not None):
         for name, color in face_palette.items():
             plt.plot([], marker="o", ls="", color=color, label=name)
+        _add_legend(ncols=4)
+    _format_image_axes(ax=ax)
 
 
 # ------------------------- DataFrame Preprocessing ------------------------- #
 def preprocess_gene_plot(adata, gene):
     obs = adata.obs.copy()
-    obs[gene] = adata[gene]
+    obs[gene] = adata[:,gene].X.toarray()
     return obs
 
 
@@ -793,11 +854,13 @@ def _generate_palette(categories, palette=glasbey, hue_label=None, **items):
     if palette is None and hue_label in ["class", "subclass", "supertype", "cluster"]:
         palette = abc.get_taxonomy_palette(hue_label)
     try:
-        palette = {x: palette[x] for x in palette if x in categories}
+        # TODO: allow smaller palette?
+        palette.update(**items)
+        palette = {x: palette[x] for x in categories}
     except:
         sns_palette = sns.color_palette(palette, n_colors=len(categories))
         palette = dict(zip(categories, sns_palette))
-    palette.update(**items)
+        palette.update(**items)
     return palette
 
 
@@ -840,7 +903,7 @@ def _get_figure_handles(ax, figsize=(8, 4)):
         fig, ax = plt.subplots(figsize=figsize)
     else:
         fig = plt.gcf()
-    return ax, fig
+    return fig, ax
 
 
 def _format_image_axes(ax, show_axes=False, set_lims="whole", custom_xy_lims=None):
