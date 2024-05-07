@@ -437,8 +437,7 @@ def label_ccf_spatial_subset(
     # to get a list of all indices
     if include_children:
         ccf_regions = get_ccf_names(top_nodes=ccf_regions, level=ccf_level)
-    ccf_index = get_ccf_index(level=ccf_level)
-    reverse_lookup = pd.Series(ccf_index.index.values, index=ccf_index)
+    reverse_lookup = get_ccf_index_reverse_lookup(level=ccf_level)
     index_values = reverse_lookup.loc[ccf_regions]
 
     # generate binary mask
@@ -557,6 +556,10 @@ def get_ccf_names(top_nodes=None, level=None):
     else:
         return _get_ccf_names(top_nodes, level=level)
 
+def get_ccf_index_reverse_lookup(level="substructure"):
+    ccf_index = get_ccf_index(level=level)
+    reverse_lookup = pd.Series(ccf_index.index.values, index=ccf_index)
+    return reverse_lookup
 
 def get_ccf_index(level="substructure"):
     """Get an index mapping CCF ideas to (abbreviated) names,

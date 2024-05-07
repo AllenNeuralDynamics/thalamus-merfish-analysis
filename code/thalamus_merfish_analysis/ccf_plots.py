@@ -158,12 +158,12 @@ def get_sections_for_ccf_regions(
     z_resolution=200e-3,
 ):
     """Get the sections that contain cells from a list of CCF regions."""
-    structure_index = abc.get_ccf_index(level=ccf_level)
-    ccf_ids = [structure_index[region] for region in ccf_names]
+    structure_index = abc.get_ccf_index_reverse_lookup(level=ccf_level)
+    ccf_ids = structure_index[ccf_names].values
     sections = []
     for i in range(ccf_images.shape[2]):
         if np.any(np.isin(ccf_images[:, :, i], ccf_ids)):
-            sections.append(i * z_resolution)
+            sections.append(np.round(i * z_resolution, 1))
     return sections
 
 
@@ -192,6 +192,7 @@ def plot_section_overlay(
     show_axes=False,
     colorbar=False,
     boundary_img=None,
+    zoom_to_highlighted=False,
     scatter_args={},
     cb_args={},
     ax=None,
@@ -213,8 +214,12 @@ def plot_section_overlay(
         face_palette=face_palette,
         edge_color=edge_color,
         legend=(legend == "ccf"),
+        zoom_to_highlighted=zoom_to_highlighted,
         ax=ax,
     )
+    # need to keep zoom set by plot_ccf_section
+    if zoom_to_highlighted: 
+        custom_xy_lims = [*ax.get_xlim(), *ax.get_ylim()]
 
     _plot_cells_scatter(
         secdata,
@@ -332,6 +337,7 @@ def plot_expression_ccf(
     label=None,
     colorbar=True,
     show_axes=False,
+    zoom_to_highlighted=False,
     figsize=(8,4),
     **scatter_args,
 ):
@@ -352,7 +358,9 @@ def plot_expression_ccf(
         sections = adata.obs[section_col].unique()
         if ccf_names is not None:
             sections = set(sections).intersection(
-                get_sections_for_ccf_regions(ccf_images, ccf_names)
+                get_sections_for_ccf_regions(
+                    ccf_images, ccf_highlight if zoom_to_highlighted else ccf_names
+                )
             )
     # Plot
     figs = []
@@ -380,8 +388,9 @@ def plot_expression_ccf(
             cb_args=cb_args,
             ax=ax,
             s=s,
+            zoom_to_highlighted=zoom_to_highlighted,
         )
-        ax.set_title(gene)
+        ax.set_title(f"z={section}\n{gene}")
         figs.append(fig)
         plt.show()
     return figs
@@ -626,6 +635,7 @@ def plot_ccf_section(
     ccf_level="substructure",
     z_resolution=200e-3,
     legend=True,
+    zoom_to_highlighted=False,
     ax=None,
 ):
     """Display CCF parcellations for a single section from an
@@ -702,7 +712,24 @@ def plot_ccf_section(
         legend=legend,
     )
     ax.set_title("z=" + str(section_z) + "\n" + ccf_level)
-
+    if zoom_to_highlighted:
+        resolution=10e-3
+        bbox = resolution*get_bbox_for_regions(img, ccf_highlight, ccf_level)
+        _format_image_axes(ax=ax, show_axes=True, custom_xy_lims=bbox)
+    
+def get_bbox_for_regions(img, ccf_names, ccf_level, buffer=10):
+    structure_index = abc.get_ccf_index_reverse_lookup(level=ccf_level)
+    ccf_ids = structure_index[ccf_names].values
+    bbox = np.concatenate([
+        np.flatnonzero(np.any(np.isin(img, ccf_ids), axis=0))[[0,-1]],
+        # reverse order for y
+        np.flatnonzero(np.any(np.isin(img, ccf_ids), axis=1))[[-1,0]]
+    ])
+    if buffer>0:
+        bbox[[0,-1]] = np.maximum(bbox[[0,-1]]-buffer,0)
+        bbox[[1]] = np.minimum(bbox[[1]]+buffer,img.shape[0])
+        bbox[[2]] = np.minimum(bbox[[2]]+buffer,img.shape[1])
+    return bbox
 
 def plot_ccf_shapes(
     imdata,
