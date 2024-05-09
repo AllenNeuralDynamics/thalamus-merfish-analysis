@@ -57,6 +57,7 @@ def load_standard_thalamus(data_structure='adata'):
         data_th = get_combined_metadata(version=CURRENT_VERSION, 
                                         drop_unused=True, realigned=False,
                                         flip_y=False, round_z=True)
+        # TODO: why is this here if filtered below?!
         data_th = label_thalamus_spatial_subset(data_th, flip_y=False,
                                                 realigned=False,
                                                 cleanup_mask=True,
@@ -334,3 +335,8 @@ def get_obs_from_annotated_clusters(nuclei_names, obs, by='id',
         # cluster id is the first 4 digits of 'cluster' column entries
         obs = obs.loc[lambda df: df['cluster'].str[:4].isin(clusters)]
     return obs
+
+@lru_cache
+def get_cluster_palette():
+    palette_df = pd.read_csv('/code/resources/cluster_palette_glasbey.csv')
+    return dict(zip(palette_df['Unnamed: 0'], palette_df['0']))

@@ -95,6 +95,7 @@ def plot_metric_multiple_levels(th_metrics,
     
     return fig
 
+# TODO: generalize to any metric and move to ccf_plots
 def plot_local_metric_ccf_section(obs_ccf, cellwise_metrics_df, ccf_images, 
                                   section, metric_name, section_col='z_section', 
                                   coords='reconstructed', cmap='Oranges'):

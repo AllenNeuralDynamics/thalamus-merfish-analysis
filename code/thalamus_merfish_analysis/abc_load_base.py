@@ -1,5 +1,7 @@
-from functools import lru_cache
-from pathlib import Path
+from functools import lru_cachefrom pathlib import Path
+from abc_atlas_access.abc_atlas_cache.abc_project_cache import AbcProjectCache
+from abc_atlas_access.abc_atlas_cache.cloud_cache import LocalCache
+from abc_atlas_access.abc_atlas_cache.manifest import Manifest
 
 import anndata as ad
 import networkx as nx
@@ -30,6 +32,29 @@ Z_RESOLUTION = 200e-3
 # TODO: figure out a way to adapt across versions (by name?)
 NN_CLASSES = ["30 Astro-Epen", "31 OPC-Oligo", "33 Vascular", "34 Immune"]
 
+abc_cache = AbcProjectCache.from_local_cache(ABC_ROOT)
+abc_cache.load_manifest(CURRENT_VERSION)
+version = abc_cache.cache._manifest.get_file_attributes(directory="", file_name="")["version"]
+
+
+abc_cache = LocalCache(ABC_ROOT)
+abc_cache.load_manifest(CURRENT_VERSION)
+details = abc_cache._manifest.get_file_attributes(directory="", file_name="")
+path = abc_cache.data_path(directory="", file_name="")["local_path"]
+details = abc_cache.data_path(directory="", file_name="")["file_attributes"]
+
+# ge
+manifest = Manifest(
+    cache_dir=ABC_ROOT,
+    json_input=open(ABC_ROOT / "releases" / CURRENT_VERSION / "manifest.json", "r"),
+)
+_data = f"MERFISH-{BRAIN_LABEL}"
+_taxonomy = "WMB-taxonomy"
+_ccf = ""
+files = {
+    "genes": manifest.get_file_attributes(directory=_data, file_name=f"{BRAIN_LABEL}/{transform_load}"),
+    
+}
 
 def load_adata(
     version=CURRENT_VERSION,
