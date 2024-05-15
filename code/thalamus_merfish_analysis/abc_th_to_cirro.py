@@ -10,7 +10,7 @@ from .abc_load import (load_adata_thalamus,
                        filter_by_thalamus_coords,
                        get_taxonomy_palette)
 
-def export_h5ad_for_cirro():
+def export_h5ad_for_cirro(generate_umap_tsne=True):
     ''' Load thalamus subset of ABC Atlas, modify for Cirrocumulus compatibility,
     and save out as h5ad file.
 
@@ -29,8 +29,9 @@ def export_h5ad_for_cirro():
     print('Adding color palettes for Cirrocumulus...')
     adata = add_colors_to_uns(adata)
 
-    print('Calculating low-dimensional embeddings ... This may take 10-15 minutes.')
-    adata = add_umap_tsne_to_obsm(adata)
+    if generate_umap_tsne:
+        print('Calculating low-dimensional embeddings ... This may take 10-15 minutes.')
+        adata = add_umap_tsne_to_obsm(adata)
 
     # add unsupervised machine learning results
     print('Adding unsupervised machine learning results...')
@@ -299,3 +300,7 @@ def add_nsf_to_obs(adata):
     adata.obs = obs_with_nsf
 
     return adata
+
+
+if __name__ == '__main__':
+    export_h5ad_for_cirro(generate_umap_tsne=True)
