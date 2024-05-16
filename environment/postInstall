@@ -17,3 +17,6 @@ curl -fL "https://github.com/coder/code-server/releases/download/v$VERSION/code-
   | tar -xvz
 ln -s /.code-server/code-server-$VERSION-linux-amd64/bin/code-server  /usr/bin/code-server
 cd -
+
+# using abc_atlas_access.abc_atlas_cache.manifest only, only dep is pydantic
+pip install --no-deps https://github.com/AllenInstitute/abc_atlas_access/archive/v3.0.0.tar.gz

@@ -96,13 +96,7 @@ def parse_cells_by_section(df, transforms_by_section, norm_transform, coords, sl
 
 def load_ccf_metadata_table(regions):
     # load ccf region metadata
-    # (not included/updated in 20230830 version)
-    ccf_df = (
-            pd.read_csv(
-            abc.ABC_ROOT/f"metadata/Allen-CCF-2020/20230630/parcellation_to_parcellation_term_membership.csv",
-            dtype={'parcellation_term_acronym': 'category'})
-            .query("parcellation_term_set_name=='substructure'")
-    )
+    ccf_df = abc._get_ccf_metadata.query("parcellation_term_set_name=='substructure'")
     instance_key='parcellation_index'
     region_key='annotated_element'
     # need to repeat table for every annotated element

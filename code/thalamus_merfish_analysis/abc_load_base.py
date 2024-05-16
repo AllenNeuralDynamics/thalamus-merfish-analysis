@@ -1,6 +1,5 @@
-from functools import lru_cachefrom pathlib import Path
-from abc_atlas_access.abc_atlas_cache.abc_project_cache import AbcProjectCache
-from abc_atlas_access.abc_atlas_cache.cloud_cache import LocalCache
+from functools import lru_cache
+from pathlib import Path
 from abc_atlas_access.abc_atlas_cache.manifest import Manifest
 
 import anndata as ad
@@ -21,7 +20,6 @@ Functions for loading (subsets of) the ABC Atlas MERFISH dataset.
 
 ABC_ROOT = Path("/data/abc_atlas/")
 CURRENT_VERSION = "20230830"
-# TODO: use manifest paths, not just substituting version
 BRAIN_LABEL = "C57BL6J-638850"
 
 # constants for spatial resolution of 'C57BL6J-638850' dataset
@@ -32,29 +30,28 @@ Z_RESOLUTION = 200e-3
 # TODO: figure out a way to adapt across versions (by name?)
 NN_CLASSES = ["30 Astro-Epen", "31 OPC-Oligo", "33 Vascular", "34 Immune"]
 
-abc_cache = AbcProjectCache.from_local_cache(ABC_ROOT)
-abc_cache.load_manifest(CURRENT_VERSION)
-version = abc_cache.cache._manifest.get_file_attributes(directory="", file_name="")["version"]
 
+class AtlasFiles:
+    def __init__(self, directory, dataset, version):
+        # TODO: should manifest just be global?
+        with open(directory / "releases" / version / "manifest.json", "r") as file:
+            manifest = Manifest(cache_dir=directory, json_input=file)
+        _data = f"MERFISH-{dataset}"
+        _taxonomy = "WMB-taxonomy"
+        _data_ccf = f"MERFISH-{dataset}-CCF"
+        _ccf = "Allen-CCF-2020"
+        self.manifest = manifest
+        # TODO: make explicit method?
+        self.adata = lambda transform: manifest.get_file_attributes(directory=_data, file_name=f"{dataset}/{transform}")
+        self.cell_metadata = manifest.get_file_attributes(directory=_data_ccf, file_name="cell_metadata_with_parcellation_annotation")
+        self.resampled_annotation = manifest.get_file_attributes(directory=_data_ccf, file_name="resampled_annotation")
+        self.annotation_10 = manifest.get_file_attributes(directory=_ccf, file_name="annotation_10")
+        self.ccf_metadata = manifest.get_file_attributes(directory=_ccf, file_name="parcellation_to_parcellation_term_membership")
+        self.cluster_metadata = manifest.get_file_attributes(directory=_taxonomy, file_name="cluster_to_cluster_annotation_membership")
+        self.taxonomy_metadata = manifest.get_file_attributes(directory=_taxonomy, file_name="cluster_annotation_term_set")
 
-abc_cache = LocalCache(ABC_ROOT)
-abc_cache.load_manifest(CURRENT_VERSION)
-details = abc_cache._manifest.get_file_attributes(directory="", file_name="")
-path = abc_cache.data_path(directory="", file_name="")["local_path"]
-details = abc_cache.data_path(directory="", file_name="")["file_attributes"]
-
-# ge
-manifest = Manifest(
-    cache_dir=ABC_ROOT,
-    json_input=open(ABC_ROOT / "releases" / CURRENT_VERSION / "manifest.json", "r"),
-)
-_data = f"MERFISH-{BRAIN_LABEL}"
-_taxonomy = "WMB-taxonomy"
-_ccf = ""
-files = {
-    "genes": manifest.get_file_attributes(directory=_data, file_name=f"{BRAIN_LABEL}/{transform_load}"),
-    
-}
+files = AtlasFiles(ABC_ROOT, BRAIN_LABEL, CURRENT_VERSION)
+taxonomy_version = pd.read_csv(files.taxonomy_metadata.local_path)["label"].iloc[0].split("_")[0]
 
 def load_adata(
     version=CURRENT_VERSION,
@@ -94,9 +91,7 @@ def load_adata(
     # 'raw' counts and then do the transform manually later
     transform_load = "log2" if transform == "log2cpv" else "raw"
     adata = ad.read_h5ad(
-        ABC_ROOT
-        / f"expression_matrices/MERFISH-{BRAIN_LABEL}/{version}/{BRAIN_LABEL}-{transform_load}.h5ad",
-        backed="r",
+        files.adata(transform_load).local_path, backed="r",
     )
     genes = adata.var_names
     if drop_blanks:
@@ -289,8 +284,7 @@ def get_combined_metadata(
         )
         if version != CURRENT_VERSION:
             old_df = pd.read_csv(
-                ABC_ROOT
-                / f"metadata/MERFISH-C57BL6J-638850-CCF/{version}/views/cell_metadata_with_parcellation_annotation.csv",
+                files.cell_metadata.local_path,
                 dtype=dtype,
                 usecols=usecols,
                 index_col="cell_label",
@@ -301,8 +295,7 @@ def get_combined_metadata(
             )
     else:
         cells_df = pd.read_csv(
-            ABC_ROOT
-            / f"metadata/MERFISH-C57BL6J-638850-CCF/{version}/views/cell_metadata_with_parcellation_annotation.csv",
+            files.cell_metadata.local_path,
             dtype=dtype,
             usecols=usecols,
             index_col="cell_label",
@@ -353,12 +346,9 @@ def get_ccf_labels_image(resampled=True, realigned=False, subset_to_left_hemi=Fa
         numpy array containing rasterized image volumes of CCF parcellation
     """
     if resampled and not realigned:
-        path = (
-            ABC_ROOT
-            / "image_volumes/MERFISH-C57BL6J-638850-CCF/20230630/resampled_annotation.nii.gz"
-        )
+        path = files.resampled_annotation.local_path
     elif not resampled and not realigned:
-        path = ABC_ROOT / "image_volumes/Allen-CCF-2020/20230630/annotation_10.nii.gz"
+        path = files.annotation_10.local_path
     elif resampled and realigned:
         path = "/data/realigned/abc_realigned_ccf_labels.nii.gz"
     else:
@@ -496,11 +486,8 @@ def _label_masked_cells(
 
 @lru_cache
 def _get_ccf_metadata():
-    # this metadata hasn't been updated in other versions
-    ccf_df = pd.read_csv(
-        ABC_ROOT
-        / "metadata/Allen-CCF-2020/20230630/parcellation_to_parcellation_term_membership.csv"
-    )
+    # TODO: set categorical dtypes?
+    ccf_df = pd.read_csv(files.ccf_metadata.local_path)
     ccf_df = ccf_df.replace("ZI-unassigned", "ZI")
     return ccf_df
 
@@ -617,10 +604,7 @@ def get_ccf_index(level="substructure"):
 
 @lru_cache
 def _get_cluster_annotations(version=CURRENT_VERSION):
-    df = pd.read_csv(
-        ABC_ROOT
-        / f"metadata/WMB-taxonomy/{version}/cluster_to_cluster_annotation_membership.csv"
-    )
+    df = pd.read_csv(files.cluster_metadata.local_path)
     return df
 
 

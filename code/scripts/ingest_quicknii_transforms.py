@@ -81,7 +81,6 @@ def save_resampled_image(imdata, fname):
 # save_resampled_image(imdata, 'abc_realigned_ccf_labels')
 
 # # add parcellation metadata
-# ccf_df = pd.read_csv(abc.ABC_ROOT/f"metadata/Allen-CCF-2020/20230630/parcellation_to_parcellation_term_membership.csv")
 # ccf_df = ccf_df.pivot(index='parcellation_index', columns='parcellation_term_set_name', values='parcellation_term_acronym').astype('category')
 # df = df.join(ccf_df[['division','structure','substructure']].rename(columns=lambda x: f"parcellation_{x}_realigned"),
 #              on='parcellation_index_realigned')
