@@ -43,6 +43,7 @@ class AtlasFiles:
         self.manifest = manifest
         # TODO: make explicit method?
         self.adata = lambda transform: manifest.get_file_attributes(directory=_data, file_name=f"{dataset}/{transform}")
+        self.gene_metadata = manifest.get_file_attributes(directory=_data, file_name="gene")
         self.cell_metadata = manifest.get_file_attributes(directory=_data_ccf, file_name="cell_metadata_with_parcellation_annotation")
         self.resampled_annotation = manifest.get_file_attributes(directory=_data_ccf, file_name="resampled_annotation")
         self.annotation_10 = manifest.get_file_attributes(directory=_ccf, file_name="annotation_10")
@@ -51,7 +52,8 @@ class AtlasFiles:
         self.taxonomy_metadata = manifest.get_file_attributes(directory=_taxonomy, file_name="cluster_annotation_term_set")
 
 files = AtlasFiles(ABC_ROOT, BRAIN_LABEL, CURRENT_VERSION)
-taxonomy_version = pd.read_csv(files.taxonomy_metadata.local_path)["label"].iloc[0].split("_")[0]
+def get_taxonomy_id(): 
+    return pd.read_csv(files.taxonomy_metadata.local_path)["label"].iloc[0].split("_")[0]
 
 def load_adata(
     version=CURRENT_VERSION,
@@ -214,6 +216,18 @@ def filter_by_coordinate_range(obs, coord_col, start=None, stop=None):
         obs = obs[obs[coord_col] <= stop]
     return obs
 
+
+def get_gene_metadata(
+    version=CURRENT_VERSION,
+    drop_blanks=True,
+):
+    """ Load the gene metadata csv.
+    Optionally drops 'Blank' genes from the dataset.
+    """
+    df = pd.read_csv(files.gene_metadata.local_path)
+    if drop_blanks:
+        df = df[~df["gene_symbol"].str.contains("Blank")]
+    return df
 
 def get_combined_metadata(
     version=CURRENT_VERSION,

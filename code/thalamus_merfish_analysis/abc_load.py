@@ -337,6 +337,7 @@ def get_obs_from_annotated_clusters(nuclei_names, obs, by='id',
     return obs
 
 @lru_cache
-def get_cluster_palette():
+# TODO: save this in a less weird format (json?)
+def get_thalamus_cluster_palette():
     palette_df = pd.read_csv('/code/resources/cluster_palette_glasbey.csv')
     return dict(zip(palette_df['Unnamed: 0'], palette_df['0']))

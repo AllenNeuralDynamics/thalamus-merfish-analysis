@@ -35,7 +35,7 @@ th_names = [x for x in abc.get_thalamus_names() if not 'unassigned' in x]
 th_subregion_names = [x for x in abc.get_thalamus_names(level=ccf_level) if not 'unassigned' in x]
 palettes = {level: abc.get_taxonomy_palette(level) for level in 
             ['subclass','supertype']}
-palette['cluster'] = abc.get_cluster_palette()
+palettes['cluster'] = abc.get_thalamus_cluster_palette()
 cplots.CCF_REGIONS_DEFAULT = th_subregion_names
 
 has_realigned_asset = Path("/data/realigned/abc_realigned_metadata_thalamus-boundingbox.parquet").exists()
@@ -56,7 +56,7 @@ def get_data(version, ccf_label):
 
 
 @st.cache_data
-def get_image_volumes(realigned, sections_all, lump_structures=True, edge_width=1):
+def get_image_volumes(realigned, sections_all, lump_structures=False, edge_width=1):
     section_list = np.rint(np.array(sections_all)/0.2).astype(int)
     ccf_images = abc.get_ccf_labels_image(resampled=True, realigned=realigned)
     
@@ -79,6 +79,13 @@ ccf_polygons, ccf_boundaries = get_image_volumes(realigned, sections_all, lump_s
 def get_adata(transform="cpm"):
     return abc.load_adata(version=version, transform=transform, from_metadata=obs_th_neurons)
 
+with st.sidebar:
+    st.write(f"Version: {version}")
+    st.write(f"Gene data version: {abc.files.adata('raw').version}")
+    st.write(f"Metadata version: {abc.files.cell_metadata.version}")
+    st.write(f"CCF version: {abc.files.ccf_metadata.version}")
+    st.write(f"Taxonomy ID: {abc.get_taxonomy_id()}")
+    
 pane1, pane2 = st.columns(2)
 common_args = dict(
     section_col=section_col,
@@ -92,14 +99,14 @@ def full_section_name(section_z):
 with pane2:
     st.header("Gene expression")
     transform = st.radio("Gene expression units", ['log2cpm', 'log2cpv', 'raw'], index=0)
-    # TODO: wait until gene selection to load
-    adata = get_adata(transform=transform)
-    gene = st.selectbox("Select gene", adata.var_names, index=None)
+    genes = abc.get_gene_metadata()["gene_symbol"].values
+    gene = st.selectbox("Select gene", genes, index=None)
     nuclei = st.multiselect("Nuclei to highlight", th_subregion_names)
     sections = st.multiselect("Sections", sections_all, format_func=full_section_name)
     if len(sections)==0: sections = None
     focus_plot = st.checkbox("Focus on selected nuclei") and len(nuclei)>0
     if gene is not None:
+        adata = get_adata(transform=transform)
         plots = cplots.plot_expression_ccf(
             adata, gene, ccf_polygons,
             nuclei=cplots.CCF_REGIONS_DEFAULT, 
