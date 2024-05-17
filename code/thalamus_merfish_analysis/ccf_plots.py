@@ -1,8 +1,8 @@
+import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
-import matplotlib
 from colorcet import glasbey
 from matplotlib.colors import to_rgba
 
@@ -10,6 +10,7 @@ from . import abc_load as abc
 from . import ccf_images as cci
 
 CCF_REGIONS_DEFAULT = None
+
 
 # ------------------------- Multi-Section Plotting ------------------------- #
 def plot_ccf_overlay(
@@ -88,7 +89,7 @@ def plot_ccf_overlay(
     custom_xy_lims : list of float, [xmin, xmax, ymin, ymax]
         Custom x and y limits for the plot
     show_axes : bool
-        Whether to display the show_axes and spines
+        Whether to display the axes and spines
     boundary_img : np.ndarray, optional
         3D array of CCF parcellation boundaries; if None, calculated on the fly
     """
@@ -218,7 +219,7 @@ def plot_section_overlay(
         ax=ax,
     )
     # need to keep zoom set by plot_ccf_section
-    if zoom_to_highlighted: 
+    if zoom_to_highlighted:
         custom_xy_lims = [*ax.get_xlim(), *ax.get_ylim()]
 
     _plot_cells_scatter(
@@ -236,8 +237,8 @@ def plot_section_overlay(
     if legend is not None:
         # cell type names require more horizontal space
         # TODO: detect this from label text
-        _add_legend(ncols = 4 if (legend == "ccf") else 2)
-    if colorbar: 
+        _add_legend(ncols=4 if (legend == "ccf") else 2)
+    if colorbar:
         _add_colorbar(ax, **cb_args)
 
     _format_image_axes(ax=ax, show_axes=show_axes, custom_xy_lims=custom_xy_lims)
@@ -245,14 +246,14 @@ def plot_section_overlay(
     plt.show()
     return fig
 
+
 def _add_legend(ncols=2, **kwargs):
-    args = dict(
-            ncols=ncols, loc="upper center", bbox_to_anchor=(0.5, 0), frameon=False
-        )
+    args = dict(ncols=ncols, loc="upper center", bbox_to_anchor=(0.5, 0), frameon=False)
     args.update(**kwargs)
     plt.legend(**args)
 
-def _add_colorbar(ax, cb_vmin_vmax=[0,1], cmap="viridis", **kwargs):
+
+def _add_colorbar(ax, cb_vmin_vmax=[0, 1], cmap="viridis", **kwargs):
     sm = ax.scatter([], [], c=[], cmap=cmap, vmin=cb_vmin_vmax[0], vmax=cb_vmin_vmax[1])
     args = dict(orientation="vertical")
     args.update(**kwargs)
@@ -270,14 +271,14 @@ def _plot_cells_scatter(
     ax=None,
     **kwargs,
 ):
-    if len(secdata)==0:
+    if len(secdata) == 0:
         return
     # remove missing types from legend
     if legend and secdata[point_hue].dtype.name == "category":
         secdata = secdata.copy()
         secdata[point_hue] = secdata[point_hue].cat.remove_unused_categories()
 
-    sc = sns.scatterplot(
+    sns.scatterplot(
         secdata,
         x=x_col,
         y=y_col,
@@ -338,7 +339,7 @@ def plot_expression_ccf(
     colorbar=True,
     show_axes=False,
     zoom_to_highlighted=False,
-    figsize=(8,4),
+    figsize=(8, 4),
     **scatter_args,
 ):
     # TODO: rename these to be consistent with other functions
@@ -351,7 +352,9 @@ def plot_expression_ccf(
     scatter_args = dict(hue_norm=cb_vmin_vmax, **scatter_args)
     if label is None:
         label = _get_counts_label(adata, gene)
-    cb_args = dict(cmap=cmap, cb_vmin_vmax=cb_vmin_vmax, label=label, fraction=0.046, pad=0.01)
+    cb_args = dict(
+        cmap=cmap, cb_vmin_vmax=cb_vmin_vmax, label=label, fraction=0.046, pad=0.01
+    )
 
     # TODO: allow sections arg to be single section not list?
     if sections is None:
@@ -395,10 +398,18 @@ def plot_expression_ccf(
         plt.show()
     return figs
 
-def plot_hcr(adata, genes, sections=None, section_col='section', 
-             x_col='cirro_x', y_col='cirro_y', bg_color='white'):
-    '''Display separate, and overlay, expression of 3 genes in multiple sections.
-    
+
+def plot_hcr(
+    adata,
+    genes,
+    sections=None,
+    section_col="section",
+    x_col="cirro_x",
+    y_col="cirro_y",
+    bg_color="white",
+):
+    """Display separate, and overlay, expression of 3 genes in multiple sections.
+
     Parameters
     ----------
     adata : AnnData
@@ -413,7 +424,7 @@ def plot_hcr(adata, genes, sections=None, section_col='section',
     x_col, y_col : str
         columns in adata.obs that contains the x- & y-coordinates
     bg_color : str, default='white'
-        background color of the plot. Can use any color str that is recognized  
+        background color of the plot. Can use any color str that is recognized
         by matplotlib; passed on to plt.subplots(..., facecolor=bg_color) and
         ax.set_facecolor(bg_color).
         'black' / 'k' / '#000000' changes font colors to 'white'.
@@ -421,61 +432,37 @@ def plot_hcr(adata, genes, sections=None, section_col='section',
     Returns
     -------
     figs : list of matplotlib.figure.Figure
-    '''
+    """
     # set variable(s) not specified at input
     if sections is None:
         sections = adata.obs[section_col].unique()
     # plot
     figs = []
     for section in sections:
-        fig = plot_hcr_section(adata, genes, section, section_col=section_col, 
-                               x_col=x_col, y_col=y_col, bg_color=bg_color)
-        figs.append(fig)
-    return figs
-
-def plot_hcr(adata, genes, sections=None, section_col='section', 
-             x_col='cirro_x', y_col='cirro_y', bg_color='white'):
-    '''Display separate, and overlay, expression of 3 genes in multiple sections.
-    
-    Parameters
-    ----------
-    adata : AnnData
-        cells to display; gene expression in .X and spatial coordinates in .obs
-    genes : list of str
-        list of genes to display
-    section : list of float
-        sections to display.
-        if passing in a single section, still must be in a list, e.g. [7.2].
-    section_col : str
-        column in adata.obs that contains the section values
-    x_col, y_col : str
-        columns in adata.obs that contains the x- & y-coordinates
-    bg_color : str, default='white'
-        background color of the plot. Can use any color str that is recognized  
-        by matplotlib; passed on to plt.subplots(..., facecolor=bg_color) and
-        ax.set_facecolor(bg_color).
-        'black' / 'k' / '#000000' changes font colors to 'white'.
-
-    Returns
-    -------
-    figs : list of matplotlib.figure.Figure
-    '''
-    # set variable(s) not specified at input
-    if sections is None:
-        sections = adata.obs[section_col].unique()
-    # plot
-    figs = []
-    for section in sections:
-        fig = plot_hcr_section(adata, genes, section, section_col=section_col, 
-                               x_col=x_col, y_col=y_col, bg_color=bg_color)
+        fig = plot_hcr_section(
+            adata,
+            genes,
+            section,
+            section_col=section_col,
+            x_col=x_col,
+            y_col=y_col,
+            bg_color=bg_color,
+        )
         figs.append(fig)
     return figs
 
 
-def plot_hcr_section(adata, genes, section, section_col='section',
-                     x_col='cirro_x', y_col='cirro_y', bg_color='white'):
-    '''Display separate, and overlay, expression of 3 genes in a single section.
-    
+def plot_hcr_section(
+    adata,
+    genes,
+    section,
+    section_col="section",
+    x_col="cirro_x",
+    y_col="cirro_y",
+    bg_color="white",
+):
+    """Display separate, and overlay, expression of 3 genes in a single section.
+
     Parameters
     ---------
     adata : AnnData
@@ -489,7 +476,7 @@ def plot_hcr_section(adata, genes, section, section_col='section',
     x_col, y_col : str
         columns in adata.obs that contains the x- & y-coordinates
     bg_color : str, default='white'
-        background color of the plot. Can use any color str that is recognized  
+        background color of the plot. Can use any color str that is recognized
         by matplotlib; passed on to plt.subplots(..., facecolor=bg_color) and
         ax.set_facecolor(bg_color).
         'black' / 'k' / '#000000' changes font colors to 'white'.
@@ -497,91 +484,59 @@ def plot_hcr_section(adata, genes, section, section_col='section',
     Returns
     -------
     fig : matplotlib.figure.Figure
-    '''
-    
+    """
+
     # Subset based on requested section
-    sec_adata = adata[adata.obs[section_col]==section]
+    sec_adata = adata[adata.obs[section_col] == section]
 
     # Set font color based on bg_color
-    if (bg_color=='black') | (bg_color=='k') | (bg_color=='#000000'):
-        font_color = 'white'
+    if (bg_color == "black") | (bg_color == "k") | (bg_color == "#000000"):
+        font_color = "white"
     else:
-        font_color = 'black'
+        font_color = "black"
     fontsize = 16
-    
+
     # Get normalized expression of each gene
-    gene1_norm = sec_adata[:,genes[0]].X / sec_adata[:,genes[0]].X.max()
-    gene2_norm = sec_adata[:,genes[1]].X / sec_adata[:,genes[1]].X.max()
-    gene3_norm = sec_adata[:,genes[2]].X / sec_adata[:,genes[2]].X.max()
+    gene1_norm = sec_adata[:, genes[0]].X / sec_adata[:, genes[0]].X.max()
+    gene2_norm = sec_adata[:, genes[1]].X / sec_adata[:, genes[1]].X.max()
+    gene3_norm = sec_adata[:, genes[2]].X / sec_adata[:, genes[2]].X.max()
 
     # Convert each genes normalized expression into an RGB value
-    zeros = np.zeros([len(sec_adata),1])
-    colorR = np.concatenate((gene1_norm, zeros, zeros),axis=1)
-    colorG = np.concatenate((zeros, gene2_norm, zeros),axis=1)
-    colorB = np.concatenate((zeros, zeros, gene3_norm),axis=1)
+    zeros = np.zeros([len(sec_adata), 1])
+    colorR = np.concatenate((gene1_norm, zeros, zeros), axis=1)
+    colorG = np.concatenate((zeros, gene2_norm, zeros), axis=1)
+    colorB = np.concatenate((zeros, zeros, gene3_norm), axis=1)
     # combine each gene into a single RGB color for overlay
-    colorRGB = np.concatenate((gene1_norm, gene2_norm, gene3_norm),axis=1)
+    colorRGB = np.concatenate((gene1_norm, gene2_norm, gene3_norm), axis=1)
     # add overlay to list of colors & gene labels
     cell_colors = (colorR, colorG, colorB, colorRGB)
-    genes.append('Overlay') # Append for labeling purposes
+    genes.append("Overlay")  # Append for labeling purposes
 
-    # Plot spatial expression for each channel (3 genes + overlay), 
-    fig, axes = plt.subplots(1,4, figsize=(24,3), dpi=80, facecolor=bg_color)
+    # Plot spatial expression for each channel (3 genes + overlay),
+    fig, axes = plt.subplots(1, 4, figsize=(24, 3), dpi=80, facecolor=bg_color)
     axes = axes.flatten()
     for i, cell_color in enumerate(cell_colors):
         ax = axes[i]
-        ax.scatter(sec_adata.obs[x_col],
-                   sec_adata.obs[y_col],
-                   s=10, marker='.', color=cell_color)
+        ax.scatter(
+            sec_adata.obs[x_col],
+            sec_adata.obs[y_col],
+            s=10,
+            marker=".",
+            color=cell_color,
+        )
         ax.set_title(genes[i], color=font_color, fontsize=fontsize)
         _format_image_axes(ax)
-        ax.set_facecolor(bg_color)  # must be set AFTER _format_image_axes to take effect
+        ax.set_facecolor(
+            bg_color
+        )  # must be set AFTER _format_image_axes to take effect
 
-    counts_str = adata.uns['counts_transform']    
-    plt.suptitle(f'{section=}\ncounts={counts_str}', y=1.2, 
-                 color=font_color, fontsize=fontsize)
+    counts_str = adata.uns["counts_transform"]
+    plt.suptitle(
+        f"{section=}\ncounts={counts_str}", y=1.2, color=font_color, fontsize=fontsize
+    )
     plt.show()
-    
+
     return fig
-
-
-def plot_hcr(adata, genes, sections=None, section_col='section', 
-             x_col='cirro_x', y_col='cirro_y', bg_color='white'):
-    '''Display separate, and overlay, expression of 3 genes in multiple sections.
-    
-    Parameters
-    ----------
-    adata : AnnData
-        cells to display; gene expression in .X and spatial coordinates in .obs
-    genes : list of str
-        list of genes to display
-    section : list of float
-        sections to display.
-        if passing in a single section, still must be in a list, e.g. [7.2].
-    section_col : str
-        column in adata.obs that contains the section values
-    x_col, y_col : str
-        columns in adata.obs that contains the x- & y-coordinates
-    bg_color : str, default='white'
-        background color of the plot. Can use any color str that is recognized  
-        by matplotlib; passed on to plt.subplots(..., facecolor=bg_color) and
-        ax.set_facecolor(bg_color).
-        'black' / 'k' / '#000000' changes font colors to 'white'.
-
-    Returns
-    -------
-    figs : list of matplotlib.figure.Figure
-    '''
-    # set variable(s) not specified at input
-    if sections is None:
-        sections = adata.obs[section_col].unique()
-    # plot
-    figs = []
-    for section in sections:
-        fig = plot_hcr_section(adata, genes, section, section_col=section_col, 
-                               x_col=x_col, y_col=y_col, bg_color=bg_color)
-        figs.append(fig)
-    return figs
 
 
 def plot_metrics_ccf(
@@ -645,8 +600,8 @@ def plot_ccf_section(
     ----------
     ccf_img : np.ndarray
         3D array of CCF parcellations
-    section_z : int
-        Section number
+    section_z : float
+        Section coordinate (CCF z-axis)
     ccf_names : list of str, optional
         Subset of CCF regions to display
     ccf_highlight : list of str, optional
@@ -672,9 +627,7 @@ def plot_ccf_section(
     """
     fig, ax = _get_figure_handles(ax)
     if isinstance(section_z, str):
-        raise TypeError(
-            "str type detected for section var, numeric value required to plot rasterized CCF volumes."
-        )
+        raise TypeError("str type detected for section var, numeric value required.")
     # subset to just this section
     index_z = int(np.rint(section_z / z_resolution))
     img = ccf_img[:, :, index_z].T
@@ -687,7 +640,8 @@ def plot_ccf_section(
         structure_index[i] for i in np.unique(img) if i in structure_index.index
     ]
 
-    if ccf_names is None: ccf_names = CCF_REGIONS_DEFAULT
+    if ccf_names is None:
+        ccf_names = CCF_REGIONS_DEFAULT  # may still be None
     if ccf_names is not None:
         section_region_names = list(set(section_region_names).intersection(ccf_names))
 
@@ -713,23 +667,27 @@ def plot_ccf_section(
     )
     ax.set_title("z=" + str(section_z) + "\n" + ccf_level)
     if zoom_to_highlighted:
-        resolution=10e-3
-        bbox = resolution*get_bbox_for_regions(img, ccf_highlight, ccf_level)
+        resolution = 10e-3
+        bbox = resolution * get_bbox_for_regions(img, ccf_highlight, ccf_level)
         _format_image_axes(ax=ax, show_axes=True, custom_xy_lims=bbox)
-    
+
+
 def get_bbox_for_regions(img, ccf_names, ccf_level, buffer=10):
     structure_index = abc.get_ccf_index_reverse_lookup(level=ccf_level)
     ccf_ids = structure_index[ccf_names].values
-    bbox = np.concatenate([
-        np.flatnonzero(np.any(np.isin(img, ccf_ids), axis=0))[[0,-1]],
-        # reverse order for y
-        np.flatnonzero(np.any(np.isin(img, ccf_ids), axis=1))[[-1,0]]
-    ])
-    if buffer>0:
-        bbox[[0,-1]] = np.maximum(bbox[[0,-1]]-buffer,0)
-        bbox[[1]] = np.minimum(bbox[[1]]+buffer,img.shape[0])
-        bbox[[2]] = np.minimum(bbox[[2]]+buffer,img.shape[1])
+    bbox = np.concatenate(
+        [
+            np.flatnonzero(np.any(np.isin(img, ccf_ids), axis=0))[[0, -1]],
+            # reverse order for y
+            np.flatnonzero(np.any(np.isin(img, ccf_ids), axis=1))[[-1, 0]],
+        ]
+    )
+    if buffer > 0:
+        bbox[[0, -1]] = np.maximum(bbox[[0, -1]] - buffer, 0)
+        bbox[[1]] = np.minimum(bbox[[1]] + buffer, img.shape[0])
+        bbox[[2]] = np.minimum(bbox[[2]] + buffer, img.shape[1])
     return bbox
+
 
 def plot_ccf_shapes(
     imdata,
@@ -802,7 +760,7 @@ def plot_ccf_shapes(
 # ------------------------- DataFrame Preprocessing ------------------------- #
 def preprocess_gene_plot(adata, gene):
     obs = adata.obs.copy()
-    obs[gene] = adata[:,gene].X.toarray()
+    obs[gene] = adata[:, gene].X.toarray()
     return obs
 
 
@@ -919,10 +877,10 @@ def _generate_palette(categories, palette=glasbey, hue_label=None, **items):
     if palette is None and hue_label in ["class", "subclass", "supertype", "cluster"]:
         palette = abc.get_taxonomy_palette(hue_label)
     try:
-        # TODO: allow smaller palette?
+        # TODO: allow palette not containing all categories (to not plot others)?
         palette.update(**items)
         palette = {x: palette[x] for x in categories}
-    except:
+    except AttributeError:
         sns_palette = sns.color_palette(palette, n_colors=len(categories))
         palette = dict(zip(categories, sns_palette))
         palette.update(**items)
@@ -963,7 +921,7 @@ def _palette_to_rgba_lookup(palette, index):
 
 
 def _get_figure_handles(ax, figsize=(8, 4)):
-    """Get the current figure and show_axes handles, or create new ones if ax is None."""
+    """Get the figure handle for a set of axes, or create new ones if ax is None."""
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
@@ -972,14 +930,14 @@ def _get_figure_handles(ax, figsize=(8, 4)):
 
 
 def _format_image_axes(ax, show_axes=False, set_lims="whole", custom_xy_lims=None):
-    """Format the show_axes of a plot.
+    """Format the axes of a plot.
 
     Parameters
     ----------
     ax : matplotlib.axes.Axes
         Axes to format
     show_axes : bool
-        Whether to display the show_axes and spines
+        Whether to display the axes and spines
     set_lims : bool or str, {'whole', 'left_hemi', 'right_hemi'}
         Whether to set the x and y limits of the plot to the whole brain,
         the left hemisphere, or the right hemisphere
@@ -995,7 +953,7 @@ def _format_image_axes(ax, show_axes=False, set_lims="whole", custom_xy_lims=Non
     ax.set_ylabel(None)
     # (set_lims==True) is for backwards compatibility
     # TODO: allow for easier whole-coronal vs TH+ZI axis formatting
-    if (set_lims == "whole") | (set_lims == True):
+    if (set_lims == "whole") | (set_lims is True):
         ax.set_xlim([2.5, 8.5])
         ax.set_ylim([7, 4])
     elif set_lims == "left_hemi":
