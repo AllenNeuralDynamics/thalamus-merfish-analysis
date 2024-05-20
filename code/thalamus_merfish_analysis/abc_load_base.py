@@ -616,6 +616,19 @@ def get_ccf_index(level="substructure"):
     return index
 
 
+def get_section_index(
+    cells_df=None, section_col="brain_section_label", z_col="z_section", z_res=200e-3
+    ):
+    """Given a cell metadata DataFrame, returns a Series mapping section labels
+    to their corresponding section index (integer z-coordinate at specified resolution).
+    """
+    if cells_df is None:
+        cells_df = get_combined_metadata()
+    section_index = cells_df.groupby(section_col, observed=True)[z_col].first().dropna().apply(
+        lambda x: int(np.rint(x / z_res))
+    )
+    return section_index
+
 @lru_cache
 def _get_cluster_annotations(version=CURRENT_VERSION):
     df = pd.read_csv(files.cluster_metadata.local_path)

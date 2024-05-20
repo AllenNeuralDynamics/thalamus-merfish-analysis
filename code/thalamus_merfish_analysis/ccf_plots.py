@@ -18,9 +18,9 @@ def plot_ccf_overlay(
     ccf_images,
     sections=None,
     # column names
-    section_col="section",
-    x_col="cirro_x",
-    y_col="cirro_y",
+    section_col="brain_section_label",
+    x_col="x_section",
+    y_col="x_section",
     point_hue="CCF_acronym",
     # point props
     point_palette=None,
@@ -156,7 +156,6 @@ def get_sections_for_ccf_regions(
     ccf_images,
     ccf_names,
     ccf_level="substructure",
-    z_resolution=200e-3,
 ):
     """Get the sections that contain cells from a list of CCF regions."""
     structure_index = abc.get_ccf_index_reverse_lookup(level=ccf_level)
@@ -164,7 +163,7 @@ def get_sections_for_ccf_regions(
     sections = []
     for i in range(ccf_images.shape[2]):
         if np.any(np.isin(ccf_images[:, :, i], ccf_ids)):
-            sections.append(np.round(i * z_resolution, 1))
+            sections.append(i)
     return sections
 
 
@@ -173,9 +172,9 @@ def plot_section_overlay(
     ccf_images,
     section,
     # column names
-    section_col="section",
-    x_col="cirro_x",
-    y_col="cirro_y",
+    section_col="brain_section_label",
+    x_col="x_section",
+    y_col="x_section",
     point_hue="CCF_acronym",
     # point props
     point_palette=None,
@@ -199,6 +198,7 @@ def plot_section_overlay(
     ax=None,
 ):
     fig, ax = _get_figure_handles(ax)
+    section_index = abc.get_section_index(obs, section_col=section_col)
     secdata = obs.loc[lambda df: (df[section_col] == section)]
     if custom_xy_lims is not None:
         # TODO: apply at dataset level instead?
@@ -207,7 +207,7 @@ def plot_section_overlay(
     # display CCF shapes
     plot_ccf_section(
         ccf_images,
-        section,
+        section_index[section],
         boundary_img=boundary_img,
         ccf_names=ccf_names,
         ccf_highlight=ccf_highlight,
@@ -242,7 +242,7 @@ def plot_section_overlay(
         _add_colorbar(ax, **cb_args)
 
     _format_image_axes(ax=ax, show_axes=show_axes, custom_xy_lims=custom_xy_lims)
-    ax.set_title("z=" + str(section) + "\n" + point_hue)
+    ax.set_title(f"{section}\n{point_hue}")
     plt.show()
     return fig
 
@@ -329,9 +329,9 @@ def plot_expression_ccf(
     s=1.5,
     cmap="Blues",
     edge_color="lightgrey",
-    section_col="section",
-    x_col="cirro_x",
-    y_col="cirro_y",
+    section_col="brain_section_label",
+    x_col="x_section",
+    y_col="x_section",
     boundary_img=None,
     custom_xy_lims=None,
     cb_vmin_vmax=None,
@@ -360,11 +360,11 @@ def plot_expression_ccf(
     if sections is None:
         sections = adata.obs[section_col].unique()
         if ccf_names is not None:
-            sections = set(sections).intersection(
-                get_sections_for_ccf_regions(
-                    ccf_images, ccf_highlight if zoom_to_highlighted else ccf_names
-                )
+            sections_ccf = get_sections_for_ccf_regions(
+                ccf_images, ccf_highlight if zoom_to_highlighted else ccf_names
             )
+            section_index = abc.get_section_index(obs, section_col=section_col)
+            sections = [x for x in sections if section_index[x] in sections_ccf]
     # Plot
     figs = []
     for section in sections:
@@ -393,7 +393,7 @@ def plot_expression_ccf(
             s=s,
             zoom_to_highlighted=zoom_to_highlighted,
         )
-        ax.set_title(f"z={section}\n{gene}")
+        ax.set_title(f"{section}\n{gene}")
         figs.append(fig)
         plt.show()
     return figs
@@ -403,9 +403,9 @@ def plot_hcr(
     adata,
     genes,
     sections=None,
-    section_col="section",
-    x_col="cirro_x",
-    y_col="cirro_y",
+    section_col="brain_section_label",
+    x_col="x_section",
+    y_col="x_section",
     bg_color="white",
 ):
     """Display separate, and overlay, expression of 3 genes in multiple sections.
@@ -456,9 +456,9 @@ def plot_hcr_section(
     adata,
     genes,
     section,
-    section_col="section",
-    x_col="cirro_x",
-    y_col="cirro_y",
+    section_col="brain_section_label",
+    x_col="x_section",
+    y_col="x_section",
     bg_color="white",
 ):
     """Display separate, and overlay, expression of 3 genes in a single section.
@@ -581,27 +581,28 @@ def plot_metrics_ccf(
 # TODO: make multi-section option?
 def plot_ccf_section(
     ccf_img,
-    section_z,
+    section_i,
     ccf_names=None,
     ccf_highlight=[],
     face_palette=None,
     edge_color="grey",
     boundary_img=None,
     ccf_level="substructure",
-    z_resolution=200e-3,
     legend=True,
     zoom_to_highlighted=False,
     ax=None,
 ):
     """Display CCF parcellations for a single section from an
-    image volume of region labels
+    image volume of region labels.
+    Generates palettes to show highlights and hide regions not specified,
+    then calls plot_ccf_shapes() to display the shapes.
 
     Parameters
     ----------
     ccf_img : np.ndarray
         3D array of CCF parcellations
-    section_z : float
-        Section coordinate (CCF z-axis)
+    section_i : int
+        Section index to display
     ccf_names : list of str, optional
         Subset of CCF regions to display
     ccf_highlight : list of str, optional
@@ -618,20 +619,17 @@ def plot_ccf_section(
         2D array of CCF parcellation boundaries; if None, calculated on the fly
     ccf_level : str, {'substructure', 'structure'}, default='substructure'
         Level of CCF to be displayed
-    z_resolution : float, default=200e-3
-        Resolution of the CCF in the z-dimension
     legend : bool, default=True
         Whether to display a legend for the CCF region shapes
+    zoom_to_highlighted : bool, default=False
+        Whether to zoom the plot to the bounding box of the highlighted regions
     ax : matplotlib.axes.Axes, optional
         Existing Axes to plot on; if None, a new figure and Axes are created
     """
     fig, ax = _get_figure_handles(ax)
-    if isinstance(section_z, str):
-        raise TypeError("str type detected for section var, numeric value required.")
     # subset to just this section
-    index_z = int(np.rint(section_z / z_resolution))
-    img = ccf_img[:, :, index_z].T
-    boundary_img = boundary_img[:, :, index_z].T if boundary_img is not None else None
+    img = ccf_img[:, :, section_i].T
+    boundary_img = boundary_img[:, :, section_i].T if boundary_img is not None else None
 
     # select CCF regions to plot
     # TODO: could allow names from other levels and translate all to specified level...
@@ -665,7 +663,6 @@ def plot_ccf_section(
         ax=ax,
         legend=legend,
     )
-    ax.set_title("z=" + str(section_z) + "\n" + ccf_level)
     if zoom_to_highlighted:
         resolution = 10e-3
         bbox = resolution * get_bbox_for_regions(img, ccf_highlight, ccf_level)
@@ -794,12 +791,12 @@ def preprocess_categorical_plot(
     obs : pd.DataFrame
         Preprocessed DataFrame (copy of original)
     """
-    obs = obs.copy()
+    # obs = obs.copy()
     obs = abc.label_outlier_celltypes(obs, type_col, min_group_count=min_group_count)
     # Min group count by section shouldn't be larger than overall min_group_count
     # Set to the minimum so user can set min_group_count=0 to see all groups
     min_group_count_section = min(min_group_count_section, min_group_count)
-    obs = obs.groupby(section_col).apply(
+    obs = obs.groupby(section_col, group_keys=False).apply(
         lambda x: abc.label_outlier_celltypes(
             x, type_col, min_group_count=min_group_count_section
         )
