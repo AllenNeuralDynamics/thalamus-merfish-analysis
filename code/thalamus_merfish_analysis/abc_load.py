@@ -4,6 +4,7 @@
 # all others are imported for backwards compatibility access via abc.FUNC_NAME()
 from .abc_load_base import *
 from itertools import chain
+import numpy as np
 
 _DEVCCF_TOP_NODES_THALAMUS = ['ZIC', 'CZI', 'RtC', 'Th']
 _CCF_TOP_NODES_THALAMUS = ['TH', 'ZI']
@@ -22,6 +23,7 @@ _CIRRO_COLUMNS = {
 TH_ZI_CLASSES = ['12 HY GABA', '17 MH-LH Glut', '18 TH Glut']
 MB_CLASSES = ['19 MB Glut', '20 MB GABA'] # midbrain
 # NN_CLASSES already defined in abc_load_base.py
+TH_SECTIONS = np.arange(25, 42)
 
 def load_standard_thalamus(data_structure='adata'):
     ''' Loads a preprocessed, neuronal thalamus subset of the ABC Atlas MERFISH dataset.
