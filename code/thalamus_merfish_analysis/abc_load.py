@@ -51,7 +51,7 @@ def load_standard_thalamus(data_structure='adata'):
     if data_structure=='adata':
         data_th = load_adata_thalamus(subset_to_TH_ZI=True, 
                                       version=CURRENT_VERSION, 
-                                      transform='log2cpm', with_metadata=True, 
+                                      transform='log2cpt', with_metadata=True, 
                                       drop_blanks=True, flip_y=False, 
                                       realigned=False)
     elif data_structure=='obs':
@@ -77,10 +77,10 @@ def load_standard_thalamus(data_structure='adata'):
     return data_th.copy()
 
 def load_adata_thalamus(subset_to_TH_ZI=True, 
-                        version=CURRENT_VERSION, transform='log2cpm', 
+                        version=CURRENT_VERSION, transform='log2cpt', 
                         with_metadata=True, drop_blanks=True, 
                         flip_y=False, realigned=False, 
-                        with_colors=False,
+                        drop_unused=True,
                         **kwargs):
     '''Load ABC Atlas MERFISH dataset as an anndata object.
     
@@ -91,8 +91,10 @@ def load_adata_thalamus(subset_to_TH_ZI=True,
         by label_thalamus_spatial_subset()
     version : str, default=CURRENT_VERSION
         which release version of the ABC Atlas to load
-    transform : {'log2cpm', 'log2cpv', 'raw'}, default='log2cpm'
-        which transformation of the gene counts to load from the expression matrices.
+    transform : {'log2cpt', 'log2cpm', 'log2cpv', 'raw'}, default='log2cpt'
+        which transformation of the gene counts to load and/or calculate from
+        the expression matrices
+        {cpt: counts per thousand, cpm: per million, cpv: per cell volume}
     with_metadata : bool, default=True
         include cell metadata in adata
     from_metadata : DataFrame, default=None
@@ -107,6 +109,8 @@ def load_adata_thalamus(subset_to_TH_ZI=True,
     realigned : bool, default=False
         load and use for subsetting the metadata from realignment results data asset,
         containing 'ccf_realigned' coordinates 
+    drop_unused : bool, default=True
+        drop unused columns from metadata
     **kwargs
         passed to `get_combined_metadata`
         
@@ -118,7 +122,7 @@ def load_adata_thalamus(subset_to_TH_ZI=True,
     if subset_to_TH_ZI:
         cells_md_df = get_combined_metadata(
             version=version, realigned=realigned, flip_y=flip_y, 
-            drop_unused=not with_colors, **kwargs
+            drop_unused=drop_unused, **kwargs
             )
         cells_md_df = label_thalamus_spatial_subset(cells_md_df,
                                                     flip_y=flip_y,

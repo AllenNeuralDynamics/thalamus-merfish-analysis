@@ -57,7 +57,7 @@ def get_taxonomy_id():
 
 def load_adata(
     version=CURRENT_VERSION,
-    transform="log2cpm",
+    transform="log2cpt",
     with_metadata=True,
     from_metadata=None,
     drop_blanks=True,
@@ -70,9 +70,10 @@ def load_adata(
     ----------
     version : str, default=CURRENT_VERSION
         which release version of the ABC Atlas to load
-    transform : {'log2cpm', 'log2cpv', 'raw'}, default='log2cpm'
+    transform : {'log2cpt', 'log2cpm', 'log2cpv', 'raw'}, default='log2cpt'
         which transformation of the gene counts to load and/or calculate from
         the expression matrices
+        {cpt: counts per thousand, cpm: per million, cpv: per cell volume}
     with_metadata : bool, default=True
         include cell metadata in adata
     from_metadata : DataFrame, default=None
@@ -89,8 +90,8 @@ def load_adata(
     adata
         anndata object containing the ABC Atlas MERFISH dataset
     """
-    # 'log2cpv' is labelled just 'log2' in the ABC atlas; for 'log2cpm', we load
-    # 'raw' counts and then do the transform manually later
+    # 'log2cpv' is labelled 'log2' in the ABC Atlas; for 'log2cpm' or 'log2cpt',
+    #  we load 'raw' counts and then do the transform manually later
     transform_load = "log2" if transform == "log2cpv" else "raw"
     adata = ad.read_h5ad(
         files.adata(transform_load).local_path, backed="r",
@@ -115,17 +116,23 @@ def load_adata(
         )
     else:
         adata = adata[:, genes].to_memory()
-
-    if transform == "log2cpm":
-        # transform calculation converts sparse 'log2' matrix to dense array
+    
+    scale_factors = {
+        "log2cpm": 1e6,
+        "log2cpt": 1e3,
+        # "log2cph": 1e2  # or other scale_factor options
+    }
+    if transform in scale_factors:
+        scale_factor = scale_factors[transform]
+        # transform calculation converts sparse matrix to dense array
         adata.X = np.asarray(
             np.log2(
-                1 + adata.X * 1e6 / np.sum(adata.X.toarray(), axis=1, keepdims=True)
+                1 + adata.X * scale_factor / np.sum(adata.X.toarray(), axis=1, keepdims=True)
             )
-        )
+        )  
     else:
         # convert sparse matrix (how 'log2' & 'raw' counts are stored in h5ad 
-        # file) to dense array to match 'log2cpm' transform option
+        # file) to dense array to match transform output
         adata.X = adata.X.toarray()
 
     # access genes by short symbol vs longer names

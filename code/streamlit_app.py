@@ -128,7 +128,7 @@ st.markdown(
 with pane2:
     st.header("Gene expression")
     transform = st.radio(
-        "Gene expression units", ["log2cpm", "log2cpv", "raw"], index=0
+        "Gene expression units", ["log2cpt", "log2cpm", "log2cpv", "raw"], index=0
     )
     genes = abc.get_gene_metadata()["gene_symbol"].values
     gene = st.selectbox("Select gene", genes, index=None)
