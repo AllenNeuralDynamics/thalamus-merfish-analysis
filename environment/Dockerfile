@@ -1,5 +1,6 @@
-# hash:sha256:6414fd07639184613af87d0b8aa4a10e662afa1e1f7787298a23be9cea959f76
-FROM registry.codeocean.allenneuraldynamics.org/codeocean/jupyterlab:3.6.1-miniconda4.12.0-python3.9-ubuntu20.04
+# hash:sha256:181168b540bfe7b5e9750223ee28575d411265a19e978d57e7d2961400817053
+ARG REGISTRY_HOST
+FROM $REGISTRY_HOST/codeocean/jupyterlab:3.6.1-miniconda4.12.0-python3.9-ubuntu20.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG API_KEY
@@ -26,6 +27,7 @@ RUN pip install -U --no-cache-dir \
     geopandas==0.13.1 \
     hdbscan==0.8.33 \
     nibabel==5.1.0 \
+    pydantic==2.7.1 \
     scanpy==1.9.3 \
     scikit-learn==1.2.2 \
     shapely==2.0.1 \
