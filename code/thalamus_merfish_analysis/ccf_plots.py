@@ -20,11 +20,11 @@ def plot_ccf_overlay(
     # column names
     section_col="brain_section_label",
     x_col="x_section",
-    y_col="x_section",
+    y_col="y_section",
     point_hue="CCF_acronym",
     # point props
     point_palette=None,
-    s=2,  # TODO: rename 's' arg!
+    point_size=2,
     # point selection
     categorical=True,
     min_group_count=10,
@@ -62,8 +62,8 @@ def plot_ccf_overlay(
         Column name in obs to color cells by
     point_palette : dict, optional
         Dictionary of point_hue categories and colors
-    s : int, default=2
-        Size of foreground cell scatter points (background cells set to 0.8*s)
+    point_size : int, default=2
+        Size of foreground cell scatter points (background cells set to min([0.8*point_size,2]))
     categorical : bool, default=True
         Whether point_hue is a categorical variable
     min_group_count : int
@@ -136,7 +136,7 @@ def plot_ccf_overlay(
             y_col=y_col,
             point_hue=point_hue,
             point_palette=point_palette,
-            s=s,
+            point_size=point_size,
             face_palette=face_palette,
             edge_color=edge_color,
             ccf_names=ccf_names,
@@ -174,11 +174,11 @@ def plot_section_overlay(
     # column names
     section_col="brain_section_label",
     x_col="x_section",
-    y_col="x_section",
+    y_col="y_section",
     point_hue="CCF_acronym",
     # point props
     point_palette=None,
-    s=2,
+    point_size=2,
     # shape props
     face_palette=None,
     edge_color="grey",
@@ -228,7 +228,7 @@ def plot_section_overlay(
         y_col=y_col,
         point_hue=point_hue,
         point_palette=point_palette,
-        s=s,
+        point_size=point_size,
         legend=(legend in ["cells", "both"]),
         ax=ax,
         **scatter_args,
@@ -266,7 +266,7 @@ def _plot_cells_scatter(
     y_col,
     point_hue,
     point_palette=None,
-    s=2,
+    point_size=2,
     legend=True,
     ax=None,
     **kwargs,
@@ -283,14 +283,14 @@ def _plot_cells_scatter(
         x=x_col,
         y=y_col,
         hue=point_hue,
-        s=s,
+        s=point_size,
         palette=point_palette,
         linewidth=0,
         legend=legend,
         ax=ax,
         **kwargs,
     )
-    bg_s = s * 0.8 if (s <= 2) else 2
+    bg_s = np.min([point_size*0.8, 2])
     # TODO: add background cells to legend?
     sns.scatterplot(
         secdata.loc[secdata[point_hue].isna()],
@@ -326,12 +326,12 @@ def plot_expression_ccf(
     nuclei=None,
     highlight=[],
     ccf_level="substructure",
-    s=1.5,
+    point_size=1.5,
     cmap="Blues",
     edge_color="lightgrey",
     section_col="brain_section_label",
     x_col="x_section",
-    y_col="x_section",
+    y_col="y_section",
     boundary_img=None,
     custom_xy_lims=None,
     cb_vmin_vmax=None,
@@ -390,7 +390,7 @@ def plot_expression_ccf(
             scatter_args=scatter_args,
             cb_args=cb_args,
             ax=ax,
-            s=s,
+            point_size=point_size,
             zoom_to_highlighted=zoom_to_highlighted,
         )
         ax.set_title(f"{section}\n{gene}")
@@ -405,7 +405,7 @@ def plot_hcr(
     sections=None,
     section_col="brain_section_label",
     x_col="x_section",
-    y_col="x_section",
+    y_col="y_section",
     bg_color="white",
 ):
     """Display separate, and overlay, expression of 3 genes in multiple sections.
@@ -458,7 +458,7 @@ def plot_hcr_section(
     section,
     section_col="brain_section_label",
     x_col="x_section",
-    y_col="x_section",
+    y_col="y_section",
     bg_color="white",
 ):
     """Display separate, and overlay, expression of 3 genes in a single section.

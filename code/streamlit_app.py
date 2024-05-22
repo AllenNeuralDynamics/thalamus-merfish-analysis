@@ -160,7 +160,7 @@ with pane2:
 with pane1:
     st.header("Cell type taxonomy annotations")
 
-    kwargs = dict(bg_cells=None, s=3, **common_args)
+    kwargs = dict(bg_cells=None, point_size=3, **common_args)
 
     def plot(obs, sections, regions=None, point_hue="subclass"):
         return cplots.plot_ccf_overlay(

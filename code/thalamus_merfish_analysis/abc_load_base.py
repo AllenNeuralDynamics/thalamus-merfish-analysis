@@ -617,7 +617,7 @@ def get_ccf_index(level="substructure"):
 
 
 def get_section_index(
-    cells_df=None, section_col="brain_section_label", z_col="z_section", z_res=200e-3
+    cells_df=None, section_col="brain_section_label", z_col="z_section", z_res=Z_RESOLUTION
     ):
     """Given a cell metadata DataFrame, returns a Series mapping section labels
     to their corresponding section index (integer z-coordinate at specified resolution).
