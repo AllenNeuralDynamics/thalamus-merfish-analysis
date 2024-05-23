@@ -11,11 +11,12 @@ from . import ccf_images as cci
 
 CCF_REGIONS_DEFAULT = None
 
+# TODO: make plotting class to cache indices, col names, etc?
 
-# ------------------------- Multi-Section Plotting ------------------------- #
+
 def plot_ccf_overlay(
     obs,
-    ccf_images,
+    ccf_images=None,
     sections=None,
     # column names
     section_col="brain_section_label",
@@ -41,6 +42,9 @@ def plot_ccf_overlay(
     legend="cells",
     custom_xy_lims=None,
     show_axes=False,
+    separate_figs=True,
+    n_rows=1,
+    figsize=(8, 4),
     boundary_img=None,
 ):
     """
@@ -48,7 +52,7 @@ def plot_ccf_overlay(
     ----------
     obs : pd.DataFrame
         DataFrame of cells to display
-    ccf_images : np.ndarray
+    ccf_images : np.ndarray, optional
         3D array of CCF parcellation regions
     sections : list of numbers, optional
         Section(s) to display. Must be a list even for single section.
@@ -125,7 +129,11 @@ def plot_ccf_overlay(
     if bg_cells is not None:
         obs = _integrate_background_cells(obs, point_hue, bg_cells)
 
-    # Display each section as a separate plot
+    # Display each section as a separate plot by default
+    if not separate_figs:
+        grid = _create_axis_grid(len(sections), n_rows, figsize=figsize)
+        # TODO: could use this pattern for other multi-section plots
+        # probably best to use a class to share code?
     figs = [
         plot_section_overlay(
             obs,
@@ -146,10 +154,51 @@ def plot_ccf_overlay(
             custom_xy_lims=custom_xy_lims,
             show_axes=show_axes,
             legend=legend,
+            ax=None if separate_figs else grid[i],
+            figsize=figsize,
         )
-        for section in sections
+        for i, section in enumerate(sections)
     ]
+    if not separate_figs and legend is not None:
+        _combine_subplot_legends(
+            figs[0], title=ccf_level if legend == "ccf" else point_hue
+        )
+
     return figs
+
+
+def _create_axis_grid(n_total, n_rows, figsize=(10, 5)):
+    from mpl_toolkits.axes_grid1 import ImageGrid
+
+    return ImageGrid(
+        plt.figure(figsize=figsize),
+        111,  # similar to subplot(111)
+        nrows_ncols=(n_rows, int(np.ceil(n_total / n_rows))),
+        axes_pad=(0.1, 0.2),  # pad between axes in inch.
+    )
+
+
+def _combine_subplot_legends(fig, ncol=4, **legend_args):
+    args = dict(loc="upper center", bbox_to_anchor=(0.5, 0), ncol=ncol, frameon=False)
+    args.update(**legend_args)
+    labels = []
+    handles = []
+    for ax in fig.axes:
+        if ax.get_legend() is None:
+            # could also explicitly skip colorbar axes
+            continue
+        for handle, label in zip(*ax.get_legend_handles_labels()):
+            if label not in labels:
+                labels.append(label)
+                handles.append(handle)
+        ax.get_legend().remove()
+    labels = np.array(labels)
+    handles = np.array(handles)
+    try:
+        order = np.argsort(labels.astype(int))
+    except ValueError:
+        order = np.argsort(labels)
+    fig.legend(handles[order], labels[order], **args)
 
 
 def get_sections_for_ccf_regions(
@@ -196,8 +245,9 @@ def plot_section_overlay(
     scatter_args={},
     cb_args={},
     ax=None,
+    figsize=(8, 4),
 ):
-    fig, ax = _get_figure_handles(ax)
+    fig, ax = _get_figure_handles(ax, figsize=figsize)
     section_index = abc.get_section_index(obs, section_col=section_col)
     secdata = obs.loc[lambda df: (df[section_col] == section)]
     if custom_xy_lims is not None:
@@ -205,19 +255,20 @@ def plot_section_overlay(
         secdata = _filter_by_xy_lims(secdata, x_col, y_col, custom_xy_lims)
 
     # display CCF shapes
-    plot_ccf_section(
-        ccf_images,
-        section_index[section],
-        boundary_img=boundary_img,
-        ccf_names=ccf_names,
-        ccf_highlight=ccf_highlight,
-        ccf_level=ccf_level,
-        face_palette=face_palette,
-        edge_color=edge_color,
-        legend=(legend == "ccf"),
-        zoom_to_highlighted=zoom_to_highlighted,
-        ax=ax,
-    )
+    if ccf_images is not None:
+        plot_ccf_section(
+            ccf_images,
+            section_index[section],
+            boundary_img=boundary_img,
+            ccf_names=ccf_names,
+            ccf_highlight=ccf_highlight,
+            ccf_level=ccf_level,
+            face_palette=face_palette,
+            edge_color=edge_color,
+            legend=(legend == "ccf"),
+            zoom_to_highlighted=zoom_to_highlighted,
+            ax=ax,
+        )
     # need to keep zoom set by plot_ccf_section
     if zoom_to_highlighted:
         custom_xy_lims = [*ax.get_xlim(), *ax.get_ylim()]
@@ -237,20 +288,22 @@ def plot_section_overlay(
     if legend is not None:
         # cell type names require more horizontal space
         # TODO: detect this from label text
-        _add_legend(ncols=4 if (legend == "ccf") else 2)
+        _add_legend(ax, ncols=4 if (legend == "ccf") else 2)
     if colorbar:
         _add_colorbar(ax, **cb_args)
 
     _format_image_axes(ax=ax, show_axes=show_axes, custom_xy_lims=custom_xy_lims)
-    ax.set_title(f"{section}\n{point_hue}")
-    plt.show()
+    title = f"{section}" if legend == "cells" else f"{section}\n{point_hue}"
+    ax.set_title(title)
     return fig
 
 
-def _add_legend(ncols=2, **kwargs):
+def _add_legend(ax=None, ncols=2, **kwargs):
     args = dict(ncols=ncols, loc="upper center", bbox_to_anchor=(0.5, 0), frameon=False)
     args.update(**kwargs)
-    plt.legend(**args)
+    if ax is None:
+        ax = plt.gca()
+    ax.legend(**args)
 
 
 def _add_colorbar(ax, cb_vmin_vmax=[0, 1], cmap="viridis", **kwargs):
@@ -290,7 +343,7 @@ def _plot_cells_scatter(
         ax=ax,
         **kwargs,
     )
-    bg_s = np.min([point_size*0.8, 2])
+    bg_s = np.min([point_size * 0.8, 2])
     # TODO: add background cells to legend?
     sns.scatterplot(
         secdata.loc[secdata[point_hue].isna()],
@@ -534,7 +587,6 @@ def plot_hcr_section(
     plt.suptitle(
         f"{section=}\ncounts={counts_str}", y=1.2, color=font_color, fontsize=fontsize
     )
-    plt.show()
 
     return fig
 
@@ -749,8 +801,8 @@ def plot_ccf_shapes(
     # generate "empty" matplotlib handles for legend
     if legend and (face_palette is not None):
         for name, color in face_palette.items():
-            plt.plot([], marker="o", ls="", color=color, label=name)
-        _add_legend(ncols=4)
+            ax.plot([], marker="o", ls="", color=color, label=name)
+        _add_legend(ax, ncols=4)
     _format_image_axes(ax=ax)
 
 
@@ -874,9 +926,10 @@ def _generate_palette(categories, palette=glasbey, hue_label=None, **items):
     if palette is None and hue_label in ["class", "subclass", "supertype", "cluster"]:
         palette = abc.get_taxonomy_palette(hue_label)
     try:
+        # assuming palette is dict/mappable already
         # TODO: allow palette not containing all categories (to not plot others)?
-        palette.update(**items)
         palette = {x: palette[x] for x in categories}
+        palette.update(**items)
     except AttributeError:
         sns_palette = sns.color_palette(palette, n_colors=len(categories))
         palette = dict(zip(categories, sns_palette))
