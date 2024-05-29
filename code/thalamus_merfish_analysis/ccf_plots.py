@@ -130,6 +130,7 @@ def plot_ccf_overlay(
         obs = _integrate_background_cells(obs, point_hue, bg_cells)
 
     # Display each section as a separate plot by default
+    # TODO figure out why separate_figs=False does not display bg_cells
     if not separate_figs:
         grid = _create_axis_grid(len(sections), n_rows, figsize=figsize)
         # TODO: could use this pattern for other multi-section plots
@@ -925,11 +926,15 @@ def _generate_palette(categories, palette=glasbey, hue_label=None, **items):
     # palette as a parameter, just calculate it on the fly
     if palette is None and hue_label in ["class", "subclass", "supertype", "cluster"]:
         palette = abc.get_taxonomy_palette(hue_label)
+    # if we've merged some categories into 'other', add a color for it
+    if ('other' in categories) & ('other' not in palette):
+        palette['other'] = OTHER_CATEGORY_COLOR
     try:
         # assuming palette is dict/mappable already
         # TODO: allow palette not containing all categories (to not plot others)?
         palette = {x: palette[x] for x in categories}
         palette.update(**items)
+    # TODO what are we trying to catch here?
     except AttributeError:
         sns_palette = sns.color_palette(palette, n_colors=len(categories))
         palette = dict(zip(categories, sns_palette))
