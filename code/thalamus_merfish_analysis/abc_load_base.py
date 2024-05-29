@@ -404,7 +404,7 @@ def label_outlier_celltypes(
             obs[type_col].dtype.name == "category"
             and outlier_label not in obs[type_col].cat.categories
         ):
-            obs[type_col] = obs[type_col].cat.add_categories(outlier_label)
+            obs.loc[:, type_col] = obs.loc[:, type_col].cat.add_categories(outlier_label)
         obs.loc[~obs[type_col].isin(primary_celltypes), type_col] = outlier_label
     return obs
 
@@ -697,3 +697,31 @@ def get_taxonomy_label_from_alias(
         .to_list()
     )
     return label_list
+
+@lru_cache
+def _get_ccf_annotations():
+    df = pd.read_csv(files.ccf_metadata.local_path)
+    return df
+
+def get_ccf_palette(parcellation_level):
+    """Get the published color dictionary for a given level of the Allen 
+    Reference Atlas (ARA) CCFv3 anatomical parcellation
+
+    Parameters
+    ----------
+    parcellation_level : {'organ', 'category','division', 'structure',
+                          'substructure'}
+        specifies the parcellation level to get labels and colors from
+
+    Returns
+    -------
+    color_dict : dict
+        dictionary mapping parcellation labels to their official ARA hex colors
+    """
+    df = _get_ccf_annotations()
+    df = df[df["parcellation_term_set_name"] == parcellation_level]
+    palette = df.set_index("parcellation_term_acronym")[
+        "color_hex_triplet"
+    ].to_dict()
+    
+    return palette
