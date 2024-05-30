@@ -130,7 +130,6 @@ def plot_ccf_overlay(
         obs = _integrate_background_cells(obs, point_hue, bg_cells)
 
     # Display each section as a separate plot by default
-    # TODO figure out why separate_figs=False does not display bg_cells
     if not separate_figs:
         grid = _create_axis_grid(len(sections), n_rows, figsize=figsize)
         # TODO: could use this pattern for other multi-section plots
@@ -354,6 +353,7 @@ def _plot_cells_scatter(
         s=bg_s,
         linewidth=0,
         zorder=-1,
+        ax=ax,
     )
 
 
