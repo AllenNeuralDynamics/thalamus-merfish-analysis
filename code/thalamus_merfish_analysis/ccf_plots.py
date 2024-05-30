@@ -926,6 +926,8 @@ def _generate_palette(categories, palette=glasbey, hue_label=None, **items):
     # palette as a parameter, just calculate it on the fly
     if palette is None and hue_label in ["class", "subclass", "supertype", "cluster"]:
         palette = abc.get_taxonomy_palette(hue_label)
+    elif palette=='glasbey':
+        palette = dict(zip(categories, glasbey))
     # if we've merged some categories into 'other', add a color for it
     if ('other' in categories) & ('other' not in palette):
         palette['other'] = OTHER_CATEGORY_COLOR
