@@ -121,8 +121,8 @@ def plot_local_metric_ccf_section(obs_ccf, cellwise_metrics_df, ccf_images,
     im = ax.imshow(imdata.T, cmap=cmap, extent=extent, interpolation="none", 
                    vmin=0, vmax=15)
 
-    plot_ccf_section(ccf_images, section,
-                     ccf_region_names=None, ax=ax)
+    plot_ccf_section(ccf_images, section, section_col=section_col,
+                     ccf_names=None, ax=ax)
     _format_image_axes(ax)
     plt.colorbar(im, label="Inverse Simpson's index")
 

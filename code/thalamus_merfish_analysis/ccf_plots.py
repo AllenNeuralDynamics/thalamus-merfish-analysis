@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -5,6 +6,7 @@ import pandas as pd
 import seaborn as sns
 from colorcet import glasbey
 from matplotlib.colors import to_rgba
+from mpl_toolkits.axes_grid1 import ImageGrid
 
 from . import abc_load as abc
 from . import ccf_images as cci
@@ -36,7 +38,7 @@ def plot_ccf_overlay(
     edge_color="grey",
     # shape selection
     ccf_names=None,
-    ccf_highlight=[],
+    ccf_highlight=(),
     ccf_level="substructure",
     # formatting
     legend="cells",
@@ -57,9 +59,8 @@ def plot_ccf_overlay(
     sections : list of numbers, optional
         Section(s) to display. Must be a list even for single section.
         If None, all sections that contain cells in obs are displayed
-    section_col : str, {'z_section', 'z_reconstructed', 'z_realigned'}
-        Column name in obs for the section numbers in 'sections'; must be a col
-        that allows for indexing into ccf_images
+    section_col : str, default='brain_section_label'
+        Column name in obs for the section labels in 'sections'
     x_col, y_col : str
         Column names in obs for the x and y coordinates of cells
     point_hue : str
@@ -168,8 +169,6 @@ def plot_ccf_overlay(
 
 
 def _create_axis_grid(n_total, n_rows, figsize=(10, 5)):
-    from mpl_toolkits.axes_grid1 import ImageGrid
-
     return ImageGrid(
         plt.figure(figsize=figsize),
         111,  # similar to subplot(111)
@@ -233,7 +232,7 @@ def plot_section_overlay(
     edge_color="grey",
     # shape selection
     ccf_names=None,
-    ccf_highlight=[],
+    ccf_highlight=(),
     ccf_level="substructure",
     # formatting
     legend="cells",
@@ -248,7 +247,6 @@ def plot_section_overlay(
     figsize=(8, 4),
 ):
     fig, ax = _get_figure_handles(ax, figsize=figsize)
-    section_index = abc.get_section_index(obs, section_col=section_col)
     secdata = obs.loc[lambda df: (df[section_col] == section)]
     if custom_xy_lims is not None:
         # TODO: apply at dataset level instead?
@@ -256,12 +254,15 @@ def plot_section_overlay(
 
     # display CCF shapes
     if ccf_images is not None:
+        # initialize section index from obs just in case
+        abc.get_section_index(obs, section_col=section_col)
         plot_ccf_section(
             ccf_images,
-            section_index[section],
+            section,
             boundary_img=boundary_img,
             ccf_names=ccf_names,
             ccf_highlight=ccf_highlight,
+            section_col=section_col,
             ccf_level=ccf_level,
             face_palette=face_palette,
             edge_color=edge_color,
@@ -280,20 +281,23 @@ def plot_section_overlay(
         point_hue=point_hue,
         point_palette=point_palette,
         point_size=point_size,
-        legend=(legend in ["cells", "both"]),
+        legend=(legend == "cells"),
         ax=ax,
         **scatter_args,
     )
     # plot formatting
+    label = ccf_level if legend == "ccf" else point_hue
     if legend is not None:
         # cell type names require more horizontal space
         # TODO: detect this from label text
-        _add_legend(ax, ncols=4 if (legend == "ccf") else 2)
+        _add_legend(ax, ncols=4 if (legend == "ccf") else 2, title=label)
     if colorbar:
         _add_colorbar(ax, **cb_args)
 
     _format_image_axes(ax=ax, show_axes=show_axes, custom_xy_lims=custom_xy_lims)
-    title = f"{section}" if legend == "cells" else f"{section}\n{point_hue}"
+    title = f"Section {section}"
+    if not legend:
+        title += f"\n by {label}"
     ax.set_title(title)
     return fig
 
@@ -306,7 +310,7 @@ def _add_legend(ax=None, ncols=2, **kwargs):
     ax.legend(**args)
 
 
-def _add_colorbar(ax, cb_vmin_vmax=[0, 1], cmap="viridis", **kwargs):
+def _add_colorbar(ax, cb_vmin_vmax=(0, 1), cmap="viridis", **kwargs):
     sm = ax.scatter([], [], c=[], cmap=cmap, vmin=cb_vmin_vmax[0], vmax=cb_vmin_vmax[1])
     args = dict(orientation="vertical")
     args.update(**kwargs)
@@ -378,7 +382,7 @@ def plot_expression_ccf(
     ccf_images,
     sections=None,
     nuclei=None,
-    highlight=[],
+    highlight=(),
     ccf_level="substructure",
     point_size=1.5,
     cmap="Blues",
@@ -447,7 +451,7 @@ def plot_expression_ccf(
             point_size=point_size,
             zoom_to_highlighted=zoom_to_highlighted,
         )
-        ax.set_title(f"{section}\n{gene}")
+        ax.set_title(f"Section {section}\n{gene}")
         figs.append(fig)
         plt.show()
     return figs
@@ -596,7 +600,8 @@ def plot_metrics_ccf(
     ccf_img,
     metric_series,
     sections,
-    structure_index=None,
+    section_col="z_section",
+    ccf_level="substructure",
     cmap="viridis",
     cb_label="metric",
     vmin=None,
@@ -604,8 +609,6 @@ def plot_metrics_ccf(
     show_axes=False,
     figsize=(8, 5),
 ):
-    if structure_index is None:
-        structure_index = abc.get_ccf_index()
     vmin = metric_series.min() if vmin is None else vmin
     vmax = metric_series.max() if vmax is None else vmax
     norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
@@ -616,13 +619,16 @@ def plot_metrics_ccf(
     for section_z in sections:
         print(section_z)
         fig, ax = plt.subplots(figsize=figsize)
-        _add_colorbar(ax, cb_vmin_vmax=[vmin, vmax], cmap=cmap, shrink=0.75)
+        _add_colorbar(
+            ax, cb_vmin_vmax=[vmin, vmax], cmap=cmap, label=cb_label, shrink=0.75
+        )
 
         plot_ccf_section(
             ccf_img,
             section_z,
-            palette,
-            structure_index=structure_index,
+            face_palette=palette,
+            ccf_level=ccf_level,
+            section_col=section_col,
             legend=False,
             ax=ax,
         )
@@ -634,12 +640,13 @@ def plot_metrics_ccf(
 # TODO: make multi-section option?
 def plot_ccf_section(
     ccf_img,
-    section_i,
+    section,
     ccf_names=None,
-    ccf_highlight=[],
+    ccf_highlight=(),
     face_palette=None,
     edge_color="grey",
     boundary_img=None,
+    section_col="z_section",
     ccf_level="substructure",
     legend=True,
     zoom_to_highlighted=False,
@@ -654,13 +661,13 @@ def plot_ccf_section(
     ----------
     ccf_img : np.ndarray
         3D array of CCF parcellations
-    section_i : int
-        Section index to display
+    section : string or float
+        Name of section to display (based on section_col)
     ccf_names : list of str, optional
         Subset of CCF regions to display
     ccf_highlight : list of str, optional
         Subset of CCF regions to highlight with darkened edges
-    face_palette : {None, dict, 'glasbey'}
+    face_palette : {None, dict, list of colors, string}, default=None
         Sets face color of CCF region shapes;
         None to have no face color, or a dictionary of CCF region names and
         colors, or 'glasbey' to generate a color palette from the
@@ -670,6 +677,8 @@ def plot_ccf_section(
         matplotlib color
     boundary_img : np.ndarray, optional
         2D array of CCF parcellation boundaries; if None, calculated on the fly
+    section_col : str, default='z_section'
+        Type of section names to use, based on columns in cell metadata
     ccf_level : str, {'substructure', 'structure'}, default='substructure'
         Level of CCF to be displayed
     legend : bool, default=True
@@ -679,8 +688,10 @@ def plot_ccf_section(
     ax : matplotlib.axes.Axes, optional
         Existing Axes to plot on; if None, a new figure and Axes are created
     """
-    fig, ax = _get_figure_handles(ax)
+    section_index = abc.get_section_index(section_col=section_col)
+    _, ax = _get_figure_handles(ax)
     # subset to just this section
+    section_i = section_index[section]
     img = ccf_img[:, :, section_i].T
     boundary_img = boundary_img[:, :, section_i].T if boundary_img is not None else None
 
@@ -720,6 +731,7 @@ def plot_ccf_section(
         resolution = 10e-3
         bbox = resolution * get_bbox_for_regions(img, ccf_highlight, ccf_level)
         _format_image_axes(ax=ax, show_axes=True, custom_xy_lims=bbox)
+    ax.set_title(f"Section {section}")
 
 
 def get_bbox_for_regions(img, ccf_names, ccf_level, buffer=10):
@@ -778,7 +790,7 @@ def plot_ccf_shapes(
     legend : bool, default=True
         Whether to display a legend for the CCF region shapes
     """
-    fig, ax = _get_figure_handles(ax)
+    _, ax = _get_figure_handles(ax)
     # TODO: use xarray for applying palette, plotting, storing boundaries
     extent = resolution * (np.array([0, imdata.shape[0], imdata.shape[1], 0]) - 0.5)
     imshow_args = dict(extent=extent, interpolation="none", alpha=alpha)
@@ -917,28 +929,25 @@ def _generate_palette(categories, palette=glasbey, hue_label=None, **items):
     ----------
     categories : list of str
         List of category names
+    palette : dict, mappable, list of colors, or string
+        Colors to use to create palette, or string to pass to sns.color_palette
+        if None, use default taxonomy palette
+    hue_label : str, {'class', 'subclass', 'supertype', 'cluster'}
+        Taxonomy level to generate a palette for if palette is None
+    **items : additional category=color pairs to be combined with palette
 
     Returns
     -------
     palette : dict of (str, RGB tuples)
     """
-    # if hue is a taxonomy level, no need to pass in pre-generated
-    # palette as a parameter, just calculate it on the fly
     if palette is None and hue_label in ["class", "subclass", "supertype", "cluster"]:
         palette = abc.get_taxonomy_palette(hue_label)
-    # if we've merged some categories into 'other', add a color for it
-    if ('other' in categories) & ('other' not in palette):
-        palette['other'] = OTHER_CATEGORY_COLOR
-    try:
-        # assuming palette is dict/mappable already
-        # TODO: allow palette not containing all categories (to not plot others)?
-        palette = {x: palette[x] for x in categories}
-        palette.update(**items)
-    # TODO what are we trying to catch here?
-    except AttributeError:
+    if isinstance(palette, Mapping):
+        palette = {x: palette[x] for x in categories if x in palette}
+    else:
         sns_palette = sns.color_palette(palette, n_colors=len(categories))
         palette = dict(zip(categories, sns_palette))
-        palette.update(**items)
+    palette.update(**items)
     return palette
 
 

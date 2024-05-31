@@ -42,18 +42,40 @@ class AtlasFiles:
         _ccf = "Allen-CCF-2020"
         self.manifest = manifest
         # TODO: make explicit method?
-        self.adata = lambda transform: manifest.get_file_attributes(directory=_data, file_name=f"{dataset}/{transform}")
-        self.gene_metadata = manifest.get_file_attributes(directory=_data, file_name="gene")
-        self.cell_metadata = manifest.get_file_attributes(directory=_data_ccf, file_name="cell_metadata_with_parcellation_annotation")
-        self.resampled_annotation = manifest.get_file_attributes(directory=_data_ccf, file_name="resampled_annotation")
-        self.annotation_10 = manifest.get_file_attributes(directory=_ccf, file_name="annotation_10")
-        self.ccf_metadata = manifest.get_file_attributes(directory=_ccf, file_name="parcellation_to_parcellation_term_membership")
-        self.cluster_metadata = manifest.get_file_attributes(directory=_taxonomy, file_name="cluster_to_cluster_annotation_membership")
-        self.taxonomy_metadata = manifest.get_file_attributes(directory=_taxonomy, file_name="cluster_annotation_term_set")
+        self.adata = lambda transform: manifest.get_file_attributes(
+            directory=_data, file_name=f"{dataset}/{transform}"
+        )
+        self.gene_metadata = manifest.get_file_attributes(
+            directory=_data, file_name="gene"
+        )
+        self.cell_metadata = manifest.get_file_attributes(
+            directory=_data_ccf, file_name="cell_metadata_with_parcellation_annotation"
+        )
+        self.resampled_annotation = manifest.get_file_attributes(
+            directory=_data_ccf, file_name="resampled_annotation"
+        )
+        self.annotation_10 = manifest.get_file_attributes(
+            directory=_ccf, file_name="annotation_10"
+        )
+        self.ccf_metadata = manifest.get_file_attributes(
+            directory=_ccf, file_name="parcellation_to_parcellation_term_membership"
+        )
+        self.cluster_metadata = manifest.get_file_attributes(
+            directory=_taxonomy, file_name="cluster_to_cluster_annotation_membership"
+        )
+        self.taxonomy_metadata = manifest.get_file_attributes(
+            directory=_taxonomy, file_name="cluster_annotation_term_set"
+        )
+
 
 files = AtlasFiles(ABC_ROOT, BRAIN_LABEL, CURRENT_VERSION)
-def get_taxonomy_id(): 
-    return pd.read_csv(files.taxonomy_metadata.local_path)["label"].iloc[0].split("_")[0]
+
+
+def get_taxonomy_id():
+    return (
+        pd.read_csv(files.taxonomy_metadata.local_path)["label"].iloc[0].split("_")[0]
+    )
+
 
 def load_adata(
     version=CURRENT_VERSION,
@@ -94,7 +116,8 @@ def load_adata(
     #  we load 'raw' counts and then do the transform manually later
     transform_load = "log2" if transform == "log2cpv" else "raw"
     adata = ad.read_h5ad(
-        files.adata(transform_load).local_path, backed="r",
+        files.adata(transform_load).local_path,
+        backed="r",
     )
     genes = adata.var_names
     if drop_blanks:
@@ -116,7 +139,7 @@ def load_adata(
         )
     else:
         adata = adata[:, genes].to_memory()
-    
+
     scale_factors = {
         "log2cpm": 1e6,
         "log2cpt": 1e3,
@@ -127,11 +150,14 @@ def load_adata(
         # transform calculation converts sparse matrix to dense array
         adata.X = np.asarray(
             np.log2(
-                1 + adata.X * scale_factor / np.sum(adata.X.toarray(), axis=1, keepdims=True)
+                adata.X
+                * scale_factor
+                / np.sum(adata.X.toarray(), axis=1, keepdims=True)
+                + 1
             )
-        )  
+        )
     else:
-        # convert sparse matrix (how 'log2' & 'raw' counts are stored in h5ad 
+        # convert sparse matrix (how 'log2' & 'raw' counts are stored in h5ad
         # file) to dense array to match transform output
         adata.X = adata.X.toarray()
 
@@ -228,13 +254,14 @@ def get_gene_metadata(
     version=CURRENT_VERSION,
     drop_blanks=True,
 ):
-    """ Load the gene metadata csv.
+    """Load the gene metadata csv.
     Optionally drops 'Blank' genes from the dataset.
     """
     df = pd.read_csv(files.gene_metadata.local_path)
     if drop_blanks:
         df = df[~df["gene_symbol"].str.contains("Blank")]
     return df
+
 
 def get_combined_metadata(
     version=CURRENT_VERSION,
@@ -404,7 +431,8 @@ def label_outlier_celltypes(
             obs[type_col].dtype.name == "category"
             and outlier_label not in obs[type_col].cat.categories
         ):
-            obs.loc[:, type_col] = obs.loc[:, type_col].cat.add_categories(outlier_label)
+            obs = obs.copy()
+            obs[type_col] = obs[type_col].cat.add_categories(outlier_label)
         obs.loc[~obs[type_col].isin(primary_celltypes), type_col] = outlier_label
     return obs
 
@@ -589,10 +617,12 @@ def get_ccf_names(top_nodes=None, level=None):
     else:
         return _get_ccf_names(top_nodes, level=level)
 
+
 def get_ccf_index_reverse_lookup(level="substructure"):
     ccf_index = get_ccf_index(level=level)
     reverse_lookup = pd.Series(ccf_index.index.values, index=ccf_index)
     return reverse_lookup
+
 
 def get_ccf_index(level="substructure"):
     """Get an index mapping CCF ideas to (abbreviated) names,
@@ -623,18 +653,35 @@ def get_ccf_index(level="substructure"):
     return index
 
 
+_SECTION_INDEX_CACHE = {}
+
+
 def get_section_index(
-    cells_df=None, section_col="brain_section_label", z_col="z_section", z_res=Z_RESOLUTION
-    ):
+    cells_df=None,
+    section_col="brain_section_label",
+    z_col="z_section",
+    z_res=Z_RESOLUTION,
+):
     """Given a cell metadata DataFrame, returns a Series mapping section labels
     to their corresponding section index (integer z-coordinate at specified resolution).
     """
+    if section_col in _SECTION_INDEX_CACHE:
+        return _SECTION_INDEX_CACHE[section_col]
     if cells_df is None:
+        UserWarning(
+            "Loading cell metadata to get section index",
+            "may be slow; consider passing in cells_df",
+        )
         cells_df = get_combined_metadata()
-    section_index = cells_df.groupby(section_col, observed=True)[z_col].first().dropna().apply(
-        lambda x: int(np.rint(x / z_res))
+    section_index = (
+        cells_df.groupby(section_col, observed=True)[z_col]
+        .first()
+        .dropna()
+        .apply(lambda x: int(np.rint(x / z_res)))
     )
+    _SECTION_INDEX_CACHE[section_col] = section_index
     return section_index
+
 
 @lru_cache
 def _get_cluster_annotations(version=CURRENT_VERSION):
@@ -698,13 +745,15 @@ def get_taxonomy_label_from_alias(
     )
     return label_list
 
+
 @lru_cache
 def _get_ccf_annotations():
     df = pd.read_csv(files.ccf_metadata.local_path)
     return df
 
+
 def get_ccf_palette(parcellation_level):
-    """Get the published color dictionary for a given level of the Allen 
+    """Get the published color dictionary for a given level of the Allen
     Reference Atlas (ARA) CCFv3 anatomical parcellation
 
     Parameters
@@ -720,8 +769,6 @@ def get_ccf_palette(parcellation_level):
     """
     df = _get_ccf_annotations()
     df = df[df["parcellation_term_set_name"] == parcellation_level]
-    palette = df.set_index("parcellation_term_acronym")[
-        "color_hex_triplet"
-    ].to_dict()
-    
+    palette = df.set_index("parcellation_term_acronym")["color_hex_triplet"].to_dict()
+
     return palette
