@@ -945,6 +945,7 @@ def _generate_palette(categories, palette=glasbey, hue_label=None, **items):
     if isinstance(palette, Mapping):
         palette = {x: palette[x] for x in categories if x in palette}
     else:
+        # generate a palette from a list of colors or palette name string
         sns_palette = sns.color_palette(palette, n_colors=len(categories))
         palette = dict(zip(categories, sns_palette))
     palette.update(**items)
