@@ -132,7 +132,34 @@ def plot_local_metric_ccf_section(obs_ccf, cellwise_metrics_df, ccf_images,
 
 def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
                                 ccf_regions=TH_DIVERSITY_REGIONS,
-                                legend=True, palette=None):
+                                legend=True, palette=None,
+                                min_cell_frac=0.01,
+                                min_cell_count=None):
+    """ Generate a stacked barplot showing the proportion of each taxonomy level
+    category in each CCF region.
+    
+    Parameters
+    ----------
+    obs : pd.DataFrame
+        dataframe of cells with CCF annotations & mapped taxonomy levels
+    taxonomy_level : str, {'cluster', 'supertype', 'subclass'}
+        ABC Atlas taxonomy level to plot
+    th_ccf_metrics : pd.DataFrame
+        DataFrame made with diversity_metrics.calculate_diversity_metrics()
+    ccf_regions : list of str, default=TH_DIVERSITY_REGIONS
+        list of CCF regions to plot
+    legend : bool, default=True
+        whether to display the legend
+    palette : dict, default=None
+        dictionary mapping taxonomy level categories to colors
+    min_cell_frac : float, in range [0,1], default=0.01
+        sets minimum fraction of cells required for a category to be included;
+        categories <= this threshold are aggregated into an 'other' category
+    min_cell_count : int, default=None, suggested=5
+        sets minimum number of cells required for a category to be included; 
+        categories <= this threshold are aggregated into an 'other' category.
+        If set, it supercedes min_cell_frac
+    """
     # Set the palette
     if palette is None:
         if (taxonomy_level=='subclass') | (taxonomy_level=='supertype'):
@@ -146,7 +173,10 @@ def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
     palette['other'] = 'lightgrey'
 
     # Calculate the proportion of each taxonomy level category per region
-    proportions_df = calculate_level_proportions(obs, taxonomy_level)
+    proportions_df = calculate_level_proportions(obs, 
+                                                 taxonomy_level, 
+                                                 min_count=min_cell_count, 
+                                                 min_frac=min_cell_frac)
     # filter to only the regions of interest
     proportions_df = proportions_df.loc[ccf_regions]
     # clean up category columns that now are all zeros post-filtering
@@ -193,7 +223,8 @@ def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
 def calculate_level_proportions(obs, 
                                 taxonomy_level,
                                 ccf_label='parcellation_structure_eroded',
-                                min_count=5):
+                                min_frac=0.01,
+                                min_count=None):
     ''' Calculate the proportion of each level in each CCF region for a stacked 
     barplot.
 
@@ -205,6 +236,13 @@ def calculate_level_proportions(obs,
         ABC Atlas taxonomy level 
     ccf_label : str, default='parcellation_structure_eroded'
         column name in obs_ccf where the CCF annotations can be found
+    min_frac : float, in range [0,1], default=0.01
+        sets minimum fraction of cells required for a category to be included;
+        categories <= this threshold are aggregated into an 'other' category
+    min_count : int, default=None, suggested=5
+        sets minimum number of cells required for a category to be included; 
+        categories <= this threshold are aggregated into an 'other' category
+        If set, it supercedes min_frac
 
     Returns
     -------
@@ -217,9 +255,19 @@ def calculate_level_proportions(obs,
     counts_df = obs.groupby([ccf_label, taxonomy_level], observed=True
                             ).size().unstack(fill_value=0)
     
-    # move counts <=5 to 'other' column
-    other_col_df = counts_df[counts_df <= min_count].sum(axis=1)
-    counts_df = counts_df[counts_df > min_count]  # replace counts <=5 with NaN
+    # if min_count is set, it supercedes min_frac
+    if min_count is not None:
+        to_other = (counts_df <= min_count)
+    else:
+        # Calculate the fraction of each category, per region
+        total_counts = counts_df.sum(axis=1)
+        fraction_df = counts_df.div(total_counts, axis=0)
+        # Get categories to move to 'other'
+        to_other = (fraction_df <= min_frac)
+    
+    # Aggregate & move counts below threshold to 'other' column
+    other_col_df = counts_df[to_other].sum(axis=1)
+    counts_df = counts_df[~to_other]  # replace counts below threshold with NaN
     counts_df = counts_df.join(other_col_df.rename('other')).fillna(0)
     # clean up columns that are not empty
     counts_df = counts_df.loc[:,(counts_df!=0).any(axis=0)]
