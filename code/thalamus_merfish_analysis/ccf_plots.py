@@ -1,15 +1,13 @@
-from collections.abc import Mapping
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from colorcet import glasbey
-from matplotlib.colors import to_rgba
 from mpl_toolkits.axes_grid1 import ImageGrid
 
 from . import abc_load as abc
 from . import ccf_images as cci
+from . import color_utils as cu
 
 CCF_REGIONS_DEFAULT = None
 
@@ -119,7 +117,7 @@ def plot_ccf_overlay(
             min_group_count=min_group_count,
         )
         # Set color palette for cell scatter points
-        point_palette = _generate_palette(
+        point_palette = cu.generate_palette(
             obs[point_hue].unique().tolist(),
             hue_label=point_hue,
             palette=point_palette,
@@ -168,12 +166,13 @@ def plot_ccf_overlay(
     return figs
 
 
-def _create_axis_grid(n_total, n_rows, figsize=(10, 5)):
+def _create_axis_grid(n_total, n_rows, figsize, axes_pad=0.1, **kwargs):
     return ImageGrid(
         plt.figure(figsize=figsize),
         111,  # similar to subplot(111)
         nrows_ncols=(n_rows, int(np.ceil(n_total / n_rows))),
-        axes_pad=(0.1, 0.2),  # pad between axes in inch.
+        axes_pad=axes_pad,
+        **kwargs,
     )
 
 
@@ -241,11 +240,15 @@ def plot_section_overlay(
     colorbar=False,
     boundary_img=None,
     zoom_to_highlighted=False,
-    scatter_args={},
-    cb_args={},
+    scatter_args=None,
+    cb_args=None,
     ax=None,
     figsize=(8, 4),
 ):
+    if cb_args is None:
+        cb_args = {}
+    if scatter_args is None:
+        scatter_args = {}
     fig, ax = _get_figure_handles(ax, figsize=figsize)
     secdata = obs.loc[lambda df: (df[section_col] == section)]
     if custom_xy_lims is not None:
@@ -461,139 +464,214 @@ def plot_hcr(
     adata,
     genes,
     sections=None,
+    colors=None,
     section_col="brain_section_label",
     x_col="x_section",
     y_col="y_section",
-    bg_color="white",
+    dark_background=True,
+    normalize_sections=False,
+    figsize=(14, 2),
 ):
-    """Display separate, and overlay, expression of 3 genes in multiple sections.
+    """Display separate, and overlay, expression of multiple genes in multiple sections.
 
     Parameters
     ----------
     adata : AnnData
-        cells to display; gene expression in .X and spatial coordinates in .obs
+        Annotated data object containing cells to display with gene expression in .X and spatial coordinates in .obs.
     genes : list of str
-        list of genes to display
-    section : list of float
-        sections to display.
-        if passing in a single section, still must be in a list, e.g. [7.2].
-    section_col : str
-        column in adata.obs that contains the section values
-    x_col, y_col : str
-        columns in adata.obs that contains the x- & y-coordinates
-    bg_color : str, default='white'
-        background color of the plot. Can use any color str that is recognized
-        by matplotlib; passed on to plt.subplots(..., facecolor=bg_color) and
-        ax.set_facecolor(bg_color).
-        'black' / 'k' / '#000000' changes font colors to 'white'.
+        List of genes to display.
+    sections : list of float or str, optional
+        List of sections to display. If not provided, all unique sections in `adata.obs[section_col]` will be used.
+    colors : list of str, optional
+        List of colors to use for each gene. If not provided, default colors will be used.
+    section_col : str, optional
+        Column in `adata.obs` that contains the section values. Default is "brain_section_label".
+    x_col, y_col : str, optional
+        Columns in `adata.obs` that contain the x- and y-coordinates. Default is "x_section" and "y_section" respectively.
+    dark_background : bool, optional
+        Whether to use a dark background for the plots. Default is True.
+    normalize_sections : bool, optional
+        Whether to normalize gene expression by section. If False, gene expression will be normalized across all sections.
+        Default is False.
+    figsize : tuple, optional
+        Figure size in inches. Default is (14, 2).
 
     Returns
     -------
     figs : list of matplotlib.figure.Figure
+        List of matplotlib figure objects, each representing a plot for a specific section.
     """
     # set variable(s) not specified at input
     if sections is None:
         sections = adata.obs[section_col].unique()
+
+    obs = preprocess_gene_plot(adata, genes)
+    if not normalize_sections:
+        # normalize by gene across all sections
+        obs[genes] /= obs[genes].max(axis=0)
+        normalize_by = None
+        colorbar = False
+    else:
+        # let plot_multichannel_overlay() normalize by gene by section
+        normalize_by = "channels"
+        colorbar = True
+
     # plot
     figs = []
+    counts_label = _get_counts_label(adata, genes[0])
     for section in sections:
-        fig = plot_hcr_section(
-            adata,
+        fig = plot_multichannel_overlay(
+            obs,
             genes,
             section,
             section_col=section_col,
             x_col=x_col,
             y_col=y_col,
-            bg_color=bg_color,
+            colors=colors,
+            dark_background=dark_background,
+            normalize_by=normalize_by,
+            colorbar=colorbar,
+            single_channel_subplots=True,
+            figsize=figsize,
         )
+        plt.suptitle(f"Section {section}\n{counts_label}", y=1.2)
         figs.append(fig)
     return figs
 
 
-def plot_hcr_section(
-    adata,
-    genes,
+def plot_multichannel_overlay(
+    obs,
+    columns,
     section,
+    colors=None,
     section_col="brain_section_label",
     x_col="x_section",
     y_col="y_section",
-    bg_color="white",
+    dark_background=True,
+    figsize=None,
+    single_channel_subplots=False,
+    legend=None,
+    ccf_images=None,
+    ccf_boundaries=None,
+    normalize_by="channels",
+    colorbar=False,
 ):
-    """Display separate, and overlay, expression of 3 genes in a single section.
+    """
+    Display overlay of multiple channels in a single section.
 
     Parameters
-    ---------
-    adata : AnnData
-        cells to display; gene expression in .X and spatial coordinates in .obs
-    genes : list of str
-        list of genes to display
-    section : float
-        section to display
-    section_col : str
-        column in adata.obs that contains the section values
-    x_col, y_col : str
-        columns in adata.obs that contains the x- & y-coordinates
-    bg_color : str, default='white'
-        background color of the plot. Can use any color str that is recognized
-        by matplotlib; passed on to plt.subplots(..., facecolor=bg_color) and
-        ax.set_facecolor(bg_color).
-        'black' / 'k' / '#000000' changes font colors to 'white'.
+    ----------
+    obs : pandas.DataFrame
+        The dataframe containing the data.
+    columns : list
+        The list of column names representing the channels to be plotted.
+    section : float or string
+        The section to display.
+    colors : list, optional
+        The list of colors to be used for each channel. If not provided, default colors will be used.
+    section_col : str, optional
+        The column in `obs` that contains the section values. Default is "brain_section_label".
+    x_col, y_col : str, optional
+        The columns in `obs` that contain the x- and y-coordinates. Default is "x_section" and "y_section" respectively.
+    dark_background : bool, optional
+        Whether to use a dark background for the plot. Default is True.
+    figsize : tuple, optional
+        The figure size. Default is None.
+    single_channel_subplots : bool, optional
+        Whether to create subplots for each channel. Default is False.
+    legend : bool, optional
+        Whether to show the legend. If not provided, the legend will be shown if `single_channel_subplots` is False.
+    ccf_images : numpy.ndarray, optional
+        The array of CCF images. Default is None.
+    ccf_boundaries : numpy.ndarray, optional
+        The array of CCF boundaries. Default is None.
+    normalize_by : str, optional
+        The normalization method. Can be "channels", "all", or None. Default is "channels".
+    colorbar : bool, optional
+        Whether to show the colorbar. Default is False.
 
     Returns
     -------
     fig : matplotlib.figure.Figure
+        The matplotlib figure object.
     """
+    n_channel = len(columns)
+    if legend is None:
+        legend = not single_channel_subplots
 
-    # Subset based on requested section
-    sec_adata = adata[adata.obs[section_col] == section]
-
-    # Set font color based on bg_color
-    if (bg_color == "black") | (bg_color == "k") | (bg_color == "#000000"):
-        font_color = "white"
+    df = obs.loc[obs[section_col] == section]
+    coeffs = df[columns].values
+    # normalize either by channel or over all channels together
+    if normalize_by == "channels":
+        scale = coeffs.max(axis=0, keepdims=True)
+    elif normalize_by == "all":
+        scale = coeffs.max()
     else:
-        font_color = "black"
-    fontsize = 16
+        assert normalize_by is None, "normalize_by must be 'channels', 'all', or None"
+        scale = 1
+    coeffs = coeffs / scale
 
-    # Get normalized expression of each gene
-    gene1_norm = sec_adata[:, genes[0]].X / sec_adata[:, genes[0]].X.max()
-    gene2_norm = sec_adata[:, genes[1]].X / sec_adata[:, genes[1]].X.max()
-    gene3_norm = sec_adata[:, genes[2]].X / sec_adata[:, genes[2]].X.max()
+    colors = cu.get_color_array(n_channel, colors=colors)
 
-    # Convert each genes normalized expression into an RGB value
-    zeros = np.zeros([len(sec_adata), 1])
-    colorR = np.concatenate((gene1_norm, zeros, zeros), axis=1)
-    colorG = np.concatenate((zeros, gene2_norm, zeros), axis=1)
-    colorB = np.concatenate((zeros, zeros, gene3_norm), axis=1)
-    # combine each gene into a single RGB color for overlay
-    colorRGB = np.concatenate((gene1_norm, gene2_norm, gene3_norm), axis=1)
-    # add overlay to list of colors & gene labels
-    cell_colors = (colorR, colorG, colorB, colorRGB)
-    genes.append("Overlay")  # Append for labeling purposes
-
-    # Plot spatial expression for each channel (3 genes + overlay),
-    fig, axes = plt.subplots(1, 4, figsize=(24, 3), dpi=80, facecolor=bg_color)
-    axes = axes.flatten()
-    for i, cell_color in enumerate(cell_colors):
-        ax = axes[i]
+    c = cu.combine_scaled_colors(colors[:n_channel], coeffs)
+    with matplotlib.style.context("dark_background" if dark_background else "default"):
+        if single_channel_subplots:
+            cbar_mode = "each" if colorbar else None
+            axes_pad = (0.15, 0.1) if colorbar else 0.05
+            ax_subplots = _create_axis_grid(
+                n_channel + 1,
+                1,
+                figsize=figsize,
+                cbar_mode=cbar_mode,
+                axes_pad=axes_pad,
+            )
+            for i in range(n_channel):
+                ax = ax_subplots[i]
+                c = cu.combine_scaled_colors(colors[[i], :], coeffs[:, [i]])
+                ax.scatter(
+                    *df[[x_col, y_col]].values.T,
+                    s=5,
+                    marker=".",
+                    color=c,
+                )
+                ax.set_title(columns[i])
+                _format_image_axes(ax)
+                if colorbar:
+                    # create a colorbar from list of shades of a single color
+                    coeffs_cbar = np.linspace(0, 1, 256)[:, None]
+                    c = cu.combine_scaled_colors(colors[[i], :], coeffs_cbar)
+                    plt.colorbar(
+                        cu.mappable_for_colorbar(c, vmax=scale[0, i]), cax=ax.cax
+                    )
+            ax = ax_subplots[-1]
+            ax.set_title("Overlay")
+            if colorbar:
+                # hide colorbar from overlay plot
+                _format_image_axes(ax.cax)
+        else:
+            _, ax = plt.subplots(figsize=figsize)
         ax.scatter(
-            sec_adata.obs[x_col],
-            sec_adata.obs[y_col],
-            s=10,
+            *df[[x_col, y_col]].values.T,
+            s=5,
             marker=".",
-            color=cell_color,
+            color=c,
         )
-        ax.set_title(genes[i], color=font_color, fontsize=fontsize)
+        if legend:
+            for i in range(n_channel):
+                plt.scatter([], [], color=colors[i], label=columns[i])
+            ax.legend()
+        if ccf_images is not None:
+            plot_ccf_section(
+                ccf_images,
+                section=section,
+                section_col=section_col,
+                edge_color="darkgrey",
+                boundary_img=ccf_boundaries,
+                legend=False,
+                ax=ax,
+            )
         _format_image_axes(ax)
-        ax.set_facecolor(
-            bg_color
-        )  # must be set AFTER _format_image_axes to take effect
-
-    counts_str = adata.uns["counts_transform"]
-    plt.suptitle(
-        f"{section=}\ncounts={counts_str}", y=1.2, color=font_color, fontsize=fontsize
-    )
-
-    return fig
+    return plt.gcf()
 
 
 def plot_metrics_ccf(
@@ -708,7 +786,7 @@ def plot_ccf_section(
         section_region_names = list(set(section_region_names).intersection(ccf_names))
 
     face_palette = (
-        _generate_palette(section_region_names, palette=face_palette)
+        cu.generate_palette(section_region_names, palette=face_palette)
         if face_palette is not None
         else None
     )
@@ -797,7 +875,7 @@ def plot_ccf_shapes(
 
     # Plot face shapes of CCF regions
     if face_palette is not None:
-        rgba_lookup = _palette_to_rgba_lookup(face_palette, index)
+        rgba_lookup = cu.palette_to_rgba_lookup(face_palette, index)
         im_regions = rgba_lookup[imdata, :]
         ax.imshow(im_regions, **imshow_args)
 
@@ -807,7 +885,7 @@ def plot_ccf_shapes(
             boundary_img = cci.label_erosion(
                 imdata, edge_width, fill_val=0, return_edges=True
             )
-        rgba_lookup = _palette_to_rgba_lookup(edge_palette, index)
+        rgba_lookup = cu.palette_to_rgba_lookup(edge_palette, index)
         im_edges = rgba_lookup[boundary_img, :]
         ax.imshow(im_edges, **imshow_args)
 
@@ -920,66 +998,6 @@ def _integrate_background_cells(obs, point_hue, bg_cells):
 EDGE_HIGHLIGHT_COLOR = "black"
 OTHER_CATEGORY_COLOR = "grey"
 BACKGROUND_POINT_COLOR = "lightgrey"
-
-
-def _generate_palette(categories, palette=glasbey, hue_label=None, **items):
-    """Generate a color palette dict for a given list of categories.
-
-    Parameters
-    ----------
-    categories : list of str
-        List of category names
-    palette : dict, mappable, list of colors, or string
-        Colors to use to create palette, or string to pass to sns.color_palette
-        if None, use default taxonomy palette
-    hue_label : str, {'class', 'subclass', 'supertype', 'cluster'}
-        Taxonomy level to generate a palette for if palette is None
-    **items : additional category=color pairs to be combined with palette
-
-    Returns
-    -------
-    palette : dict of (str, RGB tuples)
-    """
-    if palette is None and hue_label in ["class", "subclass", "supertype", "cluster"]:
-        palette = abc.get_taxonomy_palette(hue_label)
-    if isinstance(palette, Mapping):
-        palette = {x: palette[x] for x in categories if x in palette}
-    else:
-        # generate a palette from a list of colors or palette name string
-        sns_palette = sns.color_palette(palette, n_colors=len(categories))
-        palette = dict(zip(categories, sns_palette))
-    palette.update(**items)
-    return palette
-
-
-def _palette_to_rgba_lookup(palette, index):
-    """Convert a color palette dict to an RGBA lookup table.
-
-    Parameters
-    ----------
-    palette : dict of (str, )
-        Dictionary of CCF region names and their corresponding colors
-    index : pd.Series
-        Series of CCF region names, with the index as the CCF region IDs
-
-    Returns
-    -------
-    rgba_lookup : np.ndarray
-        2D array of RGBA color values, where the row indices correspond to the
-        the CCF region IDs and the column indices are RGBA values
-    """
-    # rgba_lookup = index.map(lambda x: to_rgb(palette[x]))
-    # rgba_lookup = rgba_lookup.reindex(range(max_val), fill_value=0)
-    max_val = np.max(index.index)
-    rgba_lookup = np.zeros((max_val, 4))
-    # fill only values in index and also in palette
-    # rest remain transparent (alpha=0)
-    for i in index.index:
-        name = index[i]
-        if name in palette:
-            rgba_lookup[i, :] = to_rgba(palette[name])
-    rgba_lookup[0, :] = [1, 1, 1, 0]
-    return rgba_lookup
 
 
 # ----------------------------- Plot Formatting ----------------------------- #
