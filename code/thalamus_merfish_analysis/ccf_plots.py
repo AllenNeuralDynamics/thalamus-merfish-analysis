@@ -83,7 +83,7 @@ def plot_ccf_overlay(
     ccf_names : list of str, optional
         List of CCF region names to display
     ccf_highlight : list of str, optional
-        List of CCF region names to highlight with a darker outline for ccf_names
+        List of CCF region names to highlight with a darker outline
     ccf_level : str, {'substructure', 'structure'}, default='substructure'
         Level of CCF to be displayed
     legend : str, {'ccf', 'cells', 'both', None}
@@ -103,7 +103,13 @@ def plot_ccf_overlay(
         )
         if ccf_names is not None:
             sections = sections.intersection(
-                get_sections_for_ccf_regions(ccf_images, ccf_names)
+                get_sections_for_ccf_regions(
+                    ccf_images,
+                    ccf_names,
+                    ccf_level=ccf_level,
+                    section_col=section_col,
+                    cells_df=obs,
+                )
             )
         sections = sorted(sections)
     obs = obs[obs[section_col].isin(sections)]
@@ -203,6 +209,8 @@ def get_sections_for_ccf_regions(
     ccf_images,
     ccf_names,
     ccf_level="substructure",
+    section_col="z_section",
+    cells_df=None,
 ):
     """Get the sections that contain cells from a list of CCF regions."""
     structure_index = abc.get_ccf_index_reverse_lookup(level=ccf_level)
@@ -211,7 +219,9 @@ def get_sections_for_ccf_regions(
     for i in range(ccf_images.shape[2]):
         if np.any(np.isin(ccf_images[:, :, i], ccf_ids)):
             sections.append(i)
-    return sections
+    section_index = abc.get_section_index(cells_df=cells_df, section_col=section_col)
+    section_names = pd.Series(section_index.index.values, index=section_index)[sections]
+    return section_names
 
 
 def plot_section_overlay(
@@ -382,7 +392,7 @@ def _get_counts_label(adata, gene):
 def plot_expression_ccf(
     adata,
     gene,
-    ccf_images,
+    ccf_images=None,
     sections=None,
     nuclei=None,
     highlight=(),
@@ -421,11 +431,16 @@ def plot_expression_ccf(
     if sections is None:
         sections = adata.obs[section_col].unique()
         if ccf_names is not None:
-            sections_ccf = get_sections_for_ccf_regions(
-                ccf_images, ccf_highlight if zoom_to_highlighted else ccf_names
+            sections = set(sections).intersection(
+                get_sections_for_ccf_regions(
+                    ccf_images,
+                    ccf_highlight if zoom_to_highlighted else ccf_names,
+                    ccf_level=ccf_level,
+                    section_col=section_col,
+                    cells_df=obs,
+                )
             )
-            section_index = abc.get_section_index(obs, section_col=section_col)
-            sections = [x for x in sections if section_index[x] in sections_ccf]
+            sections = sorted(sections)
     # Plot
     figs = []
     for section in sections:
@@ -471,6 +486,8 @@ def plot_hcr(
     dark_background=True,
     normalize_sections=False,
     figsize=(14, 2),
+    ccf_images=None,
+    boundary_img=None,
 ):
     """Display separate, and overlay, expression of multiple genes in multiple sections.
 
@@ -533,8 +550,11 @@ def plot_hcr(
             colorbar=colorbar,
             single_channel_subplots=True,
             figsize=figsize,
+            ccf_images=ccf_images,
+            boundary_img=boundary_img,
         )
-        plt.suptitle(f"Section {section}\n{counts_label}", y=1.2)
+        with matplotlib.style.context("dark_background" if dark_background else "default"):
+            fig.suptitle(f"Section {section}\n{counts_label}", y=1.2)
         figs.append(fig)
     return figs
 
@@ -552,7 +572,7 @@ def plot_multichannel_overlay(
     single_channel_subplots=False,
     legend=None,
     ccf_images=None,
-    ccf_boundaries=None,
+    boundary_img=None,
     normalize_by="channels",
     colorbar=False,
 ):
@@ -583,7 +603,7 @@ def plot_multichannel_overlay(
         Whether to show the legend. If not provided, the legend will be shown if `single_channel_subplots` is False.
     ccf_images : numpy.ndarray, optional
         The array of CCF images. Default is None.
-    ccf_boundaries : numpy.ndarray, optional
+    boundary_img : numpy.ndarray, optional
         The array of CCF boundaries. Default is None.
     normalize_by : str, optional
         The normalization method. Can be "channels", "all", or None. Default is "channels".
@@ -613,7 +633,6 @@ def plot_multichannel_overlay(
 
     colors = cu.get_color_array(n_channel, colors=colors)
 
-    c = cu.combine_scaled_colors(colors[:n_channel], coeffs)
     with matplotlib.style.context("dark_background" if dark_background else "default"):
         if single_channel_subplots:
             cbar_mode = "each" if colorbar else None
@@ -644,12 +663,12 @@ def plot_multichannel_overlay(
                         cu.mappable_for_colorbar(c, vmax=scale[0, i]), cax=ax.cax
                     )
             ax = ax_subplots[-1]
-            ax.set_title("Overlay")
             if colorbar:
                 # hide colorbar from overlay plot
                 _format_image_axes(ax.cax)
         else:
             _, ax = plt.subplots(figsize=figsize)
+        c = cu.combine_scaled_colors(colors[:n_channel], coeffs)
         ax.scatter(
             *df[[x_col, y_col]].values.T,
             s=5,
@@ -666,12 +685,16 @@ def plot_multichannel_overlay(
                 section=section,
                 section_col=section_col,
                 edge_color="darkgrey",
-                boundary_img=ccf_boundaries,
+                boundary_img=boundary_img,
                 legend=False,
                 ax=ax,
             )
         _format_image_axes(ax)
-    return plt.gcf()
+        if single_channel_subplots:
+            ax.set_title("Overlay")
+            ax.figure.suptitle(f"Section {section}", color="white")
+
+    return ax.figure
 
 
 def plot_metrics_ccf(
@@ -806,22 +829,25 @@ def plot_ccf_section(
         legend=legend,
     )
     if zoom_to_highlighted:
-        resolution = 10e-3
-        bbox = resolution * get_bbox_for_regions(img, ccf_highlight, ccf_level)
-        _format_image_axes(ax=ax, show_axes=True, custom_xy_lims=bbox)
+        try:
+            bbox = abc.X_RESOLUTION * get_bbox_for_regions(
+                img, ccf_highlight, ccf_level
+            )
+            _format_image_axes(ax=ax, show_axes=True, custom_xy_lims=bbox)
+        except ValueError:
+            pass
     ax.set_title(f"Section {section}")
 
 
 def get_bbox_for_regions(img, ccf_names, ccf_level, buffer=10):
     structure_index = abc.get_ccf_index_reverse_lookup(level=ccf_level)
     ccf_ids = structure_index[ccf_names].values
-    bbox = np.concatenate(
-        [
-            np.flatnonzero(np.any(np.isin(img, ccf_ids), axis=0))[[0, -1]],
-            # reverse order for y
-            np.flatnonzero(np.any(np.isin(img, ccf_ids), axis=1))[[-1, 0]],
-        ]
-    )
+    x_inds = np.flatnonzero(np.any(np.isin(img, ccf_ids), axis=0))
+    y_inds = np.flatnonzero(np.any(np.isin(img, ccf_ids), axis=1))
+    if len(x_inds) == 0 or len(y_inds) == 0:
+        raise ValueError("Specified regions not found in image")
+    # reverse order for y due to CCF orientation
+    bbox = np.concatenate([x_inds[[0, -1]], y_inds[[-1, 0]]])
     if buffer > 0:
         bbox[[0, -1]] = np.maximum(bbox[[0, -1]] - buffer, 0)
         bbox[[1]] = np.minimum(bbox[[1]] + buffer, img.shape[0])
@@ -1027,6 +1053,7 @@ def _format_image_axes(ax, show_axes=False, set_lims="whole", custom_xy_lims=Non
     custom_xy_lims : list of float, [xmin, xmax, ymin, ymax]
         Custom x and y limits for the plot, supercedes defaults from set_lims
     """
+    # TODO: separate limits from axis formatting
     ax.axis("image")
     if not show_axes:
         sns.despine(left=True, bottom=True)
