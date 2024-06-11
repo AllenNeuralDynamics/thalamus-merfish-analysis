@@ -4,11 +4,8 @@ import pandas as pd
 from thalamus_merfish_analysis import ccf_plots as cplots
 from thalamus_merfish_analysis import ccf_images as cimg
 from thalamus_merfish_analysis import abc_load as abc
-# from abc_load import _get_ccf_metadata
-# _get_ccf_metadata = st.cache_data(_get_ccf_metadata)
 
 
-# TODO: cache growing when shouldn't be? or just in debug?
 st.set_page_config(page_title="Thalamus MERFISH explorer", layout="wide")
 version = "20230830"
 section_col = "brain_section_label"
@@ -91,7 +88,8 @@ obs_th_neurons, sections_all, subclasses_all = get_data(version, ccf_label)
 ccf_images, ccf_boundaries = get_image_volumes(
     realigned, sections_all, lump_structures=lump_structures
 )
-
+# initialize section index for later use
+abc.get_section_index(cells_df=obs_th_neurons, section_col=section_col)
 
 @st.cache_resource
 def get_adata(transform="cpm"):
@@ -100,6 +98,14 @@ def get_adata(transform="cpm"):
     )
 
 
+common_args = dict(
+    section_col=section_col,
+    x_col="x_" + coords,
+    y_col="y_" + coords,
+    boundary_img=ccf_boundaries,
+    ccf_images=ccf_images,
+)
+
 with st.sidebar:
     st.write(f"Version: {version}")
     st.write(f"Gene data version: {abc.files.adata('raw').version}")
@@ -107,13 +113,7 @@ with st.sidebar:
     st.write(f"CCF version: {abc.files.ccf_metadata.version}")
     st.write(f"Taxonomy ID: {abc.get_taxonomy_id()}")
 
-pane1, pane2 = st.columns(2)
-common_args = dict(
-    section_col=section_col,
-    x_col="x_" + coords,
-    y_col="y_" + coords,
-    boundary_img=ccf_boundaries,
-)
+# extend size of multiselects for full section names
 st.markdown(
     """
     <style>
@@ -124,38 +124,53 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
+pane1, pane2 = st.columns(2)
 with pane2:
     st.header("Gene expression")
     transform = st.radio(
         "Gene expression units", ["log2cpt", "log2cpm", "log2cpv", "raw"], index=0
     )
     genes = abc.get_gene_metadata()["gene_symbol"].values
-    gene = st.selectbox("Select gene", genes, index=None)
-    nuclei = st.multiselect("Nuclei to highlight", th_subregion_names)
-    sections = st.multiselect("Sections", sections_all, key="gene_sections")
-    st.button(
-        "Show all sections",
-        on_click=lambda: setattr(st.session_state, "gene_sections", sections_all),
-        key="show_all_sections",
-    )
-    if len(sections) == 0:
-        sections = None
-    focus_plot = st.checkbox("Focus on selected nuclei") and len(nuclei) > 0
-    if gene is not None:
-        adata = get_adata(transform=transform)
-        plots = cplots.plot_expression_ccf(
-            adata,
-            gene,
-            ccf_images,
-            nuclei=cplots.CCF_REGIONS_DEFAULT,
-            highlight=nuclei,
-            sections=sections,
-            zoom_to_highlighted=focus_plot,
-            **common_args,
-        )
-        for plot in plots:
-            st.pyplot(plot)
+    single_gene, multi_gene = st.tabs(["Single gene plots", "Multiple gene overlay"])
+    with single_gene:
+        with st.form("gene_plot"):
+            gene = st.selectbox("Select gene", genes, index=None)
+            nuclei = st.multiselect("Nuclei to highlight", th_subregion_names)
+            sections = st.multiselect("Sections", sections_all, key="gene_sections")
+            if len(sections) == 0:
+                sections = None
+            focus_plot = st.checkbox("Focus on selected nuclei") and len(nuclei) > 0
+            plot_single_gene = st.form_submit_button("Plot gene expression")
+        if plot_single_gene:
+            adata = get_adata(transform=transform)
+            plots = cplots.plot_expression_ccf(
+                adata,
+                gene,
+                nuclei=cplots.CCF_REGIONS_DEFAULT,
+                highlight=nuclei,
+                sections=sections,
+                zoom_to_highlighted=focus_plot,
+                **common_args,
+            )
+            for plot in plots:
+                st.pyplot(plot)
+    with multi_gene:
+        with st.form("multigene_plot"):
+            gene_set = st.multiselect("Select genes", genes)
+            sections = st.multiselect("Sections", sections_all)
+            dark_background = st.checkbox("Dark background")
+            plot_multi_gene = st.form_submit_button("Plot multi-gene expression")
+        if plot_multi_gene:
+            adata = get_adata(transform=transform)
+            plots = cplots.plot_hcr(
+                adata,
+                gene_set,
+                sections=sections,
+                dark_background=dark_background,
+                **common_args,
+            )
+            for plot in plots:
+                st.pyplot(plot)
 
 with pane1:
     st.header("Cell type taxonomy annotations")
@@ -165,7 +180,6 @@ with pane1:
     def plot(obs, sections, regions=None, point_hue="subclass"):
         return cplots.plot_ccf_overlay(
             obs,
-            ccf_images,
             ccf_names=regions,
             point_hue=celltype_label,
             sections=sections,
@@ -173,13 +187,13 @@ with pane1:
             **kwargs,
         )
 
-    tab1, tab2 = st.tabs(
+    types_by_nucleus, types_by_section = st.tabs(
         [
             "by thalamic nucleus",
             "by section",
         ]
     )
-    with tab2:
+    with types_by_section:
         sections = st.multiselect(
             "Section",
             sections_all,
@@ -198,7 +212,6 @@ with pane1:
         if len(sections) > 0:
             plots = cplots.plot_ccf_overlay(
                 obs_th_neurons,
-                ccf_images,
                 ccf_names=None,
                 ccf_level=ccf_level,
                 point_hue=celltype_label,
@@ -217,7 +230,7 @@ with pane1:
         "Limbic/Anterior": ["AD", "AV", "AM"],
         "Auditory": ["MG"],
     }
-    with tab1:
+    with types_by_nucleus:
         manual_annotations = st.radio(
             "Nucleus vs cluster annotations",
             [True, False],
@@ -237,10 +250,7 @@ with pane1:
                     "Select individual nuclei", th_subregion_names, default=preselect
                 )
             else:
-                nuclei = st.multiselect(
-                    "Select individual nuclei",
-                    th_subregion_names,
-                )
+                nuclei = st.multiselect("Select individual nuclei", th_subregion_names)
 
         celltype_label = st.selectbox(
             "Level of celltype hierarcy",
@@ -252,30 +262,25 @@ with pane1:
 
         try:
             if len(nuclei) > 0:
-                obs2 = pd.concat(
-                    [
-                        abc.get_obs_from_annotated_clusters(
-                            nucleus,
-                            obs_th_neurons,
-                            include_shared_clusters=include_shared_clusters,
-                            manual_annotations=manual_annotations,
-                        )
-                        for nucleus in nuclei
-                    ]
+                obs2 = abc.get_obs_from_annotated_clusters(
+                    nuclei,
+                    obs_th_neurons,
+                    include_shared_clusters=include_shared_clusters,
+                    manual_annotations=manual_annotations,
                 )
                 if len(obs2) > 0:
-                    regions = [
-                        x
-                        for x in th_subregion_names
-                        if any(
-                            (name in x and "pc" not in x) or (name == x)
-                            for name in nuclei
-                        )
-                    ]
+                    # TODO: expand names to include subregions?
+                    # regions = [
+                    #     x
+                    #     for x in th_subregion_names
+                    #     if any(
+                    #         (name in x and "pc" not in x) or (name == x)
+                    #         for name in nuclei
+                    #     )
+                    # ]
                     plots = cplots.plot_ccf_overlay(
                         obs2,
-                        ccf_images,
-                        ccf_names=regions,
+                        ccf_names=nuclei,
                         ccf_level=ccf_level,
                         # highlight=nuclei, TODO: fix highlight for raster plots
                         point_hue=celltype_label,
