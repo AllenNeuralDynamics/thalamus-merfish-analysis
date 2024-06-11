@@ -132,7 +132,42 @@ def plot_local_metric_ccf_section(obs_ccf, cellwise_metrics_df, ccf_images,
 
 def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
                                 ccf_regions=TH_DIVERSITY_REGIONS,
-                                legend=True, palette=None):
+                                legend=True, palette=None,
+                                min_cell_frac=0.01,
+                                min_cell_count=None,
+                                ordered_regions=None,
+                                orientation='vertical'):
+    """ Generate a stacked barplot showing the proportion of each taxonomy level
+    category in each CCF region.
+    
+    Parameters
+    ----------
+    obs : pd.DataFrame
+        dataframe of cells with CCF annotations & mapped taxonomy levels
+    taxonomy_level : str, {'cluster', 'supertype', 'subclass'}
+        ABC Atlas taxonomy level to plot
+    th_ccf_metrics : pd.DataFrame
+        DataFrame made with diversity_metrics.calculate_diversity_metrics()
+    ccf_regions : list of str, default=TH_DIVERSITY_REGIONS
+        list of CCF regions to plot
+    legend : bool, default=True
+        whether to display the legend
+    palette : dict, default=None
+        dictionary mapping taxonomy level categories to colors
+    min_cell_frac : float, in range [0,1], default=0.01
+        sets minimum fraction of cells required for a category to be included;
+        categories <= this threshold are aggregated into an 'other' category
+    min_cell_count : int, default=None, suggested=5
+        sets minimum number of cells required for a category to be included; 
+        categories <= this threshold are aggregated into an 'other' category.
+        If set, it supercedes min_cell_frac
+    ordered_regions : list of str, default=None
+        list of CCF regions to plot, in the order they should be displayed
+    orientation : str, {'vertical', 'horizontal'}, default='vertical'
+        orientation of the barplot; 'vertical' displays regions on x-axis using
+        'bar', 'horizontal' displays regions on the y-axis using 'barh'
+        
+    """
     # Set the palette
     if palette is None:
         if (taxonomy_level=='subclass') | (taxonomy_level=='supertype'):
@@ -146,34 +181,61 @@ def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
     palette['other'] = 'lightgrey'
 
     # Calculate the proportion of each taxonomy level category per region
-    proportions_df = calculate_level_proportions(obs, taxonomy_level)
+    proportions_df = calculate_level_proportions(obs, 
+                                                 taxonomy_level, 
+                                                 min_count=min_cell_count, 
+                                                 min_frac=min_cell_frac)
     # filter to only the regions of interest
     proportions_df = proportions_df.loc[ccf_regions]
     # clean up category columns that now are all zeros post-filtering
     proportions_df = proportions_df.loc[:,(proportions_df!=0).any(axis=0)]
 
-    # Sort ccf_regions by # of non-zero categories & Inverse Simpson's Index
-    nonzero_counts = (proportions_df.drop(columns=['other'])!=0).sum(axis=1)
-    nonzero_counts.name = 'nonzero_counts'
-    inverse_simpsons = th_ccf_metrics.loc[TH_DIVERSITY_REGIONS,
-                                          f'inverse_simpsons_{taxonomy_level}']
-    # combine two metrics into a df that we can sort by
-    metrics_to_sort_by = pd.concat([nonzero_counts, inverse_simpsons], axis=1)
-    sorted_regions = metrics_to_sort_by.sort_values(by=['nonzero_counts', 
-                                                        f'inverse_simpsons_{taxonomy_level}'], 
-                                                    ascending=[True, True]).index
     # reorder the proportions df
+    if ordered_regions is None:
+        # Sort ccf_regions by # of non-zero categories & Inverse Simpson's Index
+        nonzero_counts = (proportions_df.drop(columns=['other'])!=0).sum(axis=1)
+        nonzero_counts.name = 'nonzero_counts'
+        inverse_simpsons = th_ccf_metrics.loc[
+                                TH_DIVERSITY_REGIONS,
+                                f'inverse_simpsons_{taxonomy_level}']
+        # combine two metrics into a df that we can sort by
+        metrics_to_sort_by = pd.concat([nonzero_counts, inverse_simpsons], axis=1)
+        sorted_regions = metrics_to_sort_by.sort_values(
+                                by=['nonzero_counts', 
+                                    f'inverse_simpsons_{taxonomy_level}'], 
+                                ascending=[True, True]
+                                ).index
+    else:
+        sorted_regions = ordered_regions
     proportions_df = proportions_df.loc[sorted_regions]
 
-    # Plot stacked barplot
-    # plt.rcParams.update({'font.size': 14})
-    fig, ax = plt.subplots(1,1,figsize=(12,5))
-    proportions_df.plot(kind='bar', stacked=True, ax=ax, legend=legend, 
-                        color=palette)
-    ax.set_xticklabels(proportions_df.index, rotation=90)
-    ax.set_xlabel('CCF structure')
-    ax.set_ylim(0,1.09)  # make room for ax.text() annotations
-    ax.set_ylabel('proportion of cells in unique '+taxonomy_level)
+    # Plot stacked barplot, using barh or bar 
+    if orientation=='horizontal':
+        fig, ax = plt.subplots(1,1, figsize=(5,12))
+        proportions_df.plot(kind='barh', stacked=True, ax=ax, legend=legend, 
+                            color=palette)
+        # axis formatting for horizontal barplot
+        ax.set_yticklabels(proportions_df.index)
+        ax.set_ylabel('CCF structure')
+        ax.set_ylim(ax.get_ylim()[0]-0.3, ax.get_ylim()[1]+0.2) # make room for ax.text() annotations
+        ax.invert_yaxis()  # put lowest-diversity region at the top
+        ax.set_xlim(0,1.11)  # make room for ax.text() annotations
+        ax.set_xlabel('proportion of cells in unique '+taxonomy_level)
+        ax.set_xticks([0, 0.25, 0.5, 0.75, 1], ['0', '', '0.5', '', '1'])
+        ax.tick_params(which='both', direction='in', top=True, labeltop=False)
+    else:
+        fig, ax = plt.subplots(1,1, figsize=(12,5))
+        proportions_df.plot(kind='bar', stacked=True, ax=ax, legend=legend, 
+                            color=palette)
+        # axis formatting for vertical barplot
+        ax.set_xticklabels(proportions_df.index, rotation=90)
+        ax.set_xlabel('CCF structure')
+        ax.set_xlim(ax.get_xlim()[0]-0.1, ax.get_xlim()[1]+0.1) # make room for ticks & text annotations
+        ax.set_ylim(0,1.09)  # make room for ax.text() annotations
+        ax.set_ylabel('proportion of cells in unique '+taxonomy_level)
+        ax.set_yticks([0, 0.25, 0.5, 0.75, 1], ['0', '', '0.5', '', '1'])
+        ax.tick_params(which='both', direction='in', right=True, labelright=False)
+    
     # format legend
     if legend:
         # Reorder the legend labels alphabetically
@@ -185,7 +247,11 @@ def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
     # display the number of non-zero, non-other categories above each region's bar
     for i, region in enumerate(proportions_df.index):
         n_nonzero = (proportions_df.loc[region, proportions_df.columns!='other']>0).sum()
-        ax.text(i, 1.02, n_nonzero, horizontalalignment='center')
+        if orientation=='horizontal':
+            ax.text(1.02, i, n_nonzero, verticalalignment='center',
+                    horizontalalignment='left')
+        else:
+            ax.text(i, 1.02, n_nonzero, horizontalalignment='center')
 
     return fig
 
@@ -193,7 +259,8 @@ def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
 def calculate_level_proportions(obs, 
                                 taxonomy_level,
                                 ccf_label='parcellation_structure_eroded',
-                                min_count=5):
+                                min_frac=0.01,
+                                min_count=None):
     ''' Calculate the proportion of each level in each CCF region for a stacked 
     barplot.
 
@@ -205,6 +272,13 @@ def calculate_level_proportions(obs,
         ABC Atlas taxonomy level 
     ccf_label : str, default='parcellation_structure_eroded'
         column name in obs_ccf where the CCF annotations can be found
+    min_frac : float, in range [0,1], default=0.01
+        sets minimum fraction of cells required for a category to be included;
+        categories <= this threshold are aggregated into an 'other' category
+    min_count : int, default=None, suggested=5
+        sets minimum number of cells required for a category to be included; 
+        categories <= this threshold are aggregated into an 'other' category
+        If set, it supercedes min_frac
 
     Returns
     -------
@@ -217,9 +291,19 @@ def calculate_level_proportions(obs,
     counts_df = obs.groupby([ccf_label, taxonomy_level], observed=True
                             ).size().unstack(fill_value=0)
     
-    # move counts <=5 to 'other' column
-    other_col_df = counts_df[counts_df <= min_count].sum(axis=1)
-    counts_df = counts_df[counts_df > min_count]  # replace counts <=5 with NaN
+    # if min_count is set, it supercedes min_frac
+    if min_count is not None:
+        to_other = (counts_df <= min_count)
+    else:
+        # Calculate the fraction of each category, per region
+        total_counts = counts_df.sum(axis=1)
+        fraction_df = counts_df.div(total_counts, axis=0)
+        # Get categories to move to 'other'
+        to_other = (fraction_df <= min_frac)
+    
+    # Aggregate & move counts below threshold to 'other' column
+    other_col_df = counts_df[to_other].sum(axis=1)
+    counts_df = counts_df[~to_other]  # replace counts below threshold with NaN
     counts_df = counts_df.join(other_col_df.rename('other')).fillna(0)
     # clean up columns that are not empty
     counts_df = counts_df.loc[:,(counts_df!=0).any(axis=0)]
