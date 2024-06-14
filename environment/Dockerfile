@@ -1,4 +1,4 @@
-# hash:sha256:181168b540bfe7b5e9750223ee28575d411265a19e978d57e7d2961400817053
+# hash:sha256:30e21f76d6d6699e1c842c6b40ce4b56190695f84ee6343a7136536b40b061a3
 ARG REGISTRY_HOST
 FROM $REGISTRY_HOST/codeocean/jupyterlab:3.6.1-miniconda4.12.0-python3.9-ubuntu20.04
 
@@ -23,6 +23,7 @@ RUN conda install -y \
 RUN pip install -U --no-cache-dir \
     anndata==0.8.0 \
     colorcet==3.0.1 \
+    colour-science==0.4.4 \
     geojson==3.0.1 \
     geopandas==0.13.1 \
     hdbscan==0.8.33 \
