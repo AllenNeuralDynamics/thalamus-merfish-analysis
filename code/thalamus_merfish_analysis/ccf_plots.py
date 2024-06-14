@@ -11,6 +11,13 @@ from . import color_utils as cu
 
 CCF_REGIONS_DEFAULT = None
 
+# thalamus-specific constants
+TH_EXAMPLE_SECTION_LABELS = ['C57BL6J-638850.44', 
+                             'C57BL6J-638850.40', 
+                             'C57BL6J-638850.36']   # anterior to posterior order
+TH_EXAMPLE_Z_SECTIONS = [8.0, 7.2, 6.4]  # anterior to posterior order
+XY_LIMS_TH_LEFT_HEMI = [2.8, 5.8, 7, 4] # limits plots to thalamus left hemisphere
+
 # TODO: make plotting class to cache indices, col names, etc?
 
 
@@ -382,7 +389,7 @@ def _get_counts_label(adata, gene):
     else:
         if all(
             i.is_integer() for i in adata[gene]
-        ):  # no [] around loop == stops at 1st non-integer encounter
+        ):  # no [] around loop -> stops at 1st non-integer encounter
             label = "gene counts (raw)"
         else:
             label = "gene counts (unknown transform)"
@@ -575,6 +582,7 @@ def plot_multichannel_overlay(
     boundary_img=None,
     normalize_by="channels",
     colorbar=False,
+    point_size=5,
 ):
     """
     Display overlay of multiple channels in a single section.
@@ -609,6 +617,8 @@ def plot_multichannel_overlay(
         The normalization method. Can be "channels", "all", or None. Default is "channels".
     colorbar : bool, optional
         Whether to show the colorbar. Default is False.
+    point_size : int, optional
+        The size of the scatter plot points. Default is 5.
 
     Returns
     -------
@@ -649,7 +659,7 @@ def plot_multichannel_overlay(
                 c = cu.combine_scaled_colors(colors[[i], :], coeffs[:, [i]])
                 ax.scatter(
                     *df[[x_col, y_col]].values.T,
-                    s=5,
+                    s=point_size,
                     marker=".",
                     color=c,
                 )
@@ -671,7 +681,7 @@ def plot_multichannel_overlay(
         c = cu.combine_scaled_colors(colors[:n_channel], coeffs)
         ax.scatter(
             *df[[x_col, y_col]].values.T,
-            s=5,
+            s=point_size,
             marker=".",
             color=c,
         )

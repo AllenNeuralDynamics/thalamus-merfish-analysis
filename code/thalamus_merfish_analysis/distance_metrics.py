@@ -198,6 +198,7 @@ def plot_ordered_similarity_heatmap(D,
     cbar.set_ticks([0, 0.25, 0.5, 0.75, 1])
     cbar.set_ticklabels(['0', '', '0.5', '', '1'])
     cbar.ax.tick_params(axis='y', direction='in')
+    cbar.set_label(label, rotation=-90, labelpad=10)
     
     return fig
 
