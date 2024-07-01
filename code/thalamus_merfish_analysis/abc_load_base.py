@@ -616,7 +616,7 @@ class AtlasWrapper:
 
     @property
     def _section_metadata_path(self):
-        return Path(f"resources/section_metadata_{self.dataset}_{self.version}.csv")
+        return Path(f"/code/resources/section_metadata_{self.dataset}_{self.version}.csv")
 
     @cached_property
     def section_metadata(self):
