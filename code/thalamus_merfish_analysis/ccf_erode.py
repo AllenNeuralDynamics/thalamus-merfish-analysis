@@ -1,6 +1,6 @@
 import numpy as np
 
-from .abc_load import X_RESOLUTION, Y_RESOLUTION, Z_RESOLUTION, get_ccf_index
+from . import abc_load as abc
 from .abc_load_base import _label_masked_cells
 from .ccf_images import sectionwise_label_erosion, map_label_values
 
@@ -41,18 +41,18 @@ def label_cells_by_eroded_ccf(obs, ccf_img, distance_px=5, realigned=False):
     ccf_img_merge = merge_substructures(ccf_img, sections=sections)
 
     # erode CCF structures 
-    ccf_img_erode = sectionwise_label_erosion(ccf_img, 
+    ccf_img_erode = sectionwise_label_erosion(ccf_img_merge, 
                                               distance_px=distance_px, 
                                               section_list=sections_int)
 
-    # label cells in obs by their new, eroded CCF parcellation                                                          
+    # label cells in obs by their new, eroded CCF parcellation
     coord_names = [f"{x}_{coords}" for x in 'xyz'] 
-    resolutions = np.array([X_RESOLUTION, Y_RESOLUTION, Z_RESOLUTION])
+    resolutions = np.array([abc.X_RESOLUTION, abc.Y_RESOLUTION, abc.Z_RESOLUTION])
     obs = _label_masked_cells(obs, ccf_img_erode, coord_names, 
                               resolutions, field_name=ERODED_CCF_INDEX_COL)
 
     # add parcellation_strcuture labels to obs
-    ccf_index = get_ccf_index(level='structure')
+    ccf_index = abc.get_ccf_index(level='structure')
     obs[ERODED_CCF_STRUCTURE_COL] = obs[ERODED_CCF_INDEX_COL].map(ccf_index)
 
     return obs
@@ -77,7 +77,7 @@ def merge_substructures(ccf_img, sections=None):
     '''
 
     # group substructures by structure (e.g. ['AMv', 'AMd'] -> 'AM')
-    ccf_index = get_ccf_index(level='structure')
+    ccf_index = abc.get_ccf_index(level='structure')
     reverse_index = ccf_index.reset_index().groupby('parcellation_term_acronym')['parcellation_index'].first()
     mapping = ccf_index.map(reverse_index).to_dict()
 

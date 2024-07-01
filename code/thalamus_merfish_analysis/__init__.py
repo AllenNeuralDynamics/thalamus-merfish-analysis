@@ -1,4 +1,5 @@
-from . import abc_load_thalamus
+from .abc_load_thalamus import DEFAULT_ATLAS_WRAPPER
 
 # alias thalamus defaults for easier access
-abc_load = abc_load_thalamus
+# TODO: change most import usages from global to explicit arguments (with default)
+abc_load = DEFAULT_ATLAS_WRAPPER
