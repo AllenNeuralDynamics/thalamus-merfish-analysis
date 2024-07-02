@@ -5,10 +5,10 @@ from thalamus_merfish_analysis import ccf_registration as ccf
 
 
 df_full = abc_load.get_combined_metadata(
-    version="20230830", 
     flip_y=True
     )
-ref_index = abc_load.get_thalamus_reference_ids()
+# which thalamus subset to use here? not using old ids method
+# ref_index = abc_load.get_thalamus_reference_ids()
 
 slice_label = 'slice_int'
 img_label = 'subclass_int'

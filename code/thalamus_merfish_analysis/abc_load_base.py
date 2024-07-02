@@ -3,6 +3,7 @@ Functions for loading (subsets of) the ABC Atlas MERFISH dataset.
 """
 
 from functools import cached_property, lru_cache, wraps
+from importlib_resources import files
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -37,9 +38,7 @@ class AtlasWrapper:
     X_RESOLUTION = Y_RESOLUTION = 10e-3
     Z_RESOLUTION = 200e-3
 
-    def __init__(
-        self, directory=ABC_ROOT, dataset=BRAIN_LABEL, version=CURRENT_VERSION
-    ):
+    def __init__(self, directory=ABC_ROOT, dataset=BRAIN_LABEL, version=CURRENT_VERSION):
         # TODO: should manifest just be global?
         with open(directory / "releases" / version / "manifest.json", "r") as file:
             manifest = Manifest(cache_dir=directory, json_input=file)
@@ -51,31 +50,21 @@ class AtlasWrapper:
         self.version = version
         self.manifest = manifest
         self.files = SimpleNamespace(
-            adata_raw=manifest.get_file_attributes(
-                directory=_data, file_name=f"{dataset}/raw"
-            ),
-            adata_log2=manifest.get_file_attributes(
-                directory=_data, file_name=f"{dataset}/log2"
-            ),
-            gene_metadata=manifest.get_file_attributes(
-                directory=_data, file_name="gene"
-            ),
+            adata_raw=manifest.get_file_attributes(directory=_data, file_name=f"{dataset}/raw"),
+            adata_log2=manifest.get_file_attributes(directory=_data, file_name=f"{dataset}/log2"),
+            gene_metadata=manifest.get_file_attributes(directory=_data, file_name="gene"),
             cell_metadata=manifest.get_file_attributes(
-                directory=_data_ccf,
-                file_name="cell_metadata_with_parcellation_annotation",
+                directory=_data_ccf, file_name="cell_metadata_with_parcellation_annotation"
             ),
             resampled_annotation=manifest.get_file_attributes(
                 directory=_data_ccf, file_name="resampled_annotation"
             ),
-            annotation_10=manifest.get_file_attributes(
-                directory=_ccf, file_name="annotation_10"
-            ),
+            annotation_10=manifest.get_file_attributes(directory=_ccf, file_name="annotation_10"),
             ccf_metadata=manifest.get_file_attributes(
                 directory=_ccf, file_name="parcellation_to_parcellation_term_membership"
             ),
             cluster_metadata=manifest.get_file_attributes(
-                directory=_taxonomy,
-                file_name="cluster_to_cluster_annotation_membership",
+                directory=_taxonomy, file_name="cluster_to_cluster_annotation_membership"
             ),
             taxonomy_metadata=manifest.get_file_attributes(
                 directory=_taxonomy, file_name="cluster_annotation_term_set"
@@ -84,11 +73,7 @@ class AtlasWrapper:
 
     @cached_property
     def get_taxonomy_id(self):
-        return (
-            pd.read_csv(self.files.taxonomy_metadata.local_path)["label"]
-            .iloc[0]
-            .split("_")[0]
-        )
+        return pd.read_csv(self.files.taxonomy_metadata.local_path)["label"].iloc[0].split("_")[0]
 
     def load_adata(
         self,
@@ -127,9 +112,7 @@ class AtlasWrapper:
         """
         # 'log2cpv' is labelled 'log2' in the ABC Atlas; for 'log2cpm' or 'log2cpt',
         #  we load 'raw' counts and then do the transform manually later
-        adata_file = (
-            self.files.adata_log2 if transform == "log2cpv" else self.files.adata_raw
-        )
+        adata_file = self.files.adata_log2 if transform == "log2cpv" else self.files.adata_raw
         adata = ad.read_h5ad(adata_file.local_path, backed="r")
         genes = adata.var_names
         if drop_blanks:
@@ -145,9 +128,7 @@ class AtlasWrapper:
             adata = adata.to_memory()
             # add metadata to obs
             adata.obs = adata.obs.join(
-                cells_md_df.loc[
-                    cell_labels, cells_md_df.columns.difference(adata.obs.columns)
-                ]
+                cells_md_df.loc[cell_labels, cells_md_df.columns.difference(adata.obs.columns)]
             )
         else:
             adata = adata[:, genes].to_memory()
@@ -162,9 +143,7 @@ class AtlasWrapper:
         adata.X = adata.X.toarray()
         if transform in scale_factors:
             scale_factor = scale_factors[transform]
-            adata.X = np.log2(
-                adata.X * scale_factor / np.sum(adata.X, axis=1, keepdims=True) + 1
-            )
+            adata.X = np.log2(adata.X * scale_factor / np.sum(adata.X, axis=1, keepdims=True) + 1)
 
         # access genes by short symbol vs longer names
         adata.var_names = adata.var["gene_symbol"]
@@ -174,9 +153,7 @@ class AtlasWrapper:
 
         return adata
 
-    def filter_by_ccf_region(
-        self, obs, regions, buffer=0, realigned=False, include_children=True
-    ):
+    def filter_by_ccf_region(self, obs, regions, buffer=0, realigned=False, include_children=True):
         """Filters cell metadata (obs) dataframe spatially by CCF region labels,
         with an optional buffer region (using stored labels if no buffer).
 
@@ -211,9 +188,7 @@ class AtlasWrapper:
             )
         else:
             ccf_label = (
-                "parcellation_structure_realigned"
-                if realigned
-                else "parcellation_structure"
+                "parcellation_structure_realigned" if realigned else "parcellation_structure"
             )
             obs = obs[obs[ccf_label].isin(regions)]
         return obs
@@ -340,9 +315,7 @@ class AtlasWrapper:
                     index_col="cell_label",
                     engine="c",
                 )
-                cells_df = old_df.join(
-                    cells_df[cells_df.columns.difference(old_df.columns)]
-                )
+                cells_df = old_df.join(cells_df[cells_df.columns.difference(old_df.columns)])
         else:
             cells_df = pd.read_csv(
                 self.files.cell_metadata.local_path,
@@ -363,9 +336,7 @@ class AtlasWrapper:
         cells_df = cells_df.replace("ZI-unassigned", "ZI")
         return cells_df
 
-    def get_ccf_labels_image(
-        self, resampled=True, realigned=False, subset_to_left_hemi=False
-    ):
+    def get_ccf_labels_image(self, resampled=True, realigned=False, subset_to_left_hemi=False):
         """Loads rasterized image volumes of the CCF parcellation as 3D numpy array.
 
         Voxels are labelled with assigned brain structure parcellation ID #.
@@ -422,9 +393,7 @@ class AtlasWrapper:
         outlier_label="other",
         filter_cells=False,
     ):
-        primary_celltypes = (
-            obs[type_col].value_counts().loc[lambda x: x > min_group_count].index
-        )
+        primary_celltypes = obs[type_col].value_counts().loc[lambda x: x > min_group_count].index
         if max_num_groups is not None and len(primary_celltypes) > max_num_groups:
             primary_celltypes = primary_celltypes[:max_num_groups]
         if filter_cells:
@@ -494,9 +463,7 @@ class AtlasWrapper:
             coords = ["x_section", "y_section", "z_section"]
         else:
             coords = ["x_reconstructed", "y_reconstructed", "z_reconstructed"]
-        resolutions = np.array(
-            [self.X_RESOLUTION, self.Y_RESOLUTION, self.Z_RESOLUTION]
-        )
+        resolutions = np.array([self.X_RESOLUTION, self.Y_RESOLUTION, self.Z_RESOLUTION])
 
         # load 'resampled CCF' (rasterized, in MERFISH space) image volumes from the
         # ABC Atlas dataset (z resolution limited to merscope slices)
@@ -539,9 +506,7 @@ class AtlasWrapper:
         ccf_df = self._ccf_metadata
         th_zi_ind = np.hstack(
             [
-                ccf_df.loc[
-                    ccf_df["parcellation_term_acronym"] == x, "parcellation_index"
-                ].unique()
+                ccf_df.loc[ccf_df["parcellation_term_acronym"] == x, "parcellation_index"].unique()
                 for x in top_nodes
             ]
         )
@@ -615,13 +580,13 @@ class AtlasWrapper:
         return index
 
     @property
-    def _section_metadata_path(self):
-        return Path(f"/code/resources/section_metadata_{self.dataset}_{self.version}.csv")
+    def _section_metadata_file(self):
+        return f"section_metadata_{self.dataset}_{self.version}.csv"
 
     @cached_property
-    def section_metadata(self):
-        path = self._section_metadata_path
-        if not path.exists():
+    def _section_metadata(self):
+        path = files("thalamus_merfish_analysis.resources") / self._section_metadata_file
+        if not path.is_file():
             raise FileNotFoundError(
                 f"Section metadata not saved for {self.dataset} version {self.version}"
             )
@@ -632,7 +597,7 @@ class AtlasWrapper:
         """Gets a Series mapping a specified section label column
         to the corresponding section index (integer z-coordinate at specified resolution).
         """
-        df = self.section_metadata.set_index(section_col)["section_index"]
+        df = self._section_metadata.set_index(section_col)["section_index"]
         return df
 
     def save_section_index(
@@ -645,16 +610,13 @@ class AtlasWrapper:
         cells_df = self.get_combined_metadata()
         section_index = (
             # TODO: could get section cols as any col constant across section
-            cells_df.groupby(z_col, observed=True)[section_cols]
-            .first()
-            .dropna()
-            .reset_index()
+            cells_df.groupby(z_col, observed=True)[section_cols].first().dropna().reset_index()
         )
         # Note: this transformation may vary for different datasets
         section_index["section_index"] = section_index[z_col].apply(
             lambda x: int(np.rint(x / self.Z_RESOLUTION))
         )
-        path = self._section_metadata_path
+        path = Path("/code/thalamus_merfish_analysis/resources") / self._section_metadata_file
         if path.exists() and not overwrite:
             raise FileExistsError(
                 f"Section index already saved for {self.dataset} version {self.version}"
@@ -684,9 +646,7 @@ class AtlasWrapper:
         """
         df = self._cluster_annotations
         df = df[df["cluster_annotation_term_set_name"] == taxonomy_level]
-        palette = df.set_index("cluster_annotation_term_name")[
-            "color_hex_triplet"
-        ].to_dict()
+        palette = df.set_index("cluster_annotation_term_name")["color_hex_triplet"].to_dict()
         return palette
 
     def get_taxonomy_label_from_alias(self, aliases, taxonomy_level):
@@ -708,9 +668,7 @@ class AtlasWrapper:
         df = self._cluster_annotations
         df = df[df["cluster_annotation_term_set_name"] == taxonomy_level]
         label_list = (
-            df.set_index("cluster_alias")
-            .loc[aliases, "cluster_annotation_term_name"]
-            .to_list()
+            df.set_index("cluster_alias").loc[aliases, "cluster_annotation_term_name"].to_list()
         )
         return label_list
 
@@ -736,9 +694,7 @@ class AtlasWrapper:
         """
         df = self._ccf_annotations
         df = df[df["parcellation_term_set_name"] == parcellation_level]
-        palette = df.set_index("parcellation_term_acronym")[
-            "color_hex_triplet"
-        ].to_dict()
+        palette = df.set_index("parcellation_term_acronym")["color_hex_triplet"].to_dict()
 
         return palette
 
@@ -746,12 +702,8 @@ class AtlasWrapper:
 DEFAULT_ATLAS_WRAPPER = AtlasWrapper()
 
 
-def _label_masked_cells(
-    cells_df, mask_img, coords, resolutions, field_name="region_mask"
-):
-    cells_df[field_name] = mask_img[
-        image_index_from_coords(cells_df[coords], resolutions)
-    ]
+def _label_masked_cells(cells_df, mask_img, coords, resolutions, field_name="region_mask"):
+    cells_df[field_name] = mask_img[image_index_from_coords(cells_df[coords], resolutions)]
     return cells_df
 
 
@@ -776,9 +728,7 @@ def _get_devccf_names(top_nodes):
     )
     devccf_index = devccf_index.set_index("Acronym")
     th_ids = list(
-        set.union(
-            *(set(nx.descendants(g, devccf_index.loc[x, "ID"])) for x in top_nodes)
-        )
+        set.union(*(set(nx.descendants(g, devccf_index.loc[x, "ID"])) for x in top_nodes))
     )
     names = devccf_index.reset_index().set_index("ID").loc[th_ids, "Acronym"]
     return names

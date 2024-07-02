@@ -1,3 +1,4 @@
+from importlib_resources import files
 import numpy as np
 import pandas as pd
 import anndata as ad
@@ -174,8 +175,7 @@ def add_colors_to_uns(adata):
     for level in taxonomy_levels:
         if level=='cluster':
             # use custom color palette for clusters
-            palette_df = pd.read_csv('/code/resources/cluster_palette_glasbey.csv')
-            abc_color_dict = dict(zip(palette_df['Unnamed: 0'], palette_df['0']))
+            palette_df = abc.get_thalamus_cluster_palette()
         else:
             # get the official ABC color palette for all other taxonomy levels
             abc_color_dict = get_taxonomy_palette(level)
@@ -245,6 +245,7 @@ def add_spagcn_to_adata(adata, domains_to_add='res1pt4', spagcn_col='spagcn'):
 
     # load in SpaGCN domain results
     # temporarily a static file in '../code/resources' until I get a reproducible run setup for the spagcn capsule
+    # TODO: move this file to an asset
     spagcn_df = pd.read_parquet('/code/resources/spagcn_predicated_domains.parquet')
 
     for col in spagcn_df.columns:

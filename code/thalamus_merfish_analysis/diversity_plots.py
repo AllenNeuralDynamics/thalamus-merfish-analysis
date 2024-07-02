@@ -1,3 +1,4 @@
+from importlib_resources import files
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -173,8 +174,7 @@ def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
         if (taxonomy_level=='subclass') | (taxonomy_level=='supertype'):
             palette = abc.get_taxonomy_palette(taxonomy_level)
         elif taxonomy_level=='cluster':
-            cluster_palette_df = pd.read_csv('/code/resources/cluster_palette_glasbey.csv')
-            palette = dict(zip(cluster_palette_df['Unnamed: 0'], cluster_palette_df['0']))
+            palette = abc.get_thalamus_cluster_palette()
         else:
             palette = glasbey_light
     # add 'other' to the palette

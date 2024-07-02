@@ -1,4 +1,5 @@
 from functools import lru_cache
+from importlib_resources import files
 from itertools import chain
 
 import numpy as np
@@ -293,11 +294,15 @@ class ThalamusWrapper(AtlasWrapper):
     # load cluster-nucleus annotations
     try:
         nuclei_df_manual = pd.read_csv(
-            "/code/resources/prong1_cluster_annotations_by_nucleus.csv", index_col=0
+            files("thalamus_merfish_analysis.resources")
+            / "prong1_cluster_annotations_by_nucleus.csv",
+            index_col=0,
         )
         nuclei_df_manual = nuclei_df_manual.fillna("")
         nuclei_df_auto = pd.read_csv(
-            "/code/resources/annotations_from_eroded_counts.csv", index_col=0
+            files("thalamus_merfish_analysis.resources")
+            / "annotations_from_eroded_counts.csv",
+            index_col=0,
         )
         found_annotations = True
     except FileNotFoundError:
@@ -387,7 +392,9 @@ class ThalamusWrapper(AtlasWrapper):
     @staticmethod
     @lru_cache
     def get_thalamus_cluster_palette():
-        palette_df = pd.read_csv("/code/resources/cluster_palette_glasbey.csv")
+        palette_df = pd.read_csv(
+            files("thalamus_merfish_analysis.resources") / "cluster_palette_glasbey.csv"
+        )
         return dict(zip(palette_df["Unnamed: 0"], palette_df["0"]))
 
 
