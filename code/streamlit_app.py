@@ -3,7 +3,8 @@ import streamlit as st
 import pandas as pd
 from thalamus_merfish_analysis import ccf_plots as cplots
 from thalamus_merfish_analysis import ccf_images as cimg
-from thalamus_merfish_analysis import abc_load as abc
+# from thalamus_merfish_analysis import abc_load as abc
+from thalamus_merfish_analysis.abc_load_thalamus import ThalamusWrapper
 
 
 st.set_page_config(page_title="Thalamus MERFISH explorer", layout="wide")
@@ -11,6 +12,9 @@ version = "20230830"
 section_col = "brain_section_label"
 ccf_level = "substructure"
 lump_structures = False
+
+abc = ThalamusWrapper(version=version)
+
 with st.expander("CCF alignment settings"):
     realigned = st.radio(
         "CCF alignment",
@@ -49,7 +53,7 @@ if realigned and not has_realigned_asset:
 @st.cache_data
 def get_data(version, ccf_label, extend_borders=False):
     obs = abc.get_combined_metadata(
-        realigned=has_realigned_asset, version=version, drop_unused=False
+        realigned=has_realigned_asset, drop_unused=False
     )
     # remove non-neuronal and some other outlier non-thalamus types
     obs_neurons = abc.filter_by_class_thalamus(obs, filter_midbrain=False)
@@ -88,13 +92,11 @@ obs_th_neurons, sections_all, subclasses_all = get_data(version, ccf_label)
 ccf_images, ccf_boundaries = get_image_volumes(
     realigned, sections_all, lump_structures=lump_structures
 )
-# initialize section index for later use
-abc.get_section_index(cells_df=obs_th_neurons, section_col=section_col)
 
 @st.cache_resource
 def get_adata(transform="cpm"):
     return abc.load_adata(
-        version=version, transform=transform, from_metadata=obs_th_neurons
+        transform=transform, from_metadata=obs_th_neurons
     )
 
 
