@@ -2,6 +2,7 @@
 Functions for loading (subsets of) the ABC Atlas MERFISH dataset.
 """
 
+from collections import defaultdict
 from functools import cached_property, lru_cache, wraps
 from importlib_resources import files
 from pathlib import Path
@@ -69,10 +70,13 @@ class AtlasWrapper:
             taxonomy_metadata=manifest.get_file_attributes(
                 directory=_taxonomy, file_name="cluster_annotation_term_set"
             ),
+            scrnaseq_metadata=manifest.get_file_attributes(
+                directory="WMB-10X", file_name="cell_metadata_with_cluster_annotation"
+            ),
         )
 
     @cached_property
-    def get_taxonomy_id(self):
+    def taxonomy_id(self):
         return pd.read_csv(self.files.taxonomy_metadata.local_path)["label"].iloc[0].split("_")[0]
 
     def load_adata(
@@ -228,10 +232,7 @@ class AtlasWrapper:
             obs = obs[obs[coord_col] <= stop]
         return obs
 
-    def get_gene_metadata(
-        self,
-        drop_blanks=True,
-    ):
+    def get_gene_metadata(self, drop_blanks=True):
         """Load the gene metadata csv.
         Optionally drops 'Blank' genes from the dataset.
         """
@@ -239,6 +240,37 @@ class AtlasWrapper:
         if drop_blanks:
             df = df[~df["gene_symbol"].str.contains("Blank")]
         return df
+
+    def get_sc_metadata(self, drop_unused=True):
+        """Load the cell metadata csv for 10X single-cell data.
+
+        Returns
+        -------
+            pandas.DataFrame
+        """
+        cat_columns = [
+            "feature_matrix_label",
+            "dataset_label",
+            "cluster_alias",
+            "class",
+            "subclass",
+            "supertype",
+            "cluster",
+        ]
+        dtype = dict(
+            cell_label="string",
+            **{x: "category" for x in cat_columns},
+        )
+        usecols = list(dtype.keys()) if drop_unused else None
+
+        cells_df = pd.read_csv(
+            self.files.scrnaseq_metadata.local_path,
+            dtype=dtype,
+            usecols=usecols,
+            index_col="cell_label",
+            engine="pyarrow",
+        )
+        return cells_df
 
     def get_combined_metadata(
         self,
@@ -295,7 +327,8 @@ class AtlasWrapper:
             "parcellation_substructure",
             # 'parcellation_organ', 'parcellation_category',
         ]
-        dtype = dict(
+        dtype = defaultdict(
+            str,
             cell_label="string",
             **{x: "float" for x in float_columns},
             **{x: "category" for x in cat_columns},
@@ -313,7 +346,7 @@ class AtlasWrapper:
                     dtype=dtype,
                     usecols=usecols,
                     index_col="cell_label",
-                    engine="c",
+                    engine="pyarrow",
                 )
                 cells_df = old_df.join(cells_df[cells_df.columns.difference(old_df.columns)])
         else:
@@ -322,7 +355,7 @@ class AtlasWrapper:
                 dtype=dtype,
                 usecols=usecols,
                 index_col="cell_label",
-                engine="c",
+                engine="pyarrow",
             )
         if flip_y:
             cells_df[["y_section", "y_reconstructed"]] *= -1
@@ -333,6 +366,7 @@ class AtlasWrapper:
         cells_df["left_hemisphere"] = cells_df["z_ccf"] < 5.7
         if realigned:
             cells_df["left_hemisphere_realigned"] = cells_df["z_ccf_realigned"] < 5.7
+        # TODO: use cat.rename_categories to rename these
         cells_df = cells_df.replace("ZI-unassigned", "ZI")
         return cells_df
 

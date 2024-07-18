@@ -60,13 +60,13 @@ class ThalamusWrapper(AtlasWrapper):
                 drop_unused=True, realigned=False, flip_y=False, round_z=True
             )
             # TODO: why is this here if filtered below?!
-            data_th = self.label_thalamus_spatial_subset(
-                data_th,
-                flip_y=False,
-                realigned=False,
-                cleanup_mask=True,
-                filter_cells=True,
-            )
+            # data_th = self.label_thalamus_spatial_subset(
+            #     data_th,
+            #     flip_y=False,
+            #     realigned=False,
+            #     cleanup_mask=True,
+            #     filter_cells=True,
+            # )
         else:
             raise ValueError("data_structure must be adata or obs.")
 
@@ -196,7 +196,7 @@ class ThalamusWrapper(AtlasWrapper):
         if filter_other_nonTH:
             obs = cls.filter_by_class(obs, include=classes_to_keep)
         else:
-            classes_to_exclude = set(cls.MB_CLASSES + cls.NN_CLASSES) - classes_to_keep
+            classes_to_exclude = set(cls.MB_CLASSES + cls.NN_CLASSES) - set(classes_to_keep)
             obs = cls.filter_by_class(obs, exclude=classes_to_exclude)
 
         return obs if dataframe_input else th_zi_adata[obs.index, :]
