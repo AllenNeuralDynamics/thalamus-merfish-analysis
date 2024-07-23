@@ -12,11 +12,13 @@ from . import color_utils as cu
 CCF_REGIONS_DEFAULT = None
 
 # thalamus-specific constants
-TH_EXAMPLE_SECTION_LABELS = ['C57BL6J-638850.44', 
-                             'C57BL6J-638850.40', 
-                             'C57BL6J-638850.36']   # anterior to posterior order
+TH_EXAMPLE_SECTION_LABELS = [
+    "C57BL6J-638850.44",
+    "C57BL6J-638850.40",
+    "C57BL6J-638850.36",
+]  # anterior to posterior order
 TH_EXAMPLE_Z_SECTIONS = [8.0, 7.2, 6.4]  # anterior to posterior order
-XY_LIMS_TH_LEFT_HEMI = [2.8, 5.8, 7, 4] # limits plots to thalamus left hemisphere
+XY_LIMS_TH_LEFT_HEMI = [2.8, 5.8, 7, 4]  # limits plots to thalamus left hemisphere
 
 # TODO: make plotting class to cache indices, col names, etc?
 
@@ -111,11 +113,7 @@ def plot_ccf_overlay(
         if ccf_names is not None:
             sections = sections.intersection(
                 get_sections_for_ccf_regions(
-                    ccf_images,
-                    ccf_names,
-                    ccf_level=ccf_level,
-                    section_col=section_col,
-                    cells_df=obs,
+                    ccf_images, ccf_names, ccf_level=ccf_level, section_col=section_col
                 )
             )
         sections = sorted(sections)
@@ -130,6 +128,8 @@ def plot_ccf_overlay(
             min_group_count=min_group_count,
         )
         # Set color palette for cell scatter points
+        if point_palette is None and point_hue in ["class", "subclass", "supertype", "cluster"]:
+            point_palette = abc.get_taxonomy_palette(point_hue)
         point_palette = cu.generate_palette(
             obs[point_hue].unique().tolist(),
             hue_label=point_hue,
@@ -213,11 +213,7 @@ def _combine_subplot_legends(fig, ncol=4, **legend_args):
 
 
 def get_sections_for_ccf_regions(
-    ccf_images,
-    ccf_names,
-    ccf_level="substructure",
-    section_col="z_section",
-    cells_df=None,
+    ccf_images, ccf_names, ccf_level="substructure", section_col="z_section"
 ):
     """Get the sections that contain cells from a list of CCF regions."""
     structure_index = abc.get_ccf_index_reverse_lookup(level=ccf_level)
@@ -226,8 +222,9 @@ def get_sections_for_ccf_regions(
     for i in range(ccf_images.shape[2]):
         if np.any(np.isin(ccf_images[:, :, i], ccf_ids)):
             sections.append(i)
-    section_index = abc.get_section_index(cells_df=cells_df, section_col=section_col)
-    section_names = pd.Series(section_index.index.values, index=section_index)[sections]
+    section_index = abc.get_section_index(section_col=section_col)
+    ind = pd.Series(section_index.index.values, index=section_index)
+    section_names = ind[ind.index.intersection(sections)].values
     return section_names
 
 
@@ -274,8 +271,6 @@ def plot_section_overlay(
 
     # display CCF shapes
     if ccf_images is not None:
-        # initialize section index from obs just in case
-        abc.get_section_index(obs, section_col=section_col)
         plot_ccf_section(
             ccf_images,
             section,
@@ -437,14 +432,14 @@ def plot_expression_ccf(
     # TODO: allow sections arg to be single section not list?
     if sections is None:
         sections = adata.obs[section_col].unique()
-        if ccf_names is not None:
+        target_regions = ccf_highlight if zoom_to_highlighted else ccf_names
+        if target_regions is not None:
             sections = set(sections).intersection(
                 get_sections_for_ccf_regions(
                     ccf_images,
-                    ccf_highlight if zoom_to_highlighted else ccf_names,
+                    target_regions,
                     ccf_level=ccf_level,
                     section_col=section_col,
-                    cells_df=obs,
                 )
             )
             sections = sorted(sections)
@@ -560,7 +555,9 @@ def plot_hcr(
             ccf_images=ccf_images,
             boundary_img=boundary_img,
         )
-        with matplotlib.style.context("dark_background" if dark_background else "default"):
+        with matplotlib.style.context(
+            "dark_background" if dark_background else "default"
+        ):
             fig.suptitle(f"Section {section}\n{counts_label}", y=1.2)
         figs.append(fig)
     return figs

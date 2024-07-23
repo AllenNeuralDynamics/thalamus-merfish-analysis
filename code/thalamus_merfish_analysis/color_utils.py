@@ -9,8 +9,6 @@ from matplotlib.colors import to_rgba, to_rgb, ListedColormap, Normalize
 from matplotlib.cm import ScalarMappable
 from seaborn import color_palette
 
-from .abc_load import get_taxonomy_palette
-
 colour.set_domain_range_scale("1")
 
 
@@ -153,8 +151,6 @@ def generate_palette(categories, palette=glasbey, hue_label=None, **items):
     -------
     palette : dict of (str, RGB tuples)
     """
-    if palette is None and hue_label in ["class", "subclass", "supertype", "cluster"]:
-        palette = get_taxonomy_palette(hue_label)
     if isinstance(palette, Mapping):
         palette = {x: palette[x] for x in categories if x in palette}
     else:

@@ -1,11 +1,11 @@
+from importlib_resources import files
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from colorcet import glasbey_light
 from scipy.interpolate import LinearNDInterpolator
 
-from .abc_load import (get_taxonomy_palette, get_thalamus_ccf_indices,
-                       X_RESOLUTION, Y_RESOLUTION, Z_RESOLUTION)
+from . import abc_load as abc
 from .ccf_plots import plot_ccf_section, _format_image_axes
 
 
@@ -96,6 +96,7 @@ def plot_metric_multiple_levels(th_metrics,
     return fig
 
 # TODO: generalize to any metric and move to ccf_plots
+# TODO: use section index
 def plot_local_metric_ccf_section(obs_ccf, cellwise_metrics_df, ccf_images, 
                                   section, metric_name, section_col='z_section', 
                                   coords='reconstructed', cmap='Oranges'):
@@ -105,14 +106,14 @@ def plot_local_metric_ccf_section(obs_ccf, cellwise_metrics_df, ccf_images,
     
     # interpolate the metric onto a grid defined by the CCF image volume
     interp = LinearNDInterpolator(obs[['x_'+coords, 'y_'+coords]], obs[metric_name])
-    grid = np.ix_(np.arange(ccf_images[:,:,0].shape[0])* X_RESOLUTION, 
-                  np.arange(ccf_images[:,:,0].shape[1])* Y_RESOLUTION) 
+    grid = np.ix_(np.arange(ccf_images[:,:,0].shape[0])* abc.X_RESOLUTION, 
+                  np.arange(ccf_images[:,:,0].shape[1])* abc.Y_RESOLUTION) 
     imdata = interp(*grid)
 
-    extent = X_RESOLUTION * (np.array([0, imdata.shape[0], imdata.shape[1], 0]) - 0.5)
+    extent = abc.X_RESOLUTION * (np.array([0, imdata.shape[0], imdata.shape[1], 0]) - 0.5)
     # set non-TH voxels to NaN
-    sec_img = ccf_images[:,:,int(np.rint(section/Z_RESOLUTION))]
-    th_ccf_mask = np.any(np.stack([sec_img==i for i in get_thalamus_ccf_indices()]), 
+    sec_img = ccf_images[:,:,int(np.rint(section/abc.Z_RESOLUTION))]
+    th_ccf_mask = np.any(np.stack([sec_img==i for i in abc.get_thalamus_ccf_indices()]), 
                          axis=0)
     imdata[~th_ccf_mask] = np.nan
     # imdata = gaussian_filter(imdata, 2)
@@ -171,10 +172,9 @@ def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
     # Set the palette
     if palette is None:
         if (taxonomy_level=='subclass') | (taxonomy_level=='supertype'):
-            palette = get_taxonomy_palette(taxonomy_level)
+            palette = abc.get_taxonomy_palette(taxonomy_level)
         elif taxonomy_level=='cluster':
-            cluster_palette_df = pd.read_csv('/code/resources/cluster_palette_glasbey.csv')
-            palette = dict(zip(cluster_palette_df['Unnamed: 0'], cluster_palette_df['0']))
+            palette = abc.get_thalamus_cluster_palette()
         else:
             palette = glasbey_light
     # add 'other' to the palette
