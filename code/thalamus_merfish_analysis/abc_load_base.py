@@ -182,7 +182,7 @@ class AtlasWrapper:
         if include_children:
             regions = self.get_ccf_names(regions)
         if buffer > 0:
-            obs, _ = self.label_ccf_spatial_subset(
+            obs = self.label_ccf_spatial_subset(
                 obs,
                 regions,
                 distance_px=buffer,
@@ -218,6 +218,9 @@ class AtlasWrapper:
         """
         if include is not None:
             obs = obs[obs["class"].isin(include)]
+            
+        if exclude is None:
+            exclude = []
         obs = obs[~obs["class"].isin(exclude)]
         return obs
 

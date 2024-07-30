@@ -20,6 +20,7 @@ class ThalamusWrapper(AtlasWrapper):
     TH_ZI_CLASSES = ["12 HY GABA", "17 MH-LH Glut", "18 TH Glut"]
     MB_CLASSES = ["19 MB Glut", "20 MB GABA"]  # midbrain
     # cls.NN_CLASSES already defined in abc_load_base.py
+    # TODO copy NN_CLASSES into this class so we can use it as a default parameter value in functions
     TH_SECTIONS = np.arange(25, 42)
 
     def load_standard_thalamus(self, data_structure="adata"):
@@ -71,12 +72,10 @@ class ThalamusWrapper(AtlasWrapper):
             raise ValueError("data_structure must be adata or obs.")
 
         # preprocessing
-        # filter: non-neuronal
+        # default: exclude=NN_CLASSES, include=TH_ZI_CLASSES+MB_CLASSES
         data_th = self.filter_by_class_thalamus(
             data_th,
-            filter_nonneuronal=True,
-            filter_midbrain=False,
-            filter_other_nonTH=True,
+            display_filtered_classes=True,
         )
         data_th = self.filter_by_thalamus_coords(data_th, buffer=0, realigned=False)
 
@@ -160,9 +159,9 @@ class ThalamusWrapper(AtlasWrapper):
     def filter_by_class_thalamus(
         cls,
         th_zi_adata,
-        filter_nonneuronal=True,
-        filter_midbrain=False,
-        filter_other_nonTH=True,
+        classes_to_exclude=None, 
+        classes_to_include=None,
+        display_filtered_classes=True,
     ):
         """Filters anndata object to only include cells from specific taxonomy
         classes.
@@ -171,11 +170,13 @@ class ThalamusWrapper(AtlasWrapper):
         ----------
         th_zi_adata
             anndata object or dataframe containing the ABC Atlas MERFISH dataset
-        filter_nonneuronal : bool, default=True
-            filters out non-neuronal classes
-        filter_midbrain : bool, default=True
-            filters out midbrain classes; may be useful to keep these if interested
-            in analyzing midbrain-thalamus boundary in the anterior
+        classes_to_exclude : list of str, default=None
+            list of classes to filter out
+        classes_to_include : list of str, default=None
+            if present, include ONLY cells in this list of classes (acts prior 
+            to 'exclude' and thus excludes any class not explicitly in this list)
+        display_filtered_classes : bool, default=True
+            whether to print the classes filtered out of the input data
 
         Returns
         -------
@@ -183,21 +184,30 @@ class ThalamusWrapper(AtlasWrapper):
             the anndata object, filtered to only include cells from specific
             thalamic & zona incerta + optional (midbrain & nonneuronal) classes
         """
+        # conditioning on both=None allows user to pass through the expected behavior 
+        # of abc_load_base.filter_by_class(..., include=None) which does nothing
+        if (classes_to_exclude is None) and (classes_to_include is None):
+            classes_to_exclude = cls.NN_CLASSES
+            classes_to_include = cls.TH_ZI_CLASSES + cls.MB_CLASSES
+        elif classes_to_exclude is None:
+            classes_to_exclude = []
+            
         dataframe_input = hasattr(th_zi_adata, "loc")
         obs = th_zi_adata if dataframe_input else th_zi_adata.obs
-
-        # always keep TH+ZI classes
-        classes_to_keep = cls.TH_ZI_CLASSES.copy()
-        # optionally include midbrain and/or nonneuronal classes
-        if not filter_midbrain:
-            classes_to_keep += cls.MB_CLASSES
-        if not filter_nonneuronal:
-            classes_to_keep += cls.NN_CLASSES
-        if filter_other_nonTH:
-            obs = cls.filter_by_class(obs, include=classes_to_keep)
-        else:
-            classes_to_exclude = set(cls.MB_CLASSES + cls.NN_CLASSES) - set(classes_to_keep)
-            obs = cls.filter_by_class(obs, exclude=classes_to_exclude)
+        classes_input = sorted(obs["class"].cat.remove_unused_categories().cat.categories.to_list())
+        
+        # filter by specified classes
+        obs = cls.filter_by_class(obs, 
+                                  exclude=classes_to_exclude, 
+                                  include=classes_to_include)
+        classes_output = sorted(obs["class"].cat.remove_unused_categories().cat.categories.to_list())
+        
+        # (optional) print out to make explicit to the user which classes are
+        # being excluded from the dataset & which they could choose to include
+        if display_filtered_classes:
+            print(f'Classes present in input data: {classes_input}\n'
+                f'Classes present in output data: {classes_output}\n'
+                f'Classes filtered out of input data: {sorted(list(set(classes_input) - set(classes_output)))}')
 
         return obs if dataframe_input else th_zi_adata[obs.index, :]
 
