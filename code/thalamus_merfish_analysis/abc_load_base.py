@@ -19,6 +19,8 @@ from .ccf_images import (
     cleanup_mask_regions,
     image_index_from_coords,
     sectionwise_dilation,
+    sectionwise_closing,
+    sectionwise_fill_holes,
 )
 
 ABC_ROOT = Path("/data/abc_atlas/")
@@ -157,7 +159,15 @@ class AtlasWrapper:
 
         return adata
 
-    def filter_by_ccf_region(self, obs, regions, buffer=0, realigned=False, include_children=True):
+    def filter_by_ccf_region(
+        self, 
+        obs, 
+        regions, 
+        buffer=0,
+        realigned=False, 
+        include_children=True,
+        fill_holes_in_mask=False,
+    ):
         """Filters cell metadata (obs) dataframe spatially by CCF region labels,
         with an optional buffer region (using stored labels if no buffer).
 
@@ -178,24 +188,19 @@ class AtlasWrapper:
         -------
         obs
             filtered dataframe
+        mask_img
+            stack of 2D binary masks (x, y, n_sections) used for filtering
         """
-        if include_children:
-            regions = self.get_ccf_names(regions)
-        if buffer > 0:
-            obs = self.label_ccf_spatial_subset(
-                obs,
-                regions,
-                distance_px=buffer,
-                cleanup_mask=True,
-                filter_cells=True,
-                realigned=realigned,
-            )
-        else:
-            ccf_label = (
-                "parcellation_structure_realigned" if realigned else "parcellation_structure"
-            )
-            obs = obs[obs[ccf_label].isin(regions)]
-        return obs
+        obs, mask_img = self.label_ccf_spatial_subset(
+                            obs,
+                            regions,
+                            distance_px=buffer,
+                            cleanup_mask=True,
+                            filter_cells=True,
+                            realigned=realigned,
+                            fill_holes_in_mask=fill_holes_in_mask,
+                            )
+        return obs, mask_img
 
     @staticmethod
     def filter_by_class(obs, exclude=NN_CLASSES, include=None):
@@ -369,7 +374,7 @@ class AtlasWrapper:
         cells_df["left_hemisphere"] = cells_df["z_ccf"] < 5.7
         if realigned:
             cells_df["left_hemisphere_realigned"] = cells_df["z_ccf_realigned"] < 5.7
-        # TODO: use cat.rename_categories to rename these
+        # TODO: use cat.rename_categories to rename these to comply with FutureWarning
         cells_df = cells_df.replace("ZI-unassigned", "ZI")
         return cells_df
 
@@ -453,6 +458,7 @@ class AtlasWrapper:
         include_children=True,
         flip_y=False,
         distance_px=20,
+        fill_holes_in_mask=False,
         cleanup_mask=True,
         filter_cells=False,
         realigned=False,
@@ -480,6 +486,8 @@ class AtlasWrapper:
             the cell coordinates and binary mask have the same y-axis orientation
         distance_px : int, default=20
             dilation radius in pixels (1px = 10um)
+        fill_holes_in_mask : bool, default=False
+            fills internal holes in the mask; usually, internal white matter tracts
         cleanup_mask : bool, default=True
             removes any regions whose area ratio, as compared to the largest region
             in the binary mask, is lower than 0.1
@@ -493,8 +501,11 @@ class AtlasWrapper:
         Returns
         -------
         cells_df
+            dataframe with new column labeling cells in spatial subset; 
+            if filter_cells=True, returns only cells in subset
+        mask_img
+            stack of 2D binary masks (x, y, n_sections) used for labeling & filtering
         """
-
         # use reconstructed (in MERFISH space) coordinates from cells_df
         if realigned:
             coords = ["x_section", "y_section", "z_section"]
@@ -513,24 +524,42 @@ class AtlasWrapper:
         reverse_lookup = self.get_ccf_index_reverse_lookup(level=ccf_level)
         index_values = reverse_lookup.loc[ccf_regions]
 
+        ##### Create binary mask to use for filtering cells #####
         # generate binary mask
         th_mask = np.isin(ccf_img, index_values)  # takes about 5 sec
         # flip y-axis to match flipped cell y-coordinates
         if flip_y:
             th_mask = np.flip(th_mask, axis=1)
-
-        mask_img = sectionwise_dilation(th_mask, distance_px, true_radius=False)
+        
+        # fills internal holes in the mask (usually, internal white matter tracts)
+        if fill_holes_in_mask:
+            # TODO allow for different distance_px selections; this default has
+            # only been tested for the TH+ZI subset
+            dist_for_TH = 2
+            th_mask = sectionwise_fill_holes(
+                        sectionwise_closing(th_mask, distance_px=dist_for_TH)
+                        )
+            
+        # dilate mask, if specified, to ensure inclusion of cells along misaligned edges
+        if distance_px == 0:
+            mask_img = th_mask
+        else:
+            mask_img = sectionwise_dilation(th_mask, distance_px, true_radius=False)
+            
         # remove too-small mask regions that are likely mistaken parcellations
         if cleanup_mask:
             mask_img = cleanup_mask_regions(mask_img, area_ratio_thresh=0.1)
+        
+        ##### Label & Filter Cells #####    
         # label cells that fall within dilated TH+ZI mask; by default,
         cells_df = _label_masked_cells(
             cells_df, mask_img, coords, resolutions, field_name=field_name
         )
         if filter_cells:
-            return cells_df[cells_df[field_name]].copy().drop(columns=[field_name])
+            filtered_df = cells_df[cells_df[field_name]].copy().drop(columns=[field_name])
+            return filtered_df, mask_img
         else:
-            return cells_df
+            return cells_df, mask_img
 
     @cached_property
     def _ccf_metadata(self):

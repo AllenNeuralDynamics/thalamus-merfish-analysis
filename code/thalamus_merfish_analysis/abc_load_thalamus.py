@@ -7,6 +7,12 @@ import pandas as pd
 
 from .abc_load_base import AtlasWrapper, accept_anndata_input
 
+from .ccf_images import (
+    sectionwise_closing,
+    sectionwise_fill_holes,
+    sectionwise_dilation,
+)
+
 _DEVCCF_TOP_NODES_THALAMUS = ["ZIC", "CZI", "RtC", "Th"]
 _CCF_TOP_NODES_THALAMUS = ["TH", "ZI"]
 
@@ -75,9 +81,14 @@ class ThalamusWrapper(AtlasWrapper):
         # default: exclude=NN_CLASSES, include=TH_ZI_CLASSES+MB_CLASSES
         data_th = self.filter_by_class_thalamus(
             data_th,
-            display_filtered_classes=True,
+            display_filtered_classes=False,
         )
-        data_th = self.filter_by_thalamus_coords(data_th, buffer=0, realigned=False)
+        data_th, _ = self.filter_by_thalamus_coords(data_th, 
+                                                    buffer=0, 
+                                                    include_white_matter=True,
+                                                    realigned=False,
+                                                    # cleanup_mask=True
+                                                    )
 
         return data_th.copy()
 
@@ -89,6 +100,7 @@ class ThalamusWrapper(AtlasWrapper):
         drop_blanks=True,
         flip_y=False,
         realigned=False,
+        include_white_matter=True,
         drop_unused=True,
         **kwargs,
     ):
@@ -117,6 +129,9 @@ class ThalamusWrapper(AtlasWrapper):
         realigned : bool, default=False
             load and use for subsetting the metadata from realignment results data asset,
             containing 'ccf_realigned' coordinates
+        include_white_matter : bool, default=True
+            include cells that fall in white matter tracts within the thalamus 
+            when subsetting to TH+ZI
         drop_unused : bool, default=True
             drop unused columns from metadata
         **kwargs
@@ -131,12 +146,13 @@ class ThalamusWrapper(AtlasWrapper):
             cells_md_df = self.get_combined_metadata(
                 realigned=realigned, flip_y=flip_y, drop_unused=drop_unused, **kwargs
             )
-            cells_md_df = self.label_thalamus_spatial_subset(
+            cells_md_df, _ = self.label_thalamus_spatial_subset(
                 cells_md_df,
                 flip_y=flip_y,
                 realigned=realigned,
                 distance_px=20,
                 cleanup_mask=True,
+                fill_holes_in_mask=include_white_matter,
                 drop_end_sections=True,
                 filter_cells=True,
             )
@@ -212,25 +228,40 @@ class ThalamusWrapper(AtlasWrapper):
         return obs if dataframe_input else th_zi_adata[obs.index, :]
 
     @accept_anndata_input
-    def filter_by_thalamus_coords(self, obs, buffer=0, **kwargs):
+    def filter_by_thalamus_coords(self, 
+                                  obs, 
+                                  buffer=0, 
+                                  include_white_matter=False,
+                                  **kwargs):
         """Filters to only include cells within thalamus CCF boundaries +/- a buffer.
 
         Parameters
         ----------
-        data : AnnData or DataFrame
+        obs : AnnData or DataFrame
             object containing the ABC Atlas MERFISH metadata; if AnnData, .obs
             should contain the metadata
+        buffer : int, default=0
+            buffer in microns to add to the thalamus mask
+        include_white_matter : bool, default=False
+            whether to include cells that fall in white matter tracts within 
+            the thalamus when filtering
         **kwargs
             passed to 'filter_by_ccf_region'
 
         Returns
         -------
-        data
+        obs
             the filtered AnnData or DataFrame object
+        mask_img
+            stack of 2D binary masks (x, y, n_sections) used for filtering
         """
-        obs = self.filter_by_ccf_region(obs, ["TH", "ZI"], buffer=buffer, **kwargs)
+        obs, mask_img = self.filter_by_ccf_region(obs, 
+                                                    ["TH", "ZI"], 
+                                                    buffer=buffer,
+                                                    fill_holes_in_mask=include_white_matter, 
+                                                    **kwargs)
         obs = self.filter_thalamus_sections(obs)
-        return obs
+        return obs, mask_img
 
     @staticmethod
     def filter_thalamus_sections(obs):
@@ -271,16 +302,22 @@ class ThalamusWrapper(AtlasWrapper):
         -------
         cells_df
             with a new boolean column specifying which cells are in the TH+ZI dataset
+        mask_img
+            stack of 2D binary masks (x, y, n_sections) used for labeling the 
+            thalamus spatial subset
         """
         ccf_regions = ["TH", "ZI"]
-        cells_df = self.label_ccf_spatial_subset(
+        cells_df, mask_img = self.label_ccf_spatial_subset(
             cells_df, ccf_regions, field_name=field_name, **kwargs
         )
+        
         # exclude the 1 anterior-most and 1 posterior-most thalamus sections due to
         # poor overlap between mask & thalamic cells
+        # TODO: may want to modify the mask_img to reflect the dropped sections
         if drop_end_sections:
             cells_df = self.filter_thalamus_sections(cells_df)
-        return cells_df
+            
+        return cells_df, mask_img
 
     @lru_cache
     def get_thalamus_names(self, level=None):

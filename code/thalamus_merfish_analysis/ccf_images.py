@@ -39,6 +39,51 @@ def sectionwise_dilation(mask_img, distance_px, true_radius=False):
     return dilated_mask_img
 
 
+def sectionwise_closing(mask_img, distance_px):
+    """ Closes a stack of 2D binary masks by a specified radius (in px).
+    
+    Parameters
+    ----------
+    mask_img : array_like
+        stack of 2D binary mask, shape (x, y, n_sections)
+    distance_px : int
+        closing radius in pixels
+        
+    Returns
+    -------
+    closed_mask_img
+        3D np array, stack of closed 2D binary masks
+    """
+    closed_mask_img = np.zeros_like(mask_img)
+    
+    for i in range(mask_img.shape[2]):
+        closed_mask_img[:,:,i] = ndi.binary_closing(mask_img[:,:,i], 
+                                                    iterations=distance_px)
+        
+    return closed_mask_img
+
+
+def sectionwise_fill_holes(mask_img):
+    '''Fills holes in a stack of 2D binary masks.
+    
+    Parameters
+    ----------
+    mask_img : array_like
+        stack of 2D binary mask, shape (x, y, n_sections)
+        
+    Returns
+    -------
+    filled_mask_img
+        stack of 2D binary masks with holes filled
+    '''
+    filled_mask_img = np.zeros_like(mask_img)
+    
+    for i in range(mask_img.shape[2]):
+        filled_mask_img[:,:,i] = ndi.binary_fill_holes(mask_img[:,:,i])
+        
+    return filled_mask_img
+
+
 def cleanup_mask_regions(mask_img, area_ratio_thresh=0.1):
     ''' Removes, sectionwise, any binary mask regions whose areas are smaller
     than the specified ratio, as compared to the largest region in the mask.
