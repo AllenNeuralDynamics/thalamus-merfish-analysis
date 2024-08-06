@@ -13,13 +13,10 @@ from thalamus_merfish_analysis import ccf_transforms as ccft
 df_full = abc.get_combined_metadata(drop_unused=False)
 # permissive spatial subset using published alignment
 # (previously using manual subset?)
-df = abc.label_thalamus_spatial_subset(
+df = abc.filter_by_thalamus_coords(
     df_full,
-    flip_y=False,
-    distance_px=25,
-    cleanup_mask=True,
-    drop_end_sections=True,
-    filter_cells=True,
+    buffer=25,
+    include_white_matter=True
 )
 
 coords = ["x_section", "y_section", "z_section"]

@@ -56,14 +56,7 @@ def load_adata_for_cirro():
     adata = load_adata_thalamus(flip_y=True)
 
     # filter by class
-    adata = filter_by_class_thalamus(adata,
-                                         filter_nonneuronal=True,
-                                         filter_midbrain=False,
-                                         filter_other_nonTH=True)
-    
-    # filter by thalamus coordinates
-    adata = filter_by_thalamus_coords(adata, 
-                                          buffer=0)
+    adata = filter_by_class_thalamus(adata)
 
     return adata
 

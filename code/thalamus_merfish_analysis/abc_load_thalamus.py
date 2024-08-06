@@ -7,12 +7,6 @@ import pandas as pd
 
 from .abc_load_base import AtlasWrapper, accept_anndata_input
 
-from .ccf_images import (
-    sectionwise_closing,
-    sectionwise_fill_holes,
-    sectionwise_dilation,
-)
-
 _DEVCCF_TOP_NODES_THALAMUS = ["ZIC", "CZI", "RtC", "Th"]
 _CCF_TOP_NODES_THALAMUS = ["TH", "ZI"]
 
@@ -26,7 +20,6 @@ class ThalamusWrapper(AtlasWrapper):
     TH_ZI_CLASSES = ["12 HY GABA", "17 MH-LH Glut", "18 TH Glut"]
     MB_CLASSES = ["19 MB Glut", "20 MB GABA"]  # midbrain
     # cls.NN_CLASSES already defined in abc_load_base.py
-    # TODO copy NN_CLASSES into this class so we can use it as a default parameter value in functions
     TH_SECTIONS = np.arange(25, 42)
 
     def load_standard_thalamus(self, data_structure="adata"):
@@ -53,42 +46,22 @@ class ThalamusWrapper(AtlasWrapper):
         """
         # load
         if data_structure == "adata":
-            data_th = self.load_adata_thalamus(
-                subset_to_TH_ZI=True,
-                transform="log2cpt",
-                with_metadata=True,
-                drop_blanks=True,
-                flip_y=False,
-                realigned=False,
-            )
+            data_th = self.load_adata_thalamus()
         elif data_structure == "obs":
             # still contains all cells; filter_by_thalamus_coords() subsets to TH+ZI
             data_th = self.get_combined_metadata(
                 drop_unused=True, realigned=False, flip_y=False, round_z=True
             )
-            # TODO: why is this here if filtered below?!
-            # data_th = self.label_thalamus_spatial_subset(
-            #     data_th,
-            #     flip_y=False,
-            #     realigned=False,
-            #     cleanup_mask=True,
-            #     filter_cells=True,
-            # )
+            data_th = self.filter_by_thalamus_coords(data_th)
         else:
             raise ValueError("data_structure must be adata or obs.")
 
         # preprocessing
-        # default: exclude=NN_CLASSES, include=TH_ZI_CLASSES+MB_CLASSES
+        # default: include=TH_ZI_CLASSES+MB_CLASSES
         data_th = self.filter_by_class_thalamus(
             data_th,
             display_filtered_classes=False,
         )
-        data_th, _ = self.filter_by_thalamus_coords(data_th, 
-                                                    buffer=0, 
-                                                    include_white_matter=True,
-                                                    realigned=False,
-                                                    # cleanup_mask=True
-                                                    )
 
         return data_th.copy()
 
@@ -110,7 +83,7 @@ class ThalamusWrapper(AtlasWrapper):
         ----------
         subset_to_TH_ZI : bool, default=True
             returns adata that only includes cells in the TH+ZI dataset, as subset
-            by label_thalamus_spatial_subset()
+            by filter_by_thalamus_coords()
         transform : {'log2cpt', 'log2cpm', 'log2cpv', 'raw'}, default='log2cpt'
             which transformation of the gene counts to load and/or calculate from
             the expression matrices
@@ -130,7 +103,7 @@ class ThalamusWrapper(AtlasWrapper):
             load and use for subsetting the metadata from realignment results data asset,
             containing 'ccf_realigned' coordinates
         include_white_matter : bool, default=True
-            include cells that fall in white matter tracts within the thalamus 
+            include cells that fall in white matter tracts within the thalamus
             when subsetting to TH+ZI
         drop_unused : bool, default=True
             drop unused columns from metadata
@@ -146,15 +119,10 @@ class ThalamusWrapper(AtlasWrapper):
             cells_md_df = self.get_combined_metadata(
                 realigned=realigned, flip_y=flip_y, drop_unused=drop_unused, **kwargs
             )
-            cells_md_df, _ = self.label_thalamus_spatial_subset(
+            cells_md_df = self.filter_by_thalamus_coords(
                 cells_md_df,
-                flip_y=flip_y,
-                realigned=realigned,
-                distance_px=20,
-                cleanup_mask=True,
-                fill_holes_in_mask=include_white_matter,
-                drop_end_sections=True,
-                filter_cells=True,
+                buffer=0,
+                include_white_matter=include_white_matter
             )
             adata = self.load_adata(
                 transform=transform, drop_blanks=drop_blanks, from_metadata=cells_md_df
@@ -172,11 +140,12 @@ class ThalamusWrapper(AtlasWrapper):
         return adata
 
     @classmethod
+    @accept_anndata_input
     def filter_by_class_thalamus(
         cls,
-        th_zi_adata,
-        classes_to_exclude=None, 
-        classes_to_include=None,
+        obs,
+        include=TH_ZI_CLASSES + MB_CLASSES,
+        exclude=None,
         display_filtered_classes=True,
     ):
         """Filters anndata object to only include cells from specific taxonomy
@@ -184,55 +153,40 @@ class ThalamusWrapper(AtlasWrapper):
 
         Parameters
         ----------
-        th_zi_adata
+        obs
             anndata object or dataframe containing the ABC Atlas MERFISH dataset
-        classes_to_exclude : list of str, default=None
+        exclude : list of str, default=None
             list of classes to filter out
-        classes_to_include : list of str, default=None
-            if present, include ONLY cells in this list of classes (acts prior 
+        include : list of str, default=None
+            if present, include ONLY cells in this list of classes (acts prior
             to 'exclude' and thus excludes any class not explicitly in this list)
         display_filtered_classes : bool, default=True
             whether to print the classes filtered out of the input data
 
         Returns
         -------
-        th_zi_adata
-            the anndata object, filtered to only include cells from specific
+        obs
+            the dataset, filtered to only include cells from specific
             thalamic & zona incerta + optional (midbrain & nonneuronal) classes
         """
-        # conditioning on both=None allows user to pass through the expected behavior 
-        # of abc_load_base.filter_by_class(..., include=None) which does nothing
-        if (classes_to_exclude is None) and (classes_to_include is None):
-            classes_to_exclude = cls.NN_CLASSES
-            classes_to_include = cls.TH_ZI_CLASSES + cls.MB_CLASSES
-        elif classes_to_exclude is None:
-            classes_to_exclude = []
-            
-        dataframe_input = hasattr(th_zi_adata, "loc")
-        obs = th_zi_adata if dataframe_input else th_zi_adata.obs
         classes_input = sorted(obs["class"].cat.remove_unused_categories().cat.categories.to_list())
-        
-        # filter by specified classes
-        obs = cls.filter_by_class(obs, 
-                                  exclude=classes_to_exclude, 
-                                  include=classes_to_include)
-        classes_output = sorted(obs["class"].cat.remove_unused_categories().cat.categories.to_list())
-        
+        obs = cls.filter_by_class(obs, exclude=exclude, include=include)
+        classes_output = sorted(
+            obs["class"].cat.remove_unused_categories().cat.categories.to_list()
+        )
         # (optional) print out to make explicit to the user which classes are
         # being excluded from the dataset & which they could choose to include
         if display_filtered_classes:
-            print(f'Classes present in input data: {classes_input}\n'
-                f'Classes present in output data: {classes_output}\n'
-                f'Classes filtered out of input data: {sorted(list(set(classes_input) - set(classes_output)))}')
+            print(
+                f"Classes present in input data: {classes_input}\n"
+                f"Classes present in output data: {classes_output}\n"
+                f"Classes filtered out of input data: {sorted(list(set(classes_input) - set(classes_output)))}"
+            )
 
-        return obs if dataframe_input else th_zi_adata[obs.index, :]
+        return obs
 
     @accept_anndata_input
-    def filter_by_thalamus_coords(self, 
-                                  obs, 
-                                  buffer=0, 
-                                  include_white_matter=False,
-                                  **kwargs):
+    def filter_by_thalamus_coords(self, obs, buffer=0, include_white_matter=True, **kwargs):
         """Filters to only include cells within thalamus CCF boundaries +/- a buffer.
 
         Parameters
@@ -242,26 +196,27 @@ class ThalamusWrapper(AtlasWrapper):
             should contain the metadata
         buffer : int, default=0
             buffer in microns to add to the thalamus mask
-        include_white_matter : bool, default=False
-            whether to include cells that fall in white matter tracts within 
+        include_white_matter : bool, default=True
+            whether to include cells that fall in white matter tracts within
             the thalamus when filtering
         **kwargs
-            passed to 'filter_by_ccf_region'
+            passed to 'label_ccf_spatial_subset'
 
         Returns
         -------
         obs
             the filtered AnnData or DataFrame object
-        mask_img
-            stack of 2D binary masks (x, y, n_sections) used for filtering
         """
-        obs, mask_img = self.filter_by_ccf_region(obs, 
-                                                    ["TH", "ZI"], 
-                                                    buffer=buffer,
-                                                    fill_holes_in_mask=include_white_matter, 
-                                                    **kwargs)
+        obs, _ = self.label_ccf_spatial_subset(
+                obs,
+                ["TH", "ZI"],
+                distance_px=buffer,
+                filter_cells=True,
+                fill_holes_in_mask=include_white_matter,
+                **kwargs
+            )
         obs = self.filter_thalamus_sections(obs)
-        return obs, mask_img
+        return obs
 
     @staticmethod
     def filter_thalamus_sections(obs):
@@ -271,53 +226,6 @@ class ThalamusWrapper(AtlasWrapper):
         alignment between thalamus CCF structure and mapped thalamic cells.
         """
         return obs.query("5.0 <= z_section <= 8.2")
-
-    def label_thalamus_spatial_subset(
-        self, cells_df, drop_end_sections=True, field_name="TH_ZI_dataset", **kwargs
-    ):
-        """Labels cells that are in the thalamus spatial subset of the ABC atlas.
-
-        Turns a rasterized image volume that includes all thalamus (TH) and zona
-        incerta (ZI) CCF structures in a binary mask, then dilates by 200um (20px)
-        to ensure inclusion of the vast majority cells in known thalamic subclasses.
-        Labels cells that fall in this dilate binary mask as in the 'TH_ZI_dataset'
-
-        Parameters
-        ----------
-        cells_df : pandas dataframe
-            dataframe of cell metadata
-        distance_px : int, default=20
-            dilation radius in pixels (1px = 10um)
-        filter_cells : bool, default=False
-            filters cells_df to remove non-TH+ZI cells
-        flip_y : bool, default=False
-            flip y-axis orientation of th_mask so coronal section is right-side up.
-            This MUST be set to true if flip_y=True in get_combined_metadata() so
-            the cell coordinates and binary mask have the same y-axis orientation
-        cleanup_mask : bool, default=True
-            removes any regions whose area ratio, as compared to the largest region
-            in the binary mask, is lower than 0.1
-
-        Returns
-        -------
-        cells_df
-            with a new boolean column specifying which cells are in the TH+ZI dataset
-        mask_img
-            stack of 2D binary masks (x, y, n_sections) used for labeling the 
-            thalamus spatial subset
-        """
-        ccf_regions = ["TH", "ZI"]
-        cells_df, mask_img = self.label_ccf_spatial_subset(
-            cells_df, ccf_regions, field_name=field_name, **kwargs
-        )
-        
-        # exclude the 1 anterior-most and 1 posterior-most thalamus sections due to
-        # poor overlap between mask & thalamic cells
-        # TODO: may want to modify the mask_img to reflect the dropped sections
-        if drop_end_sections:
-            cells_df = self.filter_thalamus_sections(cells_df)
-            
-        return cells_df, mask_img
 
     @lru_cache
     def get_thalamus_names(self, level=None):
@@ -347,8 +255,7 @@ class ThalamusWrapper(AtlasWrapper):
         )
         nuclei_df_manual = nuclei_df_manual.fillna("")
         nuclei_df_auto = pd.read_csv(
-            files("thalamus_merfish_analysis.resources")
-            / "annotations_from_eroded_counts.csv",
+            files("thalamus_merfish_analysis.resources") / "annotations_from_eroded_counts.csv",
             index_col=0,
         )
         found_annotations = True
@@ -401,33 +308,23 @@ class ThalamusWrapper(AtlasWrapper):
                 # 'name in y' condition returns e.g. ['AD','IAD'] if name='AD' but
                 # 'name==y' only returns 'AD' (but is now suseptible to typos like
                 # extra spaces - maybe there's a better solution?)
-                curr_names = [
-                    x for x in nuclei_df.index if any(y == name for y in x.split(" "))
-                ]
+                curr_names = [x for x in nuclei_df.index if any(y == name for y in x.split(" "))]
             else:
                 curr_names = [
-                    x
-                    for x in nuclei_df.index
-                    if x == name and not (" " in x or "pc" in x)
+                    x for x in nuclei_df.index if x == name and not (" " in x or "pc" in x)
                 ]
             all_names.extend(curr_names)
 
             if curr_names == []:
                 unique_nuclei = sorted(
-                    set(
-                        nucleus
-                        for entry in nuclei_df.index
-                        for nucleus in entry.split()
-                    )
+                    set(nucleus for entry in nuclei_df.index for nucleus in entry.split())
                 )
                 raise UserWarning(
                     f"Nuclei name(s) not found in annotations sheet. Please select from valid nuclei names below:\n{unique_nuclei=}"
                 )
 
         field = "cluster_alias" if by == "alias" else "cluster_ids_CNN20230720"
-        clusters = chain(
-            *[nuclei_df.loc[name, field].split(", ") for name in all_names]
-        )
+        clusters = chain(*[nuclei_df.loc[name, field].split(", ") for name in all_names])
         if by == "alias":
             obs = obs.loc[lambda df: df["cluster_alias"].isin(clusters)]
         elif by == "id":

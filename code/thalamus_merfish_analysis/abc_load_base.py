@@ -28,6 +28,21 @@ CURRENT_VERSION = "20230830"
 BRAIN_LABEL = "C57BL6J-638850"
 
 
+def accept_anndata_input(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        # check first two args for AnnData in case this is an instance or class method
+        for i, arg in enumerate(args):
+            if i<=1 and isinstance(arg, ad.AnnData):
+                adata = arg.copy()
+                result = f(*args[:i], adata.obs, *args[i + 1 :], **kwargs)
+                result = adata[result.index, :]
+                break
+        else:
+            result = f(*args, **kwargs)
+        return result
+    return wrapper
+
 class AtlasWrapper:
     """
     Wrapper class for loading and processing ABC Atlas MERFISH dataset files.
@@ -159,26 +174,15 @@ class AtlasWrapper:
 
         return adata
 
-    def filter_by_ccf_region(
-        self, 
-        obs, 
-        regions, 
-        buffer=0,
-        realigned=False, 
-        include_children=True,
-        fill_holes_in_mask=False,
-    ):
-        """Filters cell metadata (obs) dataframe spatially by CCF region labels,
-        with an optional buffer region (using stored labels if no buffer).
+    def filter_by_ccf_labels(self, obs, regions, include_children=True, realigned=False):
+        """Filters cell metadata (obs) dataframe by stored CCF region labels.
 
         Parameters
         ----------
         obs
             dataframe containing cell metadata (i.e. adata.obs)
-        ccf_regions : list(str)
+        regions : list(str)
             list of (abbreviated) CCF region names to select
-        buffer, optional
-            dilation radius in pixels (1px = 10um), by default 0
         include_children, optional
             include all subregions of the specified regions, by default True
         realigned, optional
@@ -191,18 +195,15 @@ class AtlasWrapper:
         mask_img
             stack of 2D binary masks (x, y, n_sections) used for filtering
         """
-        obs, mask_img = self.label_ccf_spatial_subset(
-                            obs,
-                            regions,
-                            distance_px=buffer,
-                            cleanup_mask=True,
-                            filter_cells=True,
-                            realigned=realigned,
-                            fill_holes_in_mask=fill_holes_in_mask,
-                            )
-        return obs, mask_img
+        level = "substructure"
+        if include_children:
+            regions = self.get_ccf_names(regions, level=level)
+        ccf_label = f"parcellation_{level}_realigned" if realigned else f"parcellation_{level}"
+        obs = obs[obs[ccf_label].isin(regions)]
+        return obs
 
     @staticmethod
+    @accept_anndata_input
     def filter_by_class(obs, exclude=NN_CLASSES, include=None):
         """Filters cell metadata (obs) dataframe by cell type taxonomy
         classes. Note that these labels may change across dataset versions!
@@ -223,7 +224,7 @@ class AtlasWrapper:
         """
         if include is not None:
             obs = obs[obs["class"].isin(include)]
-            
+
         if exclude is None:
             exclude = []
         obs = obs[~obs["class"].isin(exclude)]
@@ -374,8 +375,7 @@ class AtlasWrapper:
         cells_df["left_hemisphere"] = cells_df["z_ccf"] < 5.7
         if realigned:
             cells_df["left_hemisphere_realigned"] = cells_df["z_ccf_realigned"] < 5.7
-        # TODO: use cat.rename_categories to rename these to comply with FutureWarning
-        cells_df = cells_df.replace("ZI-unassigned", "ZI")
+        cells_df["parcellation_substructure"] = cells_df["parcellation_substructure"].cat.rename_categories({"ZI-unassigned": "ZI"})
         return cells_df
 
     def get_ccf_labels_image(self, resampled=True, realigned=False, subset_to_left_hemi=False):
@@ -501,7 +501,7 @@ class AtlasWrapper:
         Returns
         -------
         cells_df
-            dataframe with new column labeling cells in spatial subset; 
+            dataframe with new column labeling cells in spatial subset;
             if filter_cells=True, returns only cells in subset
         mask_img
             stack of 2D binary masks (x, y, n_sections) used for labeling & filtering
@@ -530,28 +530,26 @@ class AtlasWrapper:
         # flip y-axis to match flipped cell y-coordinates
         if flip_y:
             th_mask = np.flip(th_mask, axis=1)
-        
+
         # fills internal holes in the mask (usually, internal white matter tracts)
         if fill_holes_in_mask:
             # TODO allow for different distance_px selections; this default has
             # only been tested for the TH+ZI subset
             dist_for_TH = 2
-            th_mask = sectionwise_fill_holes(
-                        sectionwise_closing(th_mask, distance_px=dist_for_TH)
-                        )
-            
+            th_mask = sectionwise_fill_holes(sectionwise_closing(th_mask, distance_px=dist_for_TH))
+
         # dilate mask, if specified, to ensure inclusion of cells along misaligned edges
         if distance_px == 0:
             mask_img = th_mask
         else:
             mask_img = sectionwise_dilation(th_mask, distance_px, true_radius=False)
-            
+
         # remove too-small mask regions that are likely mistaken parcellations
         if cleanup_mask:
             mask_img = cleanup_mask_regions(mask_img, area_ratio_thresh=0.1)
-        
-        ##### Label & Filter Cells #####    
-        # label cells that fall within dilated TH+ZI mask; by default,
+
+        ##### Label & Filter Cells #####
+        # label cells that fall within dilated mask
         cells_df = _label_masked_cells(
             cells_df, mask_img, coords, resolutions, field_name=field_name
         )
@@ -800,18 +798,3 @@ def _get_devccf_names(top_nodes):
     return names
 
 
-def accept_anndata_input(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        # check first two args for AnnData in case this is an instance or class method
-        for i in [0, 1]:
-            if isinstance(args[i], ad.AnnData):
-                adata = args[i]
-                result = f(*args[:i], adata.obs, *args[i + 1 :], **kwargs)
-                result = adata[result.index, :]
-                break
-        else:
-            result = f(*args, **kwargs)
-        return result
-
-    return wrapper

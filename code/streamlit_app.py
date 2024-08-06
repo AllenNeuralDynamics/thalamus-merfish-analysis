@@ -53,7 +53,7 @@ if realigned and not has_realigned_asset:
 def get_data(version, ccf_label, extend_borders=False):
     obs = abc.get_combined_metadata(realigned=has_realigned_asset, drop_unused=False)
     # remove non-neuronal and some other outlier non-thalamus types
-    obs_neurons = abc.filter_by_class_thalamus(obs, filter_midbrain=False)
+    obs_neurons = abc.filter_by_class_thalamus(obs)
     buffer = 5 if extend_borders else 0
     obs_th_neurons = abc.filter_by_thalamus_coords(obs_neurons, buffer=buffer)
     sections_all = sorted(obs_th_neurons[section_col].unique())
@@ -94,13 +94,12 @@ def get_adata(transform="cpm"):
 
 @st.cache_resource
 def get_sc_data(
-    sc_dataset="WMB-10Xv3", transform="log2", filter_nonneuronal=True, filter_th_classes=False
+    sc_dataset="WMB-10Xv3",
+    transform="log2",
 ):
     sc_obs = abc.get_sc_metadata()
     sc_obs = sc_obs[sc_obs["dataset_label"] == sc_dataset]
-    sc_obs_filtered = abc.filter_by_class_thalamus(
-        sc_obs, filter_nonneuronal=filter_nonneuronal, filter_other_nonTH=filter_th_classes
-    )
+    sc_obs_filtered = abc.filter_by_class(sc_obs)
     obs_join = sc_obs_filtered
     sc_transform = "log2" if "log2" in transform else "raw"
     adata = read_h5ad(
@@ -201,9 +200,7 @@ with pane2:
         # groups[1].write("Select reference group of cell types")
         grouped_types = [0, 0]
         hide = st.expander("Annotation settings")
-        manual_annotations = hide.radio(
-            "", [0, 1], format_func=["automated", "manual"].__getitem__
-        )
+        manual_annotations = hide.radio("", [0, 1], format_func=["automated", "manual"].__getitem__)
         include_shared_clusters = hide.checkbox("Include shared clusters", key="de_shared_clusters")
         groups = [st.expander(f"Select group {i}", expanded=True) for i in range(2)]
         for i, box in enumerate(groups):
@@ -221,7 +218,7 @@ with pane2:
             # TODO: allow typing list of names?
             grouped_types[i] = list(set(types_by_annotation) | set(types_by_name))
         group, reference = grouped_types
-            # plot_de_genes = st.form_submit_button("Plot DE genes")
+        # plot_de_genes = st.form_submit_button("Plot DE genes")
         if load_genes:
             if sc_data:
                 adata, sc_obs_filtered = get_sc_data(sc_dataset=dataset, transform=transform)
