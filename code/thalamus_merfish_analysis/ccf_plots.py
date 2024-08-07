@@ -349,6 +349,10 @@ def _plot_cells_scatter(
     if legend and secdata[point_hue].dtype.name == "category":
         secdata = secdata.copy()
         secdata[point_hue] = secdata[point_hue].cat.remove_unused_categories()
+    
+    # default to no marker outlines, but allow user to override
+    if ('linewidth' not in kwargs) and ('linewidths' not in kwargs):
+        kwargs['linewidth'] = 0
 
     sns.scatterplot(
         secdata,
@@ -357,7 +361,6 @@ def _plot_cells_scatter(
         hue=point_hue,
         s=point_size,
         palette=point_palette,
-        linewidth=0,
         legend=legend,
         ax=ax,
         **kwargs,
