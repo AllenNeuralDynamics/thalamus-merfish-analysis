@@ -2,6 +2,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import streamlit as st
 import pandas as pd
+import streamlit_utils as stu
 from thalamus_merfish_analysis import ccf_plots as cplots
 from thalamus_merfish_analysis import ccf_images as cimg
 from thalamus_merfish_analysis import de_genes as deg
@@ -10,10 +11,12 @@ from thalamus_merfish_analysis import de_genes as deg
 from thalamus_merfish_analysis.abc_load_thalamus import ThalamusWrapper
 from anndata import read_h5ad
 
+stu.ss_to_qp()
+stu.ss_from_qp()
 st.set_page_config(page_title="Thalamus MERFISH explorer", layout="wide")
 version = "20230830"
 section_col = "brain_section_label"
-ccf_level = "substructure"
+ccf_level = "structure"
 lump_structures = False
 
 abc = ThalamusWrapper(version=version)
@@ -39,7 +42,7 @@ th_names = [x for x in abc.get_thalamus_names() if "unassigned" not in x]
 th_subregion_names = [x for x in abc.get_thalamus_names(level=ccf_level) if "unassigned" not in x]
 palettes = {level: abc.get_taxonomy_palette(level) for level in ["subclass", "supertype"]}
 palettes["cluster"] = abc.get_thalamus_cluster_palette()
-cplots.CCF_REGIONS_DEFAULT = th_subregion_names
+cplots.CCF_REGIONS_DEFAULT = abc.get_thalamus_names()
 
 has_realigned_asset = Path(
     "/data/realigned/abc_realigned_metadata_thalamus-boundingbox.parquet"
@@ -143,21 +146,26 @@ st.markdown(
 pane1, pane2 = st.columns(2)
 with pane2:
     st.header("Gene expression")
-    transform = st.radio("Gene expression units", ["log2cpt", "log2cpm", "log2cpv", "raw"], index=0)
+    transform = st.radio(
+        "Transform", ["log2cpt", "log2cpm", "log2cpv", "raw"], index=0, key="transform_qp"
+    )
     merfish_genes = abc.get_gene_metadata()["gene_symbol"].values
     single_gene, multi_gene, de_genes = st.tabs(
         ["Single gene plots", "Multiple gene overlay", "Differential expression"]
     )
     with single_gene:
-        with st.form("gene_plot"):
-            gene = st.selectbox("Select gene", merfish_genes, index=None)
-            nuclei = st.multiselect("Nuclei to highlight", th_subregion_names)
-            sections = st.multiselect("Sections", sections_all, key="gene_sections")
-            if len(sections) == 0:
-                sections = None
-            focus_plot = st.checkbox("Focus on selected nuclei") and len(nuclei) > 0
-            plot_single_gene = st.form_submit_button("Plot gene expression")
-        if plot_single_gene:
+        st_gp = st.form("gene_plot")
+        gene = st_gp.selectbox("Select gene", merfish_genes, index=None, key="gp_gene_qp")
+        nuclei = st_gp.multiselect(
+            "Nuclei to highlight", th_subregion_names, key="gp_regionlist_qp"
+        )
+        sections = st_gp.multiselect("Sections", sections_all, key="gp_sectionlist_qp")
+        if len(sections) == 0:
+            sections = None
+        focus_plot = (
+            st_gp.checkbox("Focus on selected nuclei", key="gp_focus_qp") and len(nuclei) > 0
+        )
+        if st_gp.form_submit_button("Plot gene expression", on_click=stu.ss_to_qp):
             adata = get_adata(transform=transform)
             plots = cplots.plot_expression_ccf(
                 adata,
@@ -171,12 +179,11 @@ with pane2:
             for plot in plots:
                 st.pyplot(plot)
     with multi_gene:
-        with st.form("multigene_plot"):
-            gene_set = st.multiselect("Select genes", merfish_genes)
-            sections = st.multiselect("Sections", sections_all)
-            dark_background = st.checkbox("Dark background")
-            plot_multi_gene = st.form_submit_button("Plot multi-gene expression")
-        if plot_multi_gene:
+        st_mg = st.form("multigene_plot")
+        gene_set = st_mg.multiselect("Select genes", merfish_genes, key="mg_genelist_qp")
+        sections = st_mg.multiselect("Sections", sections_all, key="mg_sectionlist_qp")
+        dark_background = st_mg.checkbox("Dark background", key="mg_dark_qp")
+        if st_mg.form_submit_button("Plot multi-gene expression", on_click=stu.ss_to_qp):
             adata = get_adata(transform=transform)
             plots = cplots.plot_hcr(
                 adata,
@@ -189,42 +196,47 @@ with pane2:
                 st.pyplot(plot)
     with de_genes:
         with st.form("load_genes"):
-            dataset = st.radio("Choose dataset", ["MERFISH", "WMB-10Xv3", "WMB-10Xv2"], index=1)
-            sc_data = dataset != "MERFISH"
-            load_genes = st.form_submit_button("Load gene data and plot")
-        taxonomy_level = st.selectbox("Taxonomy level", ["subclass", "supertype", "cluster"])
-
-        # with st.form("de_genes"):
-        # groups = [st.container(border=True) for _ in range(2)]
-        # groups[0].write("Select primary group of cell types")
-        # groups[1].write("Select reference group of cell types")
-        grouped_types = [0, 0]
-        hide = st.expander("Annotation settings")
-        manual_annotations = hide.radio("", [0, 1], format_func=["automated", "manual"].__getitem__)
-        include_shared_clusters = hide.checkbox("Include shared clusters", key="de_shared_clusters")
-        groups = [st.expander(f"Select group {i}", expanded=True) for i in range(2)]
-        for i, box in enumerate(groups):
-            regions = box.multiselect("By nucleus", th_subregion_names, key=f"regions_{i}")
-            types_by_annotation = abc.get_obs_from_annotated_clusters(
-                regions,
-                obs_th_neurons,
-                include_shared_clusters=include_shared_clusters,
-                manual_annotations=manual_annotations,
-            )[taxonomy_level].unique()
-            box.write("OR")
-            types_by_name = box.multiselect(
-                "By name", obs_th_neurons[taxonomy_level].unique(), key=f"types_{i}"
+            dataset = st.radio(
+                "Choose dataset", ["MERFISH", "WMB-10Xv3", "WMB-10Xv2"], index=1, key="de_data_qp"
             )
-            # TODO: allow typing list of names?
-            grouped_types[i] = list(set(types_by_annotation) | set(types_by_name))
-        group, reference = grouped_types
-        # plot_de_genes = st.form_submit_button("Plot DE genes")
+            sc_data = dataset != "MERFISH"
+            load_genes = st.form_submit_button("Load gene data", on_click=stu.ss_to_qp)
+
+        with st.form("plot_de_genes"):
+            taxonomy_level = st.selectbox(
+                "Taxonomy level", ["cluster", "supertype", "subclass"], key="de_tax_qp"
+            )
+            grouped_types = [0, 0]
+            hide = st.expander("Annotation settings")
+            manual_annotations = (
+                hide.radio("", ["automated", "manual"], key="de_anno_qp") == "manual"
+            )
+            include_shared_clusters = hide.checkbox("Include shared clusters", key="de_shared_qp")
+            groups = [st.expander(f"Select group {i}", expanded=True) for i in range(2)]
+            for i, box in enumerate(groups):
+                regions = box.multiselect(
+                    "By nucleus", th_subregion_names, key=f"de_regionlist{i}_qp"
+                )
+                types_by_annotation = abc.get_obs_from_annotated_clusters(
+                    regions,
+                    obs_th_neurons,
+                    include_shared_clusters=include_shared_clusters,
+                    manual_annotations=manual_annotations,
+                )[taxonomy_level].unique()
+                box.write("OR")
+                types_by_name = box.multiselect(
+                    "By name", obs_th_neurons[taxonomy_level].unique(), key=f"de_typelist{i}_qp"
+                )
+                # TODO: allow typing list of names?
+                grouped_types[i] = list(set(types_by_annotation) | set(types_by_name))
+            group, reference = grouped_types
+            plot_de_genes = st.form_submit_button("Plot DE genes", on_click=stu.ss_to_qp)
         if load_genes:
             if sc_data:
                 adata, sc_obs_filtered = get_sc_data(sc_dataset=dataset, transform=transform)
             else:
                 adata = get_adata(transform=transform)
-            if len(group) > 0 and len(reference) > 0:
+            if plot_de_genes and len(group) > 0 and len(reference) > 0:
                 intersection = set(group) & set(reference)
                 if len(intersection) > 0:
                     st.warning(f"Groups share cell types: {intersection}")
@@ -232,14 +244,16 @@ with pane2:
                 deg.run_sc_deg_analysis(
                     adata, taxonomy_level, group, reference=reference, highlight_genes=highlight
                 )
+                # TODO: add regions to plot title (restrict to either by nucleus or by taxonomy?)
                 st.pyplot(plt.gcf())
             else:
-                st.write("Select groups of cell types to compare")
+                st.write("Select groups of cell types to compare, then click 'Plot")
 
 
 with pane1:
     st.header("Cell type taxonomy annotations")
 
+# TODO: add background cells? all boundaries?
     kwargs = dict(bg_cells=None, point_size=3, **common_args)
 
     def plot(obs, sections, regions=None, point_hue="subclass"):
@@ -262,18 +276,19 @@ with pane1:
         sections = st.multiselect(
             "Section",
             sections_all,
-            key="sections",
+            key="bs_sectionlist_qp",
         )
         st.button(
             "Show all sections",
-            on_click=lambda: setattr(st.session_state, "sections", sections_all),
+            on_click=lambda: setattr(st.session_state, "bs_sectionlist_qp", sections_all),
         )
         celltype_label = st.selectbox(
             "Level of celltype hierarcy",
             ["subclass", "supertype", "cluster"],
             index=0,
+            key="bs_tax_qp",
         )
-        show_legend = st.checkbox("Show legend")
+        show_legend = st.checkbox("Show legend", key="bs_leg_qp")
         if len(sections) > 0:
             plots = cplots.plot_ccf_overlay(
                 obs_th_neurons,
@@ -293,35 +308,39 @@ with pane1:
         "Vision": ["LGd", "LP"],
         "Somatosensory": ["VPM", "VPL", "PO"],
         "Limbic/Anterior": ["AD", "AV", "AM"],
-        "Auditory": ["MG"],
+        "Auditory": ["MG", "MG"],
     }
     with types_by_nucleus:
-        manual_annotations = st.radio(
-            "Nucleus vs cluster annotations",
-            [True, False],
-            index=0,
-            format_func=lambda manual_annotations: "manual" if manual_annotations else "automated",
+        manual_annotations = (
+            st.radio("Nucleus vs cluster annotations", ["manual", "automated"], key="bn_anno_qp")
+            == "manual"
         )
+
+        def propagate_nuclei_groups():
+            if len(st.session_state["bn_grouplist_qp"]) > 0:
+                st.session_state["bn_regionlist_qp"] = list(
+                    set.union(
+                        *[set(nucleus_groups[g]) for g in st.session_state["bn_grouplist_qp"]]
+                    )
+                )
+
         groups = st.multiselect(
             "Select nucleus groups",
             nucleus_groups.keys(),
+            key="bn_grouplist_qp",
+            on_change=propagate_nuclei_groups,
         )
-        with st.empty():
-            if len(groups) > 0:
-                preselect = set.union(*[set(nucleus_groups[group]) for group in groups])
-                nuclei = st.multiselect(
-                    "Select individual nuclei", th_subregion_names, default=preselect
-                )
-            else:
-                nuclei = st.multiselect("Select individual nuclei", th_subregion_names)
+        nuclei = st.multiselect(
+            "Select individual nuclei", th_subregion_names, key="bn_regionlist_qp"
+        )
 
         celltype_label = st.selectbox(
             "Level of celltype hierarcy",
             ["subclass", "supertype", "cluster"],
             index=2,
-            key=2,
+            key="bn_tax_qp",
         )
-        include_shared_clusters = st.checkbox("Include shared clusters")
+        include_shared_clusters = st.checkbox("Include shared clusters", key="bn_shared_qp")
 
         try:
             if len(nuclei) > 0:
@@ -332,20 +351,11 @@ with pane1:
                     manual_annotations=manual_annotations,
                 )
                 if len(obs2) > 0:
-                    # TODO: expand names to include subregions?
-                    # regions = [
-                    #     x
-                    #     for x in th_subregion_names
-                    #     if any(
-                    #         (name in x and "pc" not in x) or (name == x)
-                    #         for name in nuclei
-                    #     )
-                    # ]
                     plots = cplots.plot_ccf_overlay(
                         obs2,
                         ccf_names=nuclei,
                         ccf_level=ccf_level,
-                        # highlight=nuclei, TODO: fix highlight for raster plots
+                        ccf_highlight=nuclei,
                         point_hue=celltype_label,
                         sections=None,
                         min_group_count=0,
@@ -359,4 +369,6 @@ with pane1:
                 else:
                     st.write("No annotations found for nuclei")
         except UserWarning as exc:
-            str(exc)
+            st.write(exc)
+
+stu.ss_to_qp()

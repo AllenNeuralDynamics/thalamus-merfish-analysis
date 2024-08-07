@@ -429,10 +429,9 @@ def plot_expression_ccf(
         cmap=cmap, cb_vmin_vmax=cb_vmin_vmax, label=label, fraction=0.046, pad=0.01
     )
 
-    # TODO: allow sections arg to be single section not list?
     if sections is None:
         sections = adata.obs[section_col].unique()
-        target_regions = ccf_highlight if zoom_to_highlighted else ccf_names
+        target_regions = ccf_highlight if len(ccf_highlight)>0 else ccf_names
         if target_regions is not None:
             sections = set(sections).intersection(
                 get_sections_for_ccf_regions(
@@ -915,6 +914,7 @@ def plot_ccf_shapes(
     # Plot boundaries of CCF regions
     if edge_palette is not None:
         if boundary_img is None:
+            # TODO: keep and use ccf_level to merge if needed before erosion?
             boundary_img = cci.label_erosion(
                 imdata, edge_width, fill_val=0, return_edges=True
             )
