@@ -682,6 +682,7 @@ def plot_multichannel_overlay(
             *df[[x_col, y_col]].values.T,
             s=point_size,
             marker=".",
+            linewidth=0,
             color=c,
         )
         if legend:
