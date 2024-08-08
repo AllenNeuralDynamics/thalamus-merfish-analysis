@@ -976,7 +976,7 @@ def preprocess_categorical_plot(
     # Min group count by section shouldn't be larger than overall min_group_count
     # Set to the minimum so user can set min_group_count=0 to see all groups
     min_group_count_section = min(min_group_count_section, min_group_count)
-    obs = obs.groupby(section_col, group_keys=False).apply(
+    obs = obs.groupby(section_col, group_keys=False, observed=False).apply(
         lambda x: abc.label_outlier_celltypes(
             x, type_col, min_group_count=min_group_count_section
         )
