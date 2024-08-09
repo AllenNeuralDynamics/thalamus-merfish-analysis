@@ -107,16 +107,9 @@ def plot_ccf_overlay(
     """
     # Set variables not specified by user
     if sections is None:
-        sections = (
-            obs[section_col].value_counts().loc[lambda x: x > min_section_count].index
+        sections = _get_sections_to_plot(
+            obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level, n0=min_section_count
         )
-        if ccf_names is not None:
-            sections = sections.intersection(
-                get_sections_for_ccf_regions(
-                    ccf_images, ccf_names, ccf_level=ccf_level, section_col=section_col
-                )
-            )
-        sections = sorted(sections)
     obs = obs[obs[section_col].isin(sections)]
 
     if categorical:
@@ -172,9 +165,7 @@ def plot_ccf_overlay(
         for i, section in enumerate(sections)
     ]
     if not separate_figs and legend is not None:
-        _combine_subplot_legends(
-            figs[0], title=ccf_level if legend == "ccf" else point_hue
-        )
+        _combine_subplot_legends(figs[0], title=ccf_level if legend == "ccf" else point_hue)
 
     return figs
 
@@ -349,10 +340,10 @@ def _plot_cells_scatter(
     if legend and secdata[point_hue].dtype.name == "category":
         secdata = secdata.copy()
         secdata[point_hue] = secdata[point_hue].cat.remove_unused_categories()
-    
+
     # default to no marker outlines, but allow user to override
-    if ('linewidth' not in kwargs) and ('linewidths' not in kwargs):
-        kwargs['linewidth'] = 0
+    if ("linewidth" not in kwargs) and ("linewidths" not in kwargs):
+        kwargs["linewidth"] = 0
 
     sns.scatterplot(
         secdata,
@@ -428,23 +419,11 @@ def plot_expression_ccf(
     scatter_args = dict(hue_norm=cb_vmin_vmax, **scatter_args)
     if label is None:
         label = _get_counts_label(adata, gene)
-    cb_args = dict(
-        cmap=cmap, cb_vmin_vmax=cb_vmin_vmax, label=label, fraction=0.046, pad=0.01
-    )
+    cb_args = dict(cmap=cmap, cb_vmin_vmax=cb_vmin_vmax, label=label, fraction=0.046, pad=0.01)
 
     if sections is None:
-        sections = adata.obs[section_col].unique()
-        target_regions = ccf_highlight if len(ccf_highlight)>0 else ccf_names
-        if target_regions is not None:
-            sections = set(sections).intersection(
-                get_sections_for_ccf_regions(
-                    ccf_images,
-                    target_regions,
-                    ccf_level=ccf_level,
-                    section_col=section_col,
-                )
-            )
-            sections = sorted(sections)
+        sections = _get_sections_to_plot(obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level)
+
     # Plot
     figs = []
     for section in sections:
@@ -557,9 +536,7 @@ def plot_hcr(
             ccf_images=ccf_images,
             boundary_img=boundary_img,
         )
-        with matplotlib.style.context(
-            "dark_background" if dark_background else "default"
-        ):
+        with matplotlib.style.context("dark_background" if dark_background else "default"):
             fig.suptitle(f"Section {section}\n{counts_label}", y=1.2)
         figs.append(fig)
     return figs
@@ -668,9 +645,7 @@ def plot_multichannel_overlay(
                     # create a colorbar from list of shades of a single color
                     coeffs_cbar = np.linspace(0, 1, 256)[:, None]
                     c = cu.combine_scaled_colors(colors[[i], :], coeffs_cbar)
-                    plt.colorbar(
-                        cu.mappable_for_colorbar(c, vmax=scale[0, i]), cax=ax.cax
-                    )
+                    plt.colorbar(cu.mappable_for_colorbar(c, vmax=scale[0, i]), cax=ax.cax)
             ax = ax_subplots[-1]
             if colorbar:
                 # hide colorbar from overlay plot
@@ -730,9 +705,7 @@ def plot_metrics_ccf(
     for section_z in sections:
         print(section_z)
         fig, ax = plt.subplots(figsize=figsize)
-        _add_colorbar(
-            ax, cb_vmin_vmax=[vmin, vmax], cmap=cmap, label=cb_label, shrink=0.75
-        )
+        _add_colorbar(ax, cb_vmin_vmax=[vmin, vmax], cmap=cmap, label=cb_label, shrink=0.75)
 
         plot_ccf_section(
             ccf_img,
@@ -825,8 +798,7 @@ def plot_ccf_section(
     )
 
     edge_palette = {
-        x: EDGE_HIGHLIGHT_COLOR if x in ccf_highlight else edge_color
-        for x in section_region_names
+        x: EDGE_HIGHLIGHT_COLOR if x in ccf_highlight else edge_color for x in section_region_names
     }
 
     plot_ccf_shapes(
@@ -840,9 +812,7 @@ def plot_ccf_section(
     )
     if zoom_to_highlighted:
         try:
-            bbox = abc.X_RESOLUTION * get_bbox_for_regions(
-                img, ccf_highlight, ccf_level
-            )
+            bbox = abc.X_RESOLUTION * get_bbox_for_regions(img, ccf_highlight, ccf_level)
             _format_image_axes(ax=ax, show_axes=True, custom_xy_lims=bbox)
         except ValueError:
             pass
@@ -919,9 +889,7 @@ def plot_ccf_shapes(
     if edge_palette is not None:
         if boundary_img is None:
             # TODO: keep and use ccf_level to merge if needed before erosion?
-            boundary_img = cci.label_erosion(
-                imdata, edge_width, fill_val=0, return_edges=True
-            )
+            boundary_img = cci.label_erosion(imdata, edge_width, fill_val=0, return_edges=True)
         rgba_lookup = cu.palette_to_rgba_lookup(edge_palette, index)
         im_edges = rgba_lookup[boundary_img, :]
         ax.imshow(im_edges, **imshow_args)
@@ -985,6 +953,24 @@ def preprocess_categorical_plot(
     return obs
 
 
+def _get_sections_to_plot(obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level, n0=0):
+    if n0 > 0:
+        sections = obs[section_col].value_counts().loc[lambda x: x > n0].index
+    else:
+        sections = obs[section_col].unique()
+    target_regions = ccf_highlight if len(ccf_highlight) > 0 else ccf_names
+    if target_regions is not None:
+        sections = set(sections).intersection(
+            get_sections_for_ccf_regions(
+                ccf_images,
+                target_regions,
+                ccf_level=ccf_level,
+                section_col=section_col,
+            )
+        )
+    return sorted(sections)
+
+
 def _filter_by_xy_lims(obs, x_col, y_col, custom_xy_lims):
     """Filter a DataFrame by custom x and y limits.
 
@@ -1021,9 +1007,7 @@ def _integrate_background_cells(obs, point_hue, bg_cells):
     obs = pd.concat(
         [
             obs,
-            bg_cells.loc[bg_cells.index.difference(obs.index)].assign(
-                **{point_hue: np.nan}
-            ),
+            bg_cells.loc[bg_cells.index.difference(obs.index)].assign(**{point_hue: np.nan}),
         ]
     )
     return obs
@@ -1089,6 +1073,4 @@ def _format_image_axes(ax, show_axes=False, set_lims="whole", custom_xy_lims=Non
             ax.set_xlim(custom_xy_lims[:2])
             ax.set_ylim(custom_xy_lims[2:])
         else:
-            print(
-                "incorrect custom_xy_lims detected, must be [x_min,x_max,y_min,y_max]"
-            )
+            print("incorrect custom_xy_lims detected, must be [x_min,x_max,y_min,y_max]")
