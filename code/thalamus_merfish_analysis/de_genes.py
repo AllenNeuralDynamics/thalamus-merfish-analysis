@@ -36,7 +36,7 @@ def run_sc_deg_analysis(
     """
 
     combined_group = len(group) > 1
-    combined_ref = (reference != "results/") and len(reference) > 1
+    combined_ref = (reference != "rest") and len(reference) > 1
     if combined_group or combined_ref:
         group_var = f"combined_{taxonomy_level}"
         adata.obs[group_var] = adata.obs[taxonomy_level].astype(str)

@@ -1,7 +1,8 @@
+from itertools import chain
+import os
 from pathlib import Path
 import matplotlib.pyplot as plt
 import streamlit as st
-import pandas as pd
 import streamlit_utils as stu
 from thalamus_merfish_analysis import ccf_plots as cplots
 from thalamus_merfish_analysis import ccf_images as cimg
@@ -11,6 +12,7 @@ from thalamus_merfish_analysis import de_genes as deg
 from thalamus_merfish_analysis.abc_load_thalamus import ThalamusWrapper
 from anndata import read_h5ad
 
+ss = st.session_state
 stu.ss_to_qp()
 stu.ss_from_qp()
 st.set_page_config(page_title="Thalamus MERFISH explorer", layout="wide")
@@ -78,9 +80,9 @@ def get_image_volumes(realigned, sections_all, lump_structures=False, edge_width
         mapping = ccf_index.map(reverse_index).to_dict()
         ccf_images = cimg.map_label_values(ccf_images, mapping, section_list=abc.TH_SECTIONS)
     ccf_boundaries = None
-    # ccf_boundaries = cimg.sectionwise_label_erosion(
-    #     ccf_images, edge_width, fill_val=0, return_edges=True, section_list=section_list
-    # )
+    ccf_boundaries = cimg.sectionwise_label_erosion(
+        ccf_images, edge_width, fill_val=0, return_edges=True, section_list=abc.TH_SECTIONS
+    )
     return ccf_images, ccf_boundaries
 
 
@@ -126,11 +128,15 @@ common_args = dict(
 )
 
 with st.sidebar:
+    st.markdown("## App Details")
     st.write(f"Version: {version}")
     st.write(f"Gene data version: {abc.files.adata_raw.version}")
     st.write(f"Metadata version: {abc.files.cell_metadata.version}")
     st.write(f"CCF version: {abc.files.ccf_metadata.version}")
     st.write(f"Taxonomy ID: {abc.taxonomy_id}")
+    st.markdown("### App direct link")
+    url = f"https://codeocean.allenneuraldynamics.org/cw/{os.getenv('CO_COMPUTATION_ID')}/"
+    st.markdown(f"{url}")
 
 # extend size of multiselects for full section names
 st.markdown(
@@ -202,76 +208,65 @@ with pane2:
             sc_data = dataset != "MERFISH"
             load_genes = st.form_submit_button("Load gene data", on_click=stu.ss_to_qp)
 
-        with st.form("plot_de_genes"):
-            taxonomy_level = st.selectbox(
-                "Taxonomy level", ["cluster", "supertype", "subclass"], key="de_tax_qp"
+        de_form = st.form("plot_de_genes")
+        taxonomy_level = de_form.selectbox(
+            "Taxonomy level", ["cluster", "supertype", "subclass"], key="de_tax_qp"
+        )
+        grouped_types = [0, 0]
+        hide = de_form.expander("Annotation settings")
+        manual_annotations = (
+            hide.radio("Annot. source", ["automated", "manual"], key="de_anno_qp") == "manual"
+        )
+        include_shared_clusters = hide.checkbox("Include shared clusters", key="de_shared_qp")
+        groups = [
+            de_form.expander("Select group 1", expanded=True),
+            de_form.expander("Select reference, empty to compare to rest of thalamus (slow)", expanded=False),
+        ]
+        for i, box in enumerate(groups):
+            regions = box.multiselect(
+                "By nucleus", th_subregion_names, key=f"de_regionlist{i}_qp"
             )
-            grouped_types = [0, 0]
-            hide = st.expander("Annotation settings")
-            manual_annotations = (
-                hide.radio("", ["automated", "manual"], key="de_anno_qp") == "manual"
+            types_by_annotation = abc.get_obs_from_annotated_clusters(
+                regions,
+                obs_th_neurons,
+                include_shared_clusters=include_shared_clusters,
+                manual_annotations=manual_annotations,
+            )[taxonomy_level].unique()
+            box.write("OR")
+            types_by_name = box.multiselect(
+                "By name", obs_th_neurons[taxonomy_level].unique(), key=f"de_typelist{i}_qp"
             )
-            include_shared_clusters = hide.checkbox("Include shared clusters", key="de_shared_qp")
-            groups = [st.expander(f"Select group {i}", expanded=True) for i in range(2)]
-            for i, box in enumerate(groups):
-                regions = box.multiselect(
-                    "By nucleus", th_subregion_names, key=f"de_regionlist{i}_qp"
-                )
-                types_by_annotation = abc.get_obs_from_annotated_clusters(
-                    regions,
-                    obs_th_neurons,
-                    include_shared_clusters=include_shared_clusters,
-                    manual_annotations=manual_annotations,
-                )[taxonomy_level].unique()
-                box.write("OR")
-                types_by_name = box.multiselect(
-                    "By name", obs_th_neurons[taxonomy_level].unique(), key=f"de_typelist{i}_qp"
-                )
-                # TODO: allow typing list of names?
-                grouped_types[i] = list(set(types_by_annotation) | set(types_by_name))
-            group, reference = grouped_types
-            plot_de_genes = st.form_submit_button("Plot DE genes", on_click=stu.ss_to_qp)
-        if load_genes:
+            # TODO: allow typing list of names?
+            grouped_types[i] = list(set(types_by_annotation) | set(types_by_name))
+        group, reference = grouped_types
+        plot_de_genes = de_form.form_submit_button("Plot DE genes", on_click=stu.ss_to_qp, disabled="adata" in globals())
+        if load_genes or plot_de_genes:
             if sc_data:
                 adata, sc_obs_filtered = get_sc_data(sc_dataset=dataset, transform=transform)
             else:
                 adata = get_adata(transform=transform)
-            if plot_de_genes and len(group) > 0 and len(reference) > 0:
-                intersection = set(group) & set(reference)
-                if len(intersection) > 0:
-                    st.warning(f"Groups share cell types: {intersection}")
+        if plot_de_genes and len(group) > 0:
+            with st.spinner("Calculating DE genes"):
+                if len(reference) == 0:
+                    reference = "rest"
+                else:
+                    intersection = set(group) & set(reference)
+                    if len(intersection) > 0:
+                        st.warning(f"Groups share cell types: {intersection}")
                 highlight = merfish_genes if sc_data else None
                 deg.run_sc_deg_analysis(
                     adata, taxonomy_level, group, reference=reference, highlight_genes=highlight
                 )
                 # TODO: add regions to plot title (restrict to either by nucleus or by taxonomy?)
-                st.pyplot(plt.gcf())
-            else:
-                st.write("Select groups of cell types to compare, then click 'Plot")
+            st.pyplot(plt.gcf())
+        else:
+            st.write("Select groups of cell types to compare, then click 'Plot")
 
 
 with pane1:
     st.header("Cell type taxonomy annotations")
+    types_by_nucleus, types_by_section = st.tabs(["by thalamic nucleus", "by section"])
 
-# TODO: add background cells? all boundaries?
-    kwargs = dict(bg_cells=None, point_size=3, **common_args)
-
-    def plot(obs, sections, regions=None, point_hue="subclass"):
-        return cplots.plot_ccf_overlay(
-            obs,
-            ccf_names=regions,
-            point_hue=celltype_label,
-            sections=sections,
-            point_palette=palettes[celltype_label],
-            **kwargs,
-        )
-
-    types_by_nucleus, types_by_section = st.tabs(
-        [
-            "by thalamic nucleus",
-            "by section",
-        ]
-    )
     with types_by_section:
         sections = st.multiselect(
             "Section",
@@ -280,7 +275,7 @@ with pane1:
         )
         st.button(
             "Show all sections",
-            on_click=lambda: setattr(st.session_state, "bs_sectionlist_qp", sections_all),
+            on_click=lambda: setattr(ss, "bs_sectionlist_qp", sections_all),
         )
         celltype_label = st.selectbox(
             "Level of celltype hierarcy",
@@ -298,7 +293,7 @@ with pane1:
                 sections=sections,
                 point_palette=palettes[celltype_label],
                 legend="cells" if show_legend else False,
-                **kwargs,
+                **common_args,
             )
             for plot in plots:
                 st.pyplot(plot)
@@ -315,20 +310,18 @@ with pane1:
             st.radio("Nucleus vs cluster annotations", ["manual", "automated"], key="bn_anno_qp")
             == "manual"
         )
-
+        show_borders = st.checkbox("Show all boundaries", key="bn_borders_qp")
         def propagate_nuclei_groups():
-            if len(st.session_state["bn_grouplist_qp"]) > 0:
-                st.session_state["bn_regionlist_qp"] = list(
-                    set.union(
-                        *[set(nucleus_groups[g]) for g in st.session_state["bn_grouplist_qp"]]
-                    )
-                )
+            if len(ss["bn_grouplist_qp"]) > 0:
+                ss["bn_regionlist_qp"] = list(chain(
+                    *[nucleus_groups[g] for g in ss["bn_grouplist_qp"]]
+                ))
 
         groups = st.multiselect(
             "Select nucleus groups",
             nucleus_groups.keys(),
-            key="bn_grouplist_qp",
             on_change=propagate_nuclei_groups,
+            key="bn_grouplist_qp",
         )
         nuclei = st.multiselect(
             "Select individual nuclei", th_subregion_names, key="bn_regionlist_qp"
@@ -353,16 +346,15 @@ with pane1:
                 if len(obs2) > 0:
                     plots = cplots.plot_ccf_overlay(
                         obs2,
-                        ccf_names=nuclei,
+                        ccf_names=None if show_borders else nuclei,
                         ccf_level=ccf_level,
                         ccf_highlight=nuclei,
                         point_hue=celltype_label,
                         sections=None,
                         min_group_count=0,
-                        point_palette=None
-                        if celltype_label == "cluster"
-                        else palettes[celltype_label],
-                        **kwargs,
+                        point_palette=palettes[celltype_label],
+                        bg_cells=obs_th_neurons,
+                        **common_args,
                     )
                     for plot in plots:
                         st.pyplot(plot)
