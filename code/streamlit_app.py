@@ -149,9 +149,20 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+def annotation_details_input(context=st, prefix=""):
+    with context.expander("Cluster-to-region annotation settings"):
+        manual_annotations = (
+            st.radio("Annotation source", ["automated", "manual"], key=f"{prefix}_anno_qp") == "manual"
+        )
+        st.text("Manually-reviewed annotations are higher accuracy but don't cover all nuclei.")
+        include_shared_clusters = st.checkbox("Include shared clusters", key=f"{prefix}_shared_qp")
+        st.text("Shared clusters are found across multiple nuclei, not focused on the selected nuclei.")
+    return manual_annotations, include_shared_clusters
+
 pane1, pane2 = st.columns(2)
 with pane2:
-    st.header("Gene expression")
+    st.header("Gene expression plots")
     transform = st.radio(
         "Transform", ["log2cpt", "log2cpm", "log2cpv", "raw"], index=0, key="transform_qp"
     )
@@ -212,16 +223,12 @@ with pane2:
         taxonomy_level = de_form.selectbox(
             "Taxonomy level", ["cluster", "supertype", "subclass"], key="de_tax_qp"
         )
-        grouped_types = [0, 0]
-        hide = de_form.expander("Annotation settings")
-        manual_annotations = (
-            hide.radio("Annot. source", ["automated", "manual"], key="de_anno_qp") == "manual"
-        )
-        include_shared_clusters = hide.checkbox("Include shared clusters", key="de_shared_qp")
+        manual_annotations, include_shared_clusters = annotation_details_input(context=de_form, prefix="de")
         groups = [
             de_form.expander("Select group 1", expanded=True),
             de_form.expander("Select reference, empty to compare to rest of thalamus (slow)", expanded=False),
         ]
+        grouped_types = [0, 0]
         for i, box in enumerate(groups):
             regions = box.multiselect(
                 "By nucleus", th_subregion_names, key=f"de_regionlist{i}_qp"
@@ -259,12 +266,14 @@ with pane2:
                 )
                 # TODO: add regions to plot title (restrict to either by nucleus or by taxonomy?)
             st.pyplot(plt.gcf())
+            if sc_data:
+                st.write("Highlighted genes overlap with MERFISH gene panel.")
         else:
             st.write("Select groups of cell types to compare, then click 'Plot")
 
 
 with pane1:
-    st.header("Cell type taxonomy annotations")
+    st.header("Cell type taxonomy spatial plots")
     types_by_nucleus, types_by_section = st.tabs(["by thalamic nucleus", "by section"])
 
     with types_by_section:
@@ -306,10 +315,7 @@ with pane1:
         "Auditory": ["MG", "MG"],
     }
     with types_by_nucleus:
-        manual_annotations = (
-            st.radio("Nucleus vs cluster annotations", ["manual", "automated"], key="bn_anno_qp")
-            == "manual"
-        )
+        manual_annotations, include_shared_clusters = annotation_details_input(prefix="bn")
         show_borders = st.checkbox("Show all boundaries", key="bn_borders_qp")
         def propagate_nuclei_groups():
             if len(ss["bn_grouplist_qp"]) > 0:
@@ -333,7 +339,6 @@ with pane1:
             index=2,
             key="bn_tax_qp",
         )
-        include_shared_clusters = st.checkbox("Include shared clusters", key="bn_shared_qp")
 
         try:
             if len(nuclei) > 0:
