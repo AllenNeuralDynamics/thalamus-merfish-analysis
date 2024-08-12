@@ -3,12 +3,10 @@ from scipy.linalg import block_diag
 import numpy as np
 import json
 from pathlib import Path
-from colorcet import glasbey, glasbey_light, glasbey_dark, glasbey_warm, glasbey_cool
+from colorcet import glasbey, glasbey_warm, glasbey_cool
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, to_rgb
 
-from .ccf_images import image_index_from_coords
-                         
 CMAP = ListedColormap(['white'] + glasbey)
 
 def lighten(hex):
@@ -27,7 +25,7 @@ def cmap_with_emphasis(n_focus=0, n_secondary=0, dark_background=False):
 
 def subset_to_ref_bounds(df, coords, ref_subset):
     ref_subset = df.index.intersection(ref_subset)
-    df = df.loc[lambda df: 
+    df = df.loc[lambda df:
         (df[coords] <= df.loc[ref_subset, coords].max()).all(axis=1) &
         (df[coords] >= df.loc[ref_subset, coords].min()).all(axis=1)]
     return df.copy()
@@ -59,7 +57,7 @@ def to_hom(x):
     if len(x.shape)==1:
         x = x[np.newaxis, :]
     return np.hstack([x, np.ones((x.shape[0], 1))])
-    
+
 def from_hom(x):
     return x[:,:-1]
 
@@ -101,26 +99,28 @@ def process_anchor_entry(anchor_list, z, ccf_to_qn):
     to_ccf = block_diag(np.linalg.inv(xyo_base) @ xyo_qn, [1]) @ np.linalg.inv(ccf_to_qn)
     return to_ccf
 
+def z_from_name(x):
+    return float(x)/10
+
 def read_quicknii_file(path, scale=25):
-    z_from_name = lambda x: float(x)/10
     ccf_to_qn = calculate_quicknii_transform(scale)
     transforms = dict()
     with open(path, 'r') as f:
         alignment = json.load(f)
     for record in alignment['slices']:
         slice_name = record["nr"]
-        transforms[slice_name] = process_anchor_entry(record['anchoring'], 
-                                                      z_from_name(slice_name), 
+        transforms[slice_name] = process_anchor_entry(record['anchoring'],
+                                                      z_from_name(slice_name),
                                                       ccf_to_qn)
     return transforms
-            
+
 def export_to_quicknii(df, base_filename, img_label, img_coords,
                        coords_from=None, cmap=CMAP, slice_label=None, scale=25,
                        path='.', save_json=True, save_images=True, format='jpg'):
     coords_scaled, coords_int = add_rescaled_coords(
         df, img_coords[:2], xy_res=0.0025)
     nx, ny = df[coords_int].max() + 1
-    
+
     if coords_from is not None:
         coords_from = coords_from.copy()
         coords_from[:2], _ = add_rescaled_coords(df, coords_from[:2])
@@ -129,25 +129,25 @@ def export_to_quicknii(df, base_filename, img_label, img_coords,
     coords_to = ['x_ccf', 'y_ccf', 'z_ccf']
     ccf_to_qn = calculate_quicknii_transform(scale)
     to_ccf = calculate_affine_transform(df, coords_from, coords_to)
-    
+
     path = Path(path)
     if save_images or save_json:
         path.mkdir(parents=True, exist_ok=True)
-        
+
     slices = []
     for n, (zval, df_slice) in enumerate(df.groupby(img_coords[2])):
         if slice_label is not None:
             n = int(df_slice[slice_label].values[0])
-        
+
         filename = f"{base_filename}_{n:03}.{format}"
         if save_images:
             img = rasterize_by_dilation(df_slice, coords_int, img_label, shape=(ny, nx))
             # plt.imsave(path/filename, img, cmap=cmap)
             plt.imsave(path/filename, np.array(cmap)[img])
-        
+
         anchoring = calculate_anchor_entry(zval, to_ccf, ccf_to_qn)
-        slices.append(dict(anchoring=anchoring, 
-                     filename=filename, 
+        slices.append(dict(anchoring=anchoring,
+                     filename=filename,
                      height=ny,
                      width=nx,
                      nr=n))
@@ -157,7 +157,7 @@ def export_to_quicknii(df, base_filename, img_label, img_coords,
             json.dump(data, f, indent=4)
     return data
 
-def preprocess_for_qn_export(df, nn_classes, img_coords, spatial_ref_index, 
+def preprocess_for_qn_export(df, nn_classes, img_coords, spatial_ref_index,
                              subset_for_fine_labels=None,
                              slice_label='slice_int',
                              img_label='subclass_int'):
@@ -166,7 +166,7 @@ def preprocess_for_qn_export(df, nn_classes, img_coords, spatial_ref_index,
     """
     df = subset_to_ref_bounds(df, img_coords, spatial_ref_index)
     subset_for_fine_labels = df.index.intersection(subset_for_fine_labels)
-    
+
     working_label = "thal_class"
     df[slice_label] = df['z_section'].apply(lambda x: str(int(x*10)))
 
