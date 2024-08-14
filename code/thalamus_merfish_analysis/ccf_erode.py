@@ -43,6 +43,8 @@ def label_cells_by_eroded_ccf(obs, ccf_img, distance_px=5, ccf_level='substructu
     # merge CCF substructures into their parcellation_structure before eroding 
     if ccf_level != 'substructure':
         ccf_img_merge = merge_substructures(ccf_img, ccf_level=ccf_level, sections=sections)
+    else:
+        ccf_img_merge = ccf_img
 
     # erode CCF structures 
     ccf_img_erode = sectionwise_label_erosion(ccf_img_merge, 
