@@ -274,6 +274,7 @@ def plot_section_overlay(
             edge_color=edge_color,
             legend=(legend == "ccf"),
             zoom_to_highlighted=zoom_to_highlighted,
+            show_axes=show_axes,
             ax=ax,
         )
     # need to keep zoom set by plot_ccf_section
@@ -734,6 +735,7 @@ def plot_ccf_section(
     ccf_level="substructure",
     legend=True,
     zoom_to_highlighted=False,
+    show_axes=False,
     ax=None,
 ):
     """Display CCF parcellations for a single section from an
@@ -809,11 +811,12 @@ def plot_ccf_section(
         edge_palette=edge_palette,
         ax=ax,
         legend=legend,
+        show_axes=show_axes,
     )
     if zoom_to_highlighted:
         try:
             bbox = abc.X_RESOLUTION * get_bbox_for_regions(img, ccf_highlight, ccf_level)
-            _format_image_axes(ax=ax, show_axes=True, custom_xy_lims=bbox)
+            _format_image_axes(ax=ax, show_axes=show_axes, custom_xy_lims=bbox)
         except ValueError:
             pass
     ax.set_title(f"Section {section}")
@@ -846,6 +849,7 @@ def plot_ccf_shapes(
     ax=None,
     resolution=10e-3,
     legend=True,
+    show_axes=False,
 ):
     """Plot face & boundary for CCF region shapes specified
 
@@ -899,7 +903,7 @@ def plot_ccf_shapes(
         for name, color in face_palette.items():
             ax.plot([], marker="o", ls="", color=color, label=name)
         _add_legend(ax, ncols=4)
-    _format_image_axes(ax=ax)
+    _format_image_axes(ax=ax, show_axes=show_axes)
 
 
 # ------------------------- DataFrame Preprocessing ------------------------- #
@@ -1054,6 +1058,7 @@ def _format_image_axes(ax, show_axes=False, set_lims="whole", custom_xy_lims=Non
         sns.despine(left=True, bottom=True)
         ax.set_xticks([])
         ax.set_yticks([])
+        
     ax.set_xlabel(None)
     ax.set_ylabel(None)
     # (set_lims==True) is for backwards compatibility
