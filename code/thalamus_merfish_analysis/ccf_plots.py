@@ -297,7 +297,7 @@ def plot_section_overlay(
     if legend is not None:
         # cell type names require more horizontal space
         # TODO: detect this from label text
-        _add_legend(ax, ncols=4 if (legend == "ccf") else 2, title=label)
+        _add_legend(ax, ncols=4 if (legend == "ccf") else 2, title=label, markerscale=2)
     if colorbar:
         _add_colorbar(ax, **cb_args)
 
@@ -664,7 +664,7 @@ def plot_multichannel_overlay(
         if legend:
             for i in range(n_channel):
                 plt.scatter([], [], color=colors[i], label=columns[i])
-            ax.legend()
+            ax.legend(markerscale=1.5)
         if ccf_images is not None:
             plot_ccf_section(
                 ccf_images,

@@ -54,6 +54,13 @@ if realigned and not has_realigned_asset:
     st.warning("Realigned metadata not found, using published alignment")
 
 
+def propagate_value_from_lookup(from_key, to_key, lookup_fcn):
+    if len(ss[from_key]) > 0:
+        try:
+            ss[to_key] = lookup_fcn(ss[from_key])
+        except UserWarning as exc:
+            st.warning(exc)
+
 @st.cache_data
 def get_data(version, ccf_label, extend_borders=False):
     obs = abc.get_combined_metadata(realigned=has_realigned_asset, drop_unused=False)
@@ -274,9 +281,9 @@ with pane2:
 
 with pane1:
     st.header("Cell type taxonomy spatial plots")
-    types_by_nucleus, types_by_section = st.tabs(["by thalamic nucleus", "by section"])
+    by_nucleus, by_section = st.tabs(["by region or cell type", "by section"])
 
-    with types_by_section:
+    with by_section:
         sections = st.multiselect(
             "Section",
             sections_all,
@@ -307,31 +314,17 @@ with pane1:
             for plot in plots:
                 st.pyplot(plot)
 
-    nucleus_groups = {
-        "Motor": ["VAL", "VM"],
-        "Vision": ["LGd", "LP"],
-        "Somatosensory": ["VPM", "VPL", "PO"],
-        "Limbic/Anterior": ["AD", "AV", "AM"],
-        "Auditory": ["MG", "MG"],
-    }
-    with types_by_nucleus:
+    with by_nucleus:
+        nucleus_groups = {
+            "None": [],
+            "Motor": ["VAL", "VM"],
+            "Vision": ["LGd", "LP"],
+            "Somatosensory": ["VPM", "VPL", "PO"],
+            "Limbic/Anterior": ["AD", "AV", "AM"],
+            "Auditory": ["MG", "MG"],
+        }
         manual_annotations, include_shared_clusters = annotation_details_input(prefix="bn")
         show_borders = st.checkbox("Show all boundaries", key="bn_borders_qp")
-        def propagate_nuclei_groups():
-            if len(ss["bn_grouplist_qp"]) > 0:
-                ss["bn_regionlist_qp"] = list(chain(
-                    *[nucleus_groups[g] for g in ss["bn_grouplist_qp"]]
-                ))
-
-        groups = st.multiselect(
-            "Select nucleus groups",
-            nucleus_groups.keys(),
-            on_change=propagate_nuclei_groups,
-            key="bn_grouplist_qp",
-        )
-        nuclei = st.multiselect(
-            "Select individual nuclei", th_subregion_names, key="bn_regionlist_qp"
-        )
 
         celltype_label = st.selectbox(
             "Level of celltype hierarcy",
@@ -339,33 +332,53 @@ with pane1:
             index=2,
             key="bn_tax_qp",
         )
+        def celltype_lookup(nuclei):
+            return abc.get_obs_from_annotated_clusters(
+                nuclei,
+                obs_th_neurons,
+                include_shared_clusters=include_shared_clusters,
+                manual_annotations=manual_annotations,
+            )[celltype_label].unique()
 
-        try:
-            if len(nuclei) > 0:
-                obs2 = abc.get_obs_from_annotated_clusters(
-                    nuclei,
-                    obs_th_neurons,
-                    include_shared_clusters=include_shared_clusters,
-                    manual_annotations=manual_annotations,
-                )
-                if len(obs2) > 0:
-                    plots = cplots.plot_ccf_overlay(
-                        obs2,
-                        ccf_names=None if show_borders else nuclei,
-                        ccf_level=ccf_level,
-                        ccf_highlight=nuclei,
-                        point_hue=celltype_label,
-                        sections=None,
-                        min_group_count=0,
-                        point_palette=palettes[celltype_label],
-                        bg_cells=obs_th_neurons,
-                        **common_args,
-                    )
-                    for plot in plots:
-                        st.pyplot(plot)
-                else:
-                    st.write("No annotations found for nuclei")
-        except UserWarning as exc:
-            st.write(exc)
+        st.selectbox(
+            "Select nucleus group",
+            nucleus_groups.keys(),
+            key="bn_group_qp",
+            on_change=lambda: (
+                propagate_value_from_lookup("bn_group_qp", "bn_regionlist_qp", nucleus_groups.get),
+                propagate_value_from_lookup("bn_regionlist_qp", "bn_typelist_qp", celltype_lookup),
+            )
+        )
+        nuclei = st.multiselect(
+            "Select individual nuclei", 
+            th_subregion_names, 
+            key="bn_regionlist_qp",
+            on_change=propagate_value_from_lookup,
+            args=("bn_regionlist_qp", "bn_typelist_qp", celltype_lookup),
+        )
+        celltypes = st.multiselect(
+            "Select cell types",
+            obs_th_neurons[taxonomy_level].unique(),
+            key="bn_typelist_qp",
+        )
+
+        if st.button("Plot"):
+            obs2 = obs_th_neurons.loc[
+                obs_th_neurons[celltype_label].isin(celltypes)
+            ]
+            plots = cplots.plot_ccf_overlay(
+                obs2,
+                ccf_names=None if show_borders else nuclei,
+                ccf_level=ccf_level,
+                ccf_highlight=nuclei,
+                point_hue=celltype_label,
+                sections=None,
+                min_group_count=0,
+                point_palette=palettes[celltype_label],
+                bg_cells=obs_th_neurons,
+                **common_args,
+            )
+            for plot in plots:
+                st.pyplot(plot)
 
 stu.ss_to_qp()
