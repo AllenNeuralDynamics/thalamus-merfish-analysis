@@ -234,9 +234,6 @@ class ThalamusWrapper(AtlasWrapper):
         else:
             return self.get_ccf_names(_CCF_TOP_NODES_THALAMUS, level=level)
 
-    def get_thalamus_substructure_names(self):
-        return self.get_thalamus_names(level="substructure")
-
     def get_thalamus_ccf_indices(self):
         th_ccf_names = self.get_thalamus_names(level="substructure")
         # convert ccf names to the unique parcellation_index used in the image volume
@@ -249,25 +246,71 @@ class ThalamusWrapper(AtlasWrapper):
     # load cluster-nucleus annotations
     try:
         nuclei_df_manual = pd.read_csv(
-            files("thalamus_merfish_analysis.resources")
-            / "prong1_cluster_annotations_by_nucleus.csv",
-            index_col=0,
+            files("thalamus_merfish_analysis.resources")/ "annotations_c2n_manual.csv",
         )
-        nuclei_df_manual = nuclei_df_manual.fillna("")
         nuclei_df_auto = pd.read_csv(
-            files("thalamus_merfish_analysis.resources") / "annotations_from_eroded_counts.csv",
-            index_col=0,
+            files("thalamus_merfish_analysis.resources") / "annotations_c2n_auto.csv",
         )
         found_annotations = True
     except FileNotFoundError:
         found_annotations = False
 
-    @classmethod
+
+    def get_annotated_clusters(
+        cls,
+        nuclei_names,
+        include_shared_clusters=False,
+        manual_annotations=True,
+    ):
+        """Get clusters from specific thalamic nucle(i) based on manual nuclei:cluster
+        annotations.
+
+        Parameters
+        ----------
+        nuclei_names : str or list of str
+            name(s) of thalamic nuclei to search for in the manual annotations resource
+        include_shared_clusters : bool, default=False
+            whether to include clusters that are shared with multiple thalamic nuclei
+        manual_annotations : bool, default=True
+            whether to use manual annotations or automatic annotations CSV
+
+        Returns
+        -------
+        clusters
+        """
+
+        if not cls.found_annotations:
+            raise UserWarning("Can't access annotations sheet from this environment.")
+
+        anno = cls.nuclei_df_manual if manual_annotations else cls.nuclei_df_auto
+
+        # if single name, convert to list
+        nuclei_names = [nuclei_names] if isinstance(nuclei_names, str) else nuclei_names
+        all_names = []
+        for name in nuclei_names:
+            if include_shared_clusters:
+                curr_names = anno.loc[anno["nuclei"].str.contains(name)].index
+            else:
+                curr_names = anno.loc[anno["nuclei"]==name].index
+            all_names.extend(curr_names)
+
+            if len(curr_names)==0:
+                error = f"No matches found for {name}:"
+                annotated_names = set(nucleus for entry in anno["nuclei"] for nucleus in entry.split())
+                if len(set(nuclei_names).intersection(annotated_names)) == 0:
+                    error += f" Please check for typos, valid nuclei names are:\n{annotated_names}"
+                    if manual_annotations:
+                        error += "\nTry manual_annotations=False for a larger list of annotated nuclei."
+                else:
+                    error += " No non-shared clusters annotated, try include_shared_clusters=True."
+                raise UserWarning(error)
+        clusters = cls.get_taxonomy_label_from_alias(anno.loc[all_names, "cluster_alias"])
+        return clusters
+    
     def get_obs_from_annotated_clusters(
         cls,
         nuclei_names,
         obs,
-        by="id",
         include_shared_clusters=False,
         manual_annotations=True,
     ):
@@ -280,10 +323,6 @@ class ThalamusWrapper(AtlasWrapper):
             name(s) of thalamic nuclei to search for in the manual annotations resource
         obs : DataFrame
             cell metadata DataFrame
-        by : {'id', 'alias'}, default='id'
-            whether to search for name in cluster_id (4-digits at the start of each
-            cluster label, specific to a taxonomy version) or cluster_alias (unique
-            ID # for each cluster, consistent across taxonomy versions) column
         include_shared_clusters : bool, default=False
             whether to include clusters that are shared with multiple thalamic nuclei
         manual_annotations : bool, default=True
@@ -294,42 +333,12 @@ class ThalamusWrapper(AtlasWrapper):
         obs
             cell metadata DataFrame with only cells from the specified cluster(s)
         """
-
-        if not cls.found_annotations:
-            raise UserWarning("Can't access annotations sheet from this environment.")
-
-        nuclei_df = cls.nuclei_df_manual if manual_annotations else cls.nuclei_df_auto
-
-        # if single name, convert to list
-        nuclei_names = [nuclei_names] if isinstance(nuclei_names, str) else nuclei_names
-        all_names = []
-        for name in nuclei_names:
-            if include_shared_clusters:
-                # 'name in y' condition returns e.g. ['AD','IAD'] if name='AD' but
-                # 'name==y' only returns 'AD' (but is now suseptible to typos like
-                # extra spaces - maybe there's a better solution?)
-                curr_names = [x for x in nuclei_df.index if any(y == name for y in x.split(" "))]
-            else:
-                curr_names = [
-                    x for x in nuclei_df.index if x == name and not (" " in x or "pc" in x)
-                ]
-            all_names.extend(curr_names)
-
-            if curr_names == []:
-                unique_nuclei = sorted(
-                    set(nucleus for entry in nuclei_df.index for nucleus in entry.split())
-                )
-                raise UserWarning(
-                    f"Nuclei name(s) not found in annotations sheet. Please select from valid nuclei names below:\n{unique_nuclei=}"
-                )
-
-        field = "cluster_alias" if by == "alias" else "cluster_ids_CNN20230720"
-        clusters = chain(*[nuclei_df.loc[name, field].split(", ") for name in all_names])
-        if by == "alias":
-            obs = obs.loc[lambda df: df["cluster_alias"].isin(clusters)]
-        elif by == "id":
-            # cluster id is the first 4 digits of 'cluster' column entries
-            obs = obs.loc[lambda df: df["cluster"].str[:4].isin(clusters)]
+        clusters = cls.get_annotated_clusters(
+            nuclei_names,
+            include_shared_clusters=include_shared_clusters,
+            manual_annotations=manual_annotations,
+        )
+        obs = obs.loc[lambda df: df["cluster"].isin(clusters)]
         return obs
 
     # TODO: save this in a less weird format (json?)

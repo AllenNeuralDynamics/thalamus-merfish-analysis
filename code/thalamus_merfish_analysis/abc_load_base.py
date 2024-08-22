@@ -583,7 +583,7 @@ class AtlasWrapper:
             names = sorted(ccf_labels.loc[th_zi_ind, level].values)
         else:
             names = sorted(list(set(ccf_labels.loc[th_zi_ind, :].values.flatten())))
-        return names
+        return np.unique(names)
 
     def get_ccf_names(self, top_nodes=None, level=None):
         """Get the names of all CCF regions that are children of the
@@ -713,7 +713,7 @@ class AtlasWrapper:
         palette = df.set_index("cluster_annotation_term_name")["color_hex_triplet"].to_dict()
         return palette
 
-    def get_taxonomy_label_from_alias(self, aliases, taxonomy_level):
+    def get_taxonomy_label_from_alias(self, aliases, taxonomy_level='cluster'):
         """Given a list of cluster aliases, returns the corresponding cell type
         labels at a given taxonomy level
 
