@@ -289,7 +289,7 @@ class ThalamusWrapper(AtlasWrapper):
         all_names = []
         for name in nuclei_names:
             if include_shared_clusters:
-                curr_names = anno.loc[anno["nuclei"].str.contains(name)].index
+                curr_names = anno.loc[anno["nuclei"].map(lambda names: name in names.split(" "))].index
             else:
                 curr_names = anno.loc[anno["nuclei"]==name].index
             all_names.extend(curr_names)

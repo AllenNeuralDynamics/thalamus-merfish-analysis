@@ -180,7 +180,7 @@ def palette_to_rgba_lookup(palette, index):
     # rgba_lookup = index.map(lambda x: to_rgb(palette[x]))
     # rgba_lookup = rgba_lookup.reindex(range(max_val), fill_value=0)
     max_val = np.max(index.index)
-    rgba_lookup = np.zeros((max_val, 4))
+    rgba_lookup = np.zeros((max_val+1, 4))
     # fill only values in index and also in palette
     # rest remain transparent (alpha=0)
     for i in index.index:
