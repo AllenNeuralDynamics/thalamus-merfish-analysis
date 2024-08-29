@@ -472,6 +472,7 @@ def plot_hcr(
     figsize=(14, 2),
     ccf_images=None,
     boundary_img=None,
+    **kwargs
 ):
     """Display separate, and overlay, expression of multiple genes in multiple sections.
 
