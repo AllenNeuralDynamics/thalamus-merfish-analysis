@@ -2,7 +2,6 @@
 import sys
 
 sys.path.append("/code/")
-from collections import defaultdict
 import pandas as pd
 from thalamus_merfish_analysis import abc_load as abc
 from thalamus_merfish_analysis.ccf_erode import label_cells_by_eroded_ccf
@@ -22,7 +21,7 @@ metric_names = list(set(th_names).difference(["TH-unassigned"]))
 
 
 # %%
-# define celltype lists based on strict spatial subset
+# define cluster lists based on strict spatial subset
 # obs_th_neurons = obs_neurons[obs_neurons[ccf_label+'_realigned'].isin(th_names) |
 #                              obs_neurons[ccf_label].isin(th_names)]
 # th_celltypes = dict()
@@ -83,12 +82,12 @@ def get_nucleus_celltype_metrics(
     beta = 0.5
     records = []
     for celltype_name in celltype_list:
-        celltype = obs[celltype_label] == celltype_name
+        cluster = obs[celltype_label] == celltype_name
         for ccf_name in ccf_list:
             nucleus = obs[ccf_label] == ccf_name
-            tp = (nucleus & celltype).sum()
-            fp = (~nucleus & celltype).sum()
-            fn = (nucleus & ~celltype).sum()
+            tp = (nucleus & cluster).sum()
+            fp = (~nucleus & cluster).sum()
+            fn = (nucleus & ~cluster).sum()
             recall = tp / (tp + fn)
             precision = tp / (tp + fp)
             jaccard = tp / (tp + fp + fn)
@@ -97,7 +96,7 @@ def get_nucleus_celltype_metrics(
             # if precision>0.5 or recall>0.5 or f1>0.4:
             record = {
                 "nucleus": ccf_name,
-                "celltype": celltype_name,
+                "cluster": celltype_name,
                 "nucleus_precision": precision,
                 "nucleus_recall": recall,
                 "nucleus_f1": f1,
@@ -105,7 +104,7 @@ def get_nucleus_celltype_metrics(
                 "jaccard": jaccard,
             }
             records.append(record)
-    result = pd.DataFrame.from_records(records).set_index(["nucleus", "celltype"])
+    result = pd.DataFrame.from_records(records).set_index(["nucleus", "cluster"])
     return result
 
 
@@ -124,7 +123,7 @@ def get_nucleus_celltype_metrics(
 #         )
 results = [
     get_nucleus_celltype_metrics(
-        df_cells, label, "cluster", ccf_list=th_names, celltype_list=clusters[:1]
+        df_cells, label, "cluster", ccf_list=th_names, celltype_list=clusters
     )
     for label in [
         ccf_label,
@@ -136,12 +135,14 @@ results = [
 # %%
 # stack dataframes across new column level and aggregate
 df = pd.concat(results, keys=["original", "realigned", "eroded", "eroded_realigned"])
-df_max = df.groupby(level=[1,2]).mean().reset_index()
+df_mean = df.groupby(level=[1,2]).mean().reset_index()
+
+df_mean.query("0.03 < nucleus_fbeta < 0.1").to_csv("/results/nuclei_cluster_near_matches.csv")
 #
 # %%
 
-# df_max[df_max["nucleus_fbeta"] > 0.05].to_csv("/results/nuclei_cluster_metrics.csv")
-# nuclei_to_cluster = df_match.groupby("nucleus")["celltype"].apply(
+# df_mean[df_mean["nucleus_fbeta"] > 0.05].to_csv("/results/nuclei_cluster_metrics.csv")
+# nuclei_to_cluster = df_match.groupby("nucleus")["cluster"].apply(
 #     lambda x: x.sort_values(ascending=False).str[:4].to_list()
 # )
 # nuclei_to_cluster.to_csv("/results/annotations_from_fbeta_n2c_all.csv")
@@ -151,43 +152,18 @@ df_taxonomy["short_name"] = df_taxonomy["cluster_annotation_term_name"].str[:4]
 def get_alias(clusters):
     return df_taxonomy.set_index("cluster_annotation_term_name").loc[clusters, "cluster_alias"].to_list()
 
-top_by_cluster = df_max.groupby("celltype")["nucleus_f1"].idxmax().to_list()
-top_by_region = df_max.groupby("nucleus")["nucleus_f1"].idxmax().to_list()
+top_by_cluster = df_mean.groupby("cluster")["nucleus_f1"].idxmax().to_list()
+top_by_region = df_mean.groupby("nucleus")["nucleus_f1"].idxmax().to_list()
 
 # looser threshold for top match, stricter for additional nuclei
-(df_max[lambda df: (df["nucleus_f1"] > 0.1) |
+(df_mean[lambda df: (df["nucleus_f1"] > 0.1) |
 ((df["nucleus_f1"] > 0.05) & df.index.isin(top_by_cluster+top_by_region))]
 .sort_values(ascending=False, by="nucleus_f1")
-# group by celltype and concatenate nucleus names
-.groupby("celltype")["nucleus"]
+# group by cluster and concatenate nucleus names
+.groupby("cluster")["nucleus"]
 .apply(lambda x: ' '.join(x))
 .rename("nuclei")
 .reset_index()
 # get cluster aliases
-.assign(cluster_alias=lambda df: get_alias(df["celltype"]))
-.to_csv("/results/annotations_c2n_auto.csv"))
-# %%
-# Manual annotations
-df_manual = pd.read_csv("/root/capsule/code/thalamus_merfish_analysis/resources/prong1_cluster_annotations_by_nucleus.csv")
-cluster = "cluster_ids_CNN20230720"
-nucleus = "nuclei"
-
-def get_name(clusters):
-    return df_taxonomy.set_index("short_name").loc[clusters, "cluster_annotation_term_name"].to_list()
-
-(df_manual
-# .loc[lambda df: df["checked"]==1]
-.set_index("nuclei")[cluster].astype(str)
-.apply(lambda x: x.split(", "))
-.explode()
-.reset_index()
-.assign(cluster=lambda df: get_name(df[cluster]))
-.groupby("cluster")[nucleus]
-.apply(lambda x: ' '.join(x))
-.reset_index()
-# get cluster aliases
 .assign(cluster_alias=lambda df: get_alias(df["cluster"]))
-.to_csv("/results/annotations_c2n_manual.csv"))
-# .to_csv("/results/annotations_c2n_manual_checked.csv"))
-
-# %%
+.to_csv("/results/annotations_c2n_auto.csv"))

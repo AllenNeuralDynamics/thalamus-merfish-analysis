@@ -247,9 +247,11 @@ class ThalamusWrapper(AtlasWrapper):
     try:
         nuclei_df_manual = pd.read_csv(
             files("thalamus_merfish_analysis.resources")/ "annotations_c2n_manual.csv",
+            index_col="cluster"
         )
         nuclei_df_auto = pd.read_csv(
             files("thalamus_merfish_analysis.resources") / "annotations_c2n_auto.csv",
+            index_col="cluster"
         )
         found_annotations = True
     except FileNotFoundError:
@@ -257,10 +259,11 @@ class ThalamusWrapper(AtlasWrapper):
 
 
     def get_annotated_clusters(
-        cls,
+        self,
         nuclei_names,
         include_shared_clusters=False,
         manual_annotations=True,
+        annotations_df=None,
     ):
         """Get clusters from specific thalamic nucle(i) based on manual nuclei:cluster
         annotations.
@@ -279,10 +282,12 @@ class ThalamusWrapper(AtlasWrapper):
         clusters
         """
 
-        if not cls.found_annotations:
+        if not self.found_annotations:
             raise UserWarning("Can't access annotations sheet from this environment.")
 
-        anno = cls.nuclei_df_manual if manual_annotations else cls.nuclei_df_auto
+        anno = self.nuclei_df_manual if manual_annotations else self.nuclei_df_auto
+        if annotations_df is not None:
+            anno = annotations_df
 
         # if single name, convert to list
         nuclei_names = [nuclei_names] if isinstance(nuclei_names, str) else nuclei_names
@@ -304,11 +309,11 @@ class ThalamusWrapper(AtlasWrapper):
                 else:
                     error += " No non-shared clusters annotated, try include_shared_clusters=True."
                 raise UserWarning(error)
-        clusters = cls.get_taxonomy_label_from_alias(anno.loc[all_names, "cluster_alias"])
+        clusters = self.get_taxonomy_label_from_alias(anno.loc[all_names, "cluster_alias"])
         return clusters
     
     def get_obs_from_annotated_clusters(
-        cls,
+        self,
         nuclei_names,
         obs,
         include_shared_clusters=False,
@@ -333,7 +338,7 @@ class ThalamusWrapper(AtlasWrapper):
         obs
             cell metadata DataFrame with only cells from the specified cluster(s)
         """
-        clusters = cls.get_annotated_clusters(
+        clusters = self.get_annotated_clusters(
             nuclei_names,
             include_shared_clusters=include_shared_clusters,
             manual_annotations=manual_annotations,

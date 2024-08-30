@@ -735,6 +735,14 @@ class AtlasWrapper:
             df.set_index("cluster_alias").loc[aliases, "cluster_annotation_term_name"].to_list()
         )
         return label_list
+    
+    def get_alias_from_cluster_label(self, clusters):
+        df = self._cluster_annotations
+        df = df[df["cluster_annotation_term_set_name"] == "cluster"]
+        label_list = (
+            df.set_index("cluster_annotation_term_name").loc[clusters, "cluster_alias"].to_list()
+        )
+        return label_list
 
     @cached_property
     def _ccf_annotations(self):
