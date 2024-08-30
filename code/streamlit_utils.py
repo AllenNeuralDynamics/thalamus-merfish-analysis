@@ -84,8 +84,7 @@ def get_data(realigned, version=version, extend_borders=False):
     obs_neurons = abc.filter_by_class_thalamus(obs, display_filtered_classes=False)
     buffer = 5 if extend_borders else 0
     obs_th_neurons = abc.filter_by_thalamus_coords(obs_neurons, realigned=realigned, buffer=buffer)
-    subclasses_all = obs_th_neurons["subclass"].value_counts().loc[lambda x: x > 100].index
-    return obs_th_neurons, subclasses_all
+    return obs_th_neurons
 
 
 @st.cache_data
