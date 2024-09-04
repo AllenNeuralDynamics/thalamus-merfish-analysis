@@ -256,9 +256,10 @@ class ThalamusWrapper(AtlasWrapper):
         found_annotations = False
 
 
-    def get_annotated_clusters(
+    def get_annotated_cell_types(
         cls,
         nuclei_names,
+        taxonomy_level="cluster",
         include_shared_clusters=False,
         manual_annotations=True,
     ):
@@ -269,6 +270,8 @@ class ThalamusWrapper(AtlasWrapper):
         ----------
         nuclei_names : str or list of str
             name(s) of thalamic nuclei to search for in the manual annotations resource
+        taxonomy_level : {"subclass", "supertype", "cluster"}, default="cluster"
+            level of taxonomy to return
         include_shared_clusters : bool, default=False
             whether to include clusters that are shared with multiple thalamic nuclei
         manual_annotations : bool, default=True
@@ -276,7 +279,9 @@ class ThalamusWrapper(AtlasWrapper):
 
         Returns
         -------
-        clusters
+        cell_types : list of str
+            list of cell types, at the specified taxonomy level, associated with
+            the specified nuclei
         """
 
         if not cls.found_annotations:
@@ -304,13 +309,15 @@ class ThalamusWrapper(AtlasWrapper):
                 else:
                     error += " No non-shared clusters annotated, try include_shared_clusters=True."
                 raise UserWarning(error)
-        clusters = cls.get_taxonomy_label_from_alias(anno.loc[all_names, "cluster_alias"])
-        return clusters
+        cell_types = cls.get_taxonomy_label_from_alias(anno.loc[all_names, "cluster_alias"],
+                                                       taxonomy_level=taxonomy_level)
+        return cell_types
     
-    def get_obs_from_annotated_clusters(
+    def get_obs_from_annotations(
         cls,
         nuclei_names,
         obs,
+        taxonomy_level="cluster",
         include_shared_clusters=False,
         manual_annotations=True,
     ):
@@ -323,6 +330,8 @@ class ThalamusWrapper(AtlasWrapper):
             name(s) of thalamic nuclei to search for in the manual annotations resource
         obs : DataFrame
             cell metadata DataFrame
+        taxonomy_level : {"subclass", "supertype", "cluster"}, default="cluster"
+            level of taxonomy to use for filtering obs
         include_shared_clusters : bool, default=False
             whether to include clusters that are shared with multiple thalamic nuclei
         manual_annotations : bool, default=True
@@ -331,16 +340,19 @@ class ThalamusWrapper(AtlasWrapper):
         Returns
         -------
         obs
-            cell metadata DataFrame with only cells from the specified cluster(s)
+            cell metadata DataFrame with only cells from the specified cell type(s)
+            at the specified taxonomy level (i.e. cluster(s), supertype(s), subclass(es))
         """
-        clusters = cls.get_annotated_clusters(
+        cell_types = cls.get_annotated_cell_types(
             nuclei_names,
+            taxonomy_level=taxonomy_level,
             include_shared_clusters=include_shared_clusters,
             manual_annotations=manual_annotations,
         )
-        obs = obs.loc[lambda df: df["cluster"].isin(clusters)]
+        obs = obs.loc[lambda df: df[taxonomy_level].isin(cell_types)]
         return obs
-
+    
+    
     # TODO: save this in a less weird format (json?)
     @staticmethod
     @lru_cache

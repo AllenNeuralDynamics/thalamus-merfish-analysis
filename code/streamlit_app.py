@@ -240,9 +240,10 @@ with pane2:
             regions = box.multiselect(
                 "By nucleus", th_subregion_names, key=f"de_regionlist{i}_qp"
             )
-            types_by_annotation = abc.get_obs_from_annotated_clusters(
+            types_by_annotation = abc.get_obs_from_annotations(
                 regions,
                 obs_th_neurons,
+                taxonomy_level='cluster',
                 include_shared_clusters=include_shared_clusters,
                 manual_annotations=manual_annotations,
             )[taxonomy_level].unique()
@@ -333,9 +334,10 @@ with pane1:
             key="bn_tax_qp",
         )
         def celltype_lookup(nuclei):
-            return abc.get_obs_from_annotated_clusters(
+            return abc.get_obs_from_annotations(
                 nuclei,
                 obs_th_neurons,
+                taxonomy_level='cluster',
                 include_shared_clusters=include_shared_clusters,
                 manual_annotations=manual_annotations,
             )[celltype_label].unique()
