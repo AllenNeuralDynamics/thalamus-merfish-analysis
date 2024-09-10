@@ -2,13 +2,13 @@ import os
 import streamlit as st
 from streamlit_utils import (
     abc,
-    get_image_volumes,
+    get_ccf_data,
     version,
     has_realigned_asset,
-    ccf_level,
     ss_to_qp,
     ss_from_qp,
 )
+from thalamus_merfish_analysis import ccf_plots as cplots
 
 ss_to_qp()
 ss_from_qp()
@@ -30,12 +30,14 @@ with st.expander("CCF alignment settings"):
         else "published nonlinear alignment",
     )
     extend_borders = st.checkbox("Extend CCF borders", key="extend_borders_qp")
+    devccf = st.checkbox("Use DevCCF (Paxinos-based) parcellation", key="devccf_qp")
 
 if realigned and not has_realigned_asset:
     realigned = False
     st.warning("Realigned metadata not found, using published alignment")
 
-ccf_images, ccf_boundaries = get_image_volumes(realigned)
+cplots.CCF_REGIONS_DEFAULT = abc.get_thalamus_names(level='devccf' if devccf else None)
+ccf_images, ccf_boundaries = get_ccf_data(realigned, devccf=devccf)
 coords = "section" if realigned else "reconstructed"
 ss.common_args = dict(
     section_col="brain_section_label",
@@ -43,7 +45,7 @@ ss.common_args = dict(
     y_col="y_" + coords,
     boundary_img=ccf_boundaries,
     ccf_images=ccf_images,
-    ccf_level=ccf_level,
+    ccf_level='devccf' if devccf else 'structure',
 )
 
 with st.sidebar:

@@ -785,9 +785,9 @@ def plot_ccf_section(
     # select CCF regions to plot
     # TODO: could allow names from other levels and translate all to specified level...
     structure_index = abc.get_ccf_index(level=ccf_level)
-    section_region_names = [
-        structure_index[i] for i in np.unique(img) if i in structure_index.index
-    ]
+    # reindex in case image has extra regions not in structure_index
+    structure_index = structure_index.reindex(np.unique(img)).sort_values()
+    section_region_names = structure_index.values
 
     if ccf_names is None:
         ccf_names = CCF_REGIONS_DEFAULT  # may still be None

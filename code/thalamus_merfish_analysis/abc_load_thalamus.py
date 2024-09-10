@@ -7,7 +7,7 @@ import pandas as pd
 
 from .abc_load_base import AtlasWrapper, accept_anndata_input
 
-_DEVCCF_TOP_NODES_THALAMUS = ["ZIC", "CZI", "RtC", "Th"]
+_DEVCCF_TOP_NODES_THALAMUS = ["p3A", "Th"]
 _CCF_TOP_NODES_THALAMUS = ["TH", "ZI"]
 
 
@@ -20,7 +20,7 @@ class ThalamusWrapper(AtlasWrapper):
     TH_ZI_CLASSES = ["12 HY GABA", "17 MH-LH Glut", "18 TH Glut"]
     MB_CLASSES = ["19 MB Glut", "20 MB GABA"]  # midbrain
     # cls.NN_CLASSES already defined in abc_load_base.py
-    TH_SECTIONS = np.arange(25, 42)
+    TH_SECTIONS = [x for x in np.arange(25, 42) if x not in [26, 30, 37]]
 
     def load_standard_thalamus(self, data_structure="adata"):
         """Loads a preprocessed, neuronal thalamus subset of the ABC Atlas MERFISH dataset.

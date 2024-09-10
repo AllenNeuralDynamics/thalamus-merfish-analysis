@@ -4,6 +4,7 @@ Functions for loading (subsets of) the ABC Atlas MERFISH dataset.
 
 from collections import defaultdict
 from functools import cached_property, lru_cache, wraps
+from itertools import chain
 from importlib_resources import files
 from pathlib import Path
 from types import SimpleNamespace
@@ -378,7 +379,7 @@ class AtlasWrapper:
         cells_df["parcellation_substructure"] = cells_df["parcellation_substructure"].cat.rename_categories({"ZI-unassigned": "ZI"})
         return cells_df
 
-    def get_ccf_labels_image(self, resampled=True, realigned=False, subset_to_left_hemi=False):
+    def get_ccf_labels_image(self, resampled=True, realigned=False, devccf=False, subset_to_left_hemi=False, img_path=None):
         """Loads rasterized image volumes of the CCF parcellation as 3D numpy array.
 
         Voxels are labelled with assigned brain structure parcellation ID #.
@@ -410,13 +411,24 @@ class AtlasWrapper:
             numpy array containing rasterized image volumes of CCF parcellation
         """
         if resampled and not realigned:
-            path = self.files.resampled_annotation.local_path
+            if devccf:
+                path = "/data/merscope_638850_devccf_resampled/KimLabDevCCFv001_Annotations_ASL_Oriented_10um_resampled.nii.gz"
+            else:
+                path = self.files.resampled_annotation.local_path
         elif not resampled and not realigned:
-            path = self.files.annotation_10.local_path
+            if devccf:
+                path = "/data/KimLabDevCCFv1/P56/P56_DevCCF_Annotations_20um.nii.gz"
+            else:
+                path = self.files.annotation_10.local_path
         elif resampled and realigned:
-            path = "/data/realigned/abc_realigned_ccf_labels.nii.gz"
+            if devccf:
+                path = "/data/realigned/abc_realigned_devccf_labels.nii.gz"
+            else:
+                path = "/data/realigned/abc_realigned_ccf_labels.nii.gz"
         else:
             raise UserWarning("This label image is not available")
+        if img_path is not None:
+            path = img_path
         img = nibabel.load(path)
         # could maybe keep the lazy dataobj and not convert to numpy?
         imdata = np.array(img.dataobj).astype(int)
@@ -606,7 +618,7 @@ class AtlasWrapper:
         if top_nodes is None:
             return self.get_ccf_index(level=level).unique()
         if level == "devccf":
-            return _get_devccf_names(top_nodes)
+            return self._get_devccf_names(top_nodes)
         else:
             return self._get_ccf_names(top_nodes, level=level)
 
@@ -633,8 +645,7 @@ class AtlasWrapper:
             Pandas.Series with index CCF IDs and values CCF acronyms
         """
         if level == "devccf":
-            ccf_df = _get_devccf_metadata()
-            index = ccf_df.set_index("ID")["Acronym"]
+            index = self._get_devccf_metadata()["Acronym"]
         else:
             ccf_df = self._ccf_metadata
             # parcellation_index to acronym
@@ -770,6 +781,23 @@ class AtlasWrapper:
 
         return palette
 
+    @classmethod
+    def _get_devccf_metadata(cls):
+        devccf_index = pd.read_excel("/data/KimLabDevCCFv1/DevCCFv1_OntologyStructure.xlsx", header=[0,1])
+        devccf_index = devccf_index["DevCCF"].set_index("ID16")
+        return devccf_index
+
+
+    @classmethod
+    def _get_devccf_names(cls, top_nodes, filter=True):
+        devccf_index = cls._get_devccf_metadata().reset_index().set_index("Acronym")
+        ids = devccf_index.loc[top_nodes, "ID16"].astype(str)
+        if filter:
+            devccf_index = devccf_index.query("P56")
+        names = list(set(chain(
+            *(devccf_index.loc[lambda df: df["Structure ID Path16"].str.contains(x)].index for x in ids)
+        )))
+        return names
 
 DEFAULT_ATLAS_WRAPPER = AtlasWrapper()
 
@@ -779,30 +807,6 @@ def _label_masked_cells(cells_df, mask_img, coords, resolutions, field_name="reg
     return cells_df
 
 
-@lru_cache
-def _get_devccf_metadata():
-    devccf_index = pd.read_csv(
-        "/data/KimLabDevCCFv001/KimLabDevCCFv001_MouseOntologyStructure.csv",
-        dtype={"ID": int, "Parent ID": str},
-    )
-    # some quotes have both single and double
-    for x in ["Acronym", "Name"]:
-        devccf_index[x] = devccf_index[x].str.replace("'", "")
-    return devccf_index
-
-
-@lru_cache
-def _get_devccf_names(top_nodes):
-    devccf_index = _get_devccf_metadata().copy()
-    devccf_index["ID"] = devccf_index["ID"].astype(str)
-    g = nx.from_pandas_edgelist(
-        devccf_index, source="Parent ID", target="ID", create_using=nx.DiGraph()
-    )
-    devccf_index = devccf_index.set_index("Acronym")
-    th_ids = list(
-        set.union(*(set(nx.descendants(g, devccf_index.loc[x, "ID"])) for x in top_nodes))
-    )
-    names = devccf_index.reset_index().set_index("ID").loc[th_ids, "Acronym"]
-    return names
+# @lru_cache
 
 

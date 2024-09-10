@@ -108,13 +108,7 @@ imdata = np.array(img.dataobj).astype(int)
 df["parcellation_index_realigned_devccf"] = imdata[ccf.image_index_from_coords(df[new_coords])]
 save_resampled_image(imdata, "abc_realigned_devccf_labels")
 
-devccf_index = pd.read_csv(
-    "/data/KimLabDevCCFv001/KimLabDevCCFv001_MouseOntologyStructure.csv",
-    dtype={"ID": int, "Parent ID": str},
-)
-# some quotes have both single and double
-for x in ["Acronym", "Name"]:
-    devccf_index[x] = devccf_index[x].str.replace("'", "")
+devccf_index = abc._get_devccf_metadata()
 df["parcellation_devccf"] = df["parcellation_index_realigned_devccf"].map(
     devccf_index.set_index("ID").to_dict()
 )

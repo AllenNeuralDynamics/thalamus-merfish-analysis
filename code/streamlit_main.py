@@ -6,7 +6,7 @@ from thalamus_merfish_analysis import de_genes as deg
 
 import streamlit_utils as stu
 from streamlit_utils import (abc, get_data, get_adata, get_sc_data, propagate_value_from_lookup, 
-th_subregion_names, palettes)
+th_subregion_names, palettes, th_sections)
 
 
 ss = st.session_state
@@ -38,7 +38,7 @@ with pane2:
         nuclei = st_gp.multiselect(
             "Nuclei to highlight", th_subregion_names, key="gp_regionlist_qp"
         )
-        sections = st_gp.multiselect("Sections", abc.TH_SECTIONS, key="gp_sectionlist_qp")
+        sections = st_gp.multiselect("Sections", th_sections, key="gp_sectionlist_qp")
         if len(sections) == 0:
             sections = None
         focus_plot = (
@@ -60,7 +60,7 @@ with pane2:
     with multi_gene:
         st_mg = st.form("multigene_plot")
         gene_set = st_mg.multiselect("Select genes", merfish_genes, key="mg_genelist_qp")
-        sections = st_mg.multiselect("Sections", abc.TH_SECTIONS, key="mg_sectionlist_qp")
+        sections = st_mg.multiselect("Sections", th_sections, key="mg_sectionlist_qp")
         dark_background = st_mg.checkbox("Dark background", key="mg_dark_qp")
         if st_mg.form_submit_button("Plot multi-gene expression", on_click=stu.ss_to_qp):
             adata = get_adata(transform=transform)
@@ -141,12 +141,12 @@ with pane1:
     with by_section:
         sections = st.multiselect(
             "Section",
-            abc.TH_SECTIONS,
+            th_sections,
             key="bs_sectionlist_qp",
         )
         st.button(
             "Show all sections",
-            on_click=lambda: setattr(ss, "bs_sectionlist_qp", abc.TH_SECTIONS),
+            on_click=lambda: setattr(ss, "bs_sectionlist_qp", th_sections),
         )
         celltype_label = st.selectbox(
             "Level of celltype hierarcy",

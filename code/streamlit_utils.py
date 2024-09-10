@@ -30,28 +30,23 @@ def propagate_value_from_lookup(from_key, to_key, lookup_fcn):
 
 import os
 from pathlib import Path
-from thalamus_merfish_analysis import ccf_plots as cplots
 from thalamus_merfish_analysis import ccf_images as cimg
 from thalamus_merfish_analysis.abc_load_thalamus import ThalamusWrapper
 from anndata import read_h5ad
 
 version = "20230830"
-ccf_level = "structure"
-lump_structures = False
 has_realigned_asset = Path(
     "/data/realigned/abc_realigned_metadata_thalamus-boundingbox.parquet"
 ).exists()
 abc = ThalamusWrapper(version=version)
 
-th_names = [x for x in abc.get_thalamus_names() if "unassigned" not in x]
-th_subregion_names = [x for x in abc.get_thalamus_names(level=ccf_level) if "unassigned" not in x]
 palettes = {level: abc.get_taxonomy_palette(level) for level in ["subclass", "supertype"]}
 palettes["cluster"] = abc.get_thalamus_cluster_palette()
-cplots.CCF_REGIONS_DEFAULT = abc.get_thalamus_names()
+th_sections = abc._section_metadata.set_index("section_index")["brain_section_label"].loc[abc.TH_SECTIONS]
 
 @st.cache_resource
 def get_adata(transform="cpm", version=version, realigned=False):
-    obs_th_neurons, _, _ = get_data(realigned, version=version, extend_borders=True)
+    obs_th_neurons, _ = get_data(realigned, version=version, extend_borders=True)
     return abc.load_adata(transform=transform, from_metadata=obs_th_neurons)
 
 
@@ -86,10 +81,11 @@ def get_data(realigned, version=version, extend_borders=False):
     obs_th_neurons = abc.filter_by_thalamus_coords(obs_neurons, realigned=realigned, buffer=buffer)
     return obs_th_neurons
 
+th_subregion_names = []
 
 @st.cache_data
-def get_image_volumes(realigned, lump_structures=lump_structures, edge_width=1):
-    ccf_images = abc.get_ccf_labels_image(resampled=True, realigned=realigned)
+def get_ccf_data(realigned, devccf=False, lump_structures=False, edge_width=1):
+    ccf_images = abc.get_ccf_labels_image(resampled=True, realigned=realigned, devccf=devccf)
 
     if lump_structures:
         ccf_index = abc.get_ccf_index(level="structure")
@@ -104,5 +100,8 @@ def get_image_volumes(realigned, lump_structures=lump_structures, edge_width=1):
     ccf_boundaries = cimg.sectionwise_label_erosion(
         ccf_images, edge_width, fill_val=0, return_edges=True, section_list=abc.TH_SECTIONS
     )
+    global th_subregion_names
+    th_subregion_names = [x for x in abc.get_thalamus_names(level='devccf' if devccf else 'structure') 
+                if "unassigned" not in x]
     return ccf_images, ccf_boundaries
 
