@@ -3,14 +3,13 @@ Functions for loading (subsets of) the ABC Atlas MERFISH dataset.
 """
 
 from collections import defaultdict
-from functools import cached_property, lru_cache, wraps
+from functools import cached_property, wraps
 from itertools import chain
 from importlib_resources import files
 from pathlib import Path
 from types import SimpleNamespace
 
 import anndata as ad
-import networkx as nx
 import nibabel
 import numpy as np
 import pandas as pd
@@ -50,9 +49,6 @@ class AtlasWrapper:
     Keeps track of key file paths and versions to use for loading, filtering etc.
     """
 
-    # hardcoded non-neuronal class categories for v20230830
-    # TODO: figure out a way to adapt across versions (by name?)
-    NN_CLASSES = ["30 Astro-Epen", "31 OPC-Oligo", "33 Vascular", "34 Immune"]
     # constants for spatial resolution of 'C57BL6J-638850' dataset
     X_RESOLUTION = Y_RESOLUTION = 10e-3
     Z_RESOLUTION = 200e-3
@@ -82,8 +78,11 @@ class AtlasWrapper:
             ccf_metadata=manifest.get_file_attributes(
                 directory=_ccf, file_name="parcellation_to_parcellation_term_membership"
             ),
-            cluster_metadata=manifest.get_file_attributes(
+            cluster_metadata_full=manifest.get_file_attributes(
                 directory=_taxonomy, file_name="cluster_to_cluster_annotation_membership"
+            ),
+            cluster_metadata=manifest.get_file_attributes(
+                directory=_taxonomy, file_name="cluster_to_cluster_annotation_membership_pivoted"
             ),
             taxonomy_metadata=manifest.get_file_attributes(
                 directory=_taxonomy, file_name="cluster_annotation_term_set"
@@ -92,6 +91,24 @@ class AtlasWrapper:
                 directory="WMB-10X", file_name="cell_metadata_with_cluster_annotation"
             ),
         )
+    @cached_property
+    def NN_CLASSES(self):
+        return self._cluster_annotations.loc[
+            lambda df: df["subclass"].str.contains("NN"), "class"
+        ].unique()
+    
+    @cached_property
+    def taxonomy_classes(self):
+        return self._cluster_annotations["class"].unique()
+
+    def get_taxonomy_class_by_name(self, name):
+        classes = [x for x in self.taxonomy_classes if name in x]
+        if len(classes) == 1:
+            return classes[0]
+        elif len(classes) == 0:
+            raise ValueError(f"No class found containing '{name}'")
+        else:
+            raise ValueError(f"Multiple classes found containing '{name}': {classes}")
 
     @cached_property
     def taxonomy_id(self):
@@ -203,9 +220,8 @@ class AtlasWrapper:
         obs = obs[obs[ccf_label].isin(regions)]
         return obs
 
-    @staticmethod
     @accept_anndata_input
-    def filter_by_class(obs, exclude=NN_CLASSES, include=None):
+    def filter_by_class(self, obs, exclude=None, include=None):
         """Filters cell metadata (obs) dataframe by cell type taxonomy
         classes. Note that these labels may change across dataset versions!
 
@@ -213,7 +229,7 @@ class AtlasWrapper:
         ----------
         obs
             dataframe containing cell metadata (i.e. adata.obs)
-        exclude : list(str), default=NN_CLASSES
+        exclude : list(str), default=self.NN_CLASSES
             list of classes to filter out
         include : list(str), default=None
             if present, include ONLY cells in this list of classes
@@ -227,7 +243,7 @@ class AtlasWrapper:
             obs = obs[obs["class"].isin(include)]
 
         if exclude is None:
-            exclude = []
+            exclude = self.NN_CLASSES
         obs = obs[~obs["class"].isin(exclude)]
         return obs
 
@@ -703,6 +719,11 @@ class AtlasWrapper:
         df = pd.read_csv(self.files.cluster_metadata.local_path)
         return df
 
+    @cached_property
+    def _cluster_annotations_full(self):
+        df = pd.read_csv(self.files.cluster_metadata_full.local_path)
+        return df
+
     def get_taxonomy_palette(self, taxonomy_level):
         """Get the published color dictionary for a given level of
         the ABC cell type taxonomy
@@ -719,7 +740,7 @@ class AtlasWrapper:
         color_dict : dict
             dictionary mapping cell type labels to their official ABC Atlas hex colors
         """
-        df = self._cluster_annotations
+        df = self._cluster_annotations_full
         df = df[df["cluster_annotation_term_set_name"] == taxonomy_level]
         palette = df.set_index("cluster_annotation_term_name")["color_hex_triplet"].to_dict()
         return palette
@@ -741,18 +762,12 @@ class AtlasWrapper:
             list of taxonomy labels
         """
         df = self._cluster_annotations
-        df = df[df["cluster_annotation_term_set_name"] == taxonomy_level]
-        label_list = (
-            df.set_index("cluster_alias").loc[aliases, "cluster_annotation_term_name"].to_list()
-        )
+        label_list = df.set_index("cluster_alias").loc[aliases, taxonomy_level].to_list()
         return label_list
     
     def get_alias_from_cluster_label(self, clusters):
         df = self._cluster_annotations
-        df = df[df["cluster_annotation_term_set_name"] == "cluster"]
-        label_list = (
-            df.set_index("cluster_annotation_term_name").loc[clusters, "cluster_alias"].to_list()
-        )
+        label_list = df.set_index("cluster").loc[clusters, "cluster_alias"].to_list()
         return label_list
 
     @cached_property

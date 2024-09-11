@@ -3,10 +3,10 @@ sys.path.append("/code/")
 import pandas as pd
 from thalamus_merfish_analysis import abc_load as abc
 
-df_taxonomy = abc._cluster_annotations.loc[lambda df: df["cluster_annotation_term_set_name"] == "cluster"].copy()
-df_taxonomy["short_name"] = df_taxonomy["cluster_annotation_term_name"].str[:4]
+df_taxonomy = abc._cluster_annotations.copy()
+df_taxonomy["short_name"] = df_taxonomy["cluster"].str[:4]
 def get_alias(clusters):
-    return df_taxonomy.set_index("cluster_annotation_term_name").loc[clusters, "cluster_alias"].to_list()
+    return df_taxonomy.set_index("cluster").loc[clusters, "cluster_alias"].to_list()
 # Manual annotations
 
 df_manual = pd.read_csv("/root/capsule/code/thalamus_merfish_analysis/resources/prong1_cluster_annotations_by_nucleus.csv")
@@ -14,7 +14,7 @@ cluster = "cluster_ids_CNN20230720"
 nucleus = "nuclei"
 
 def get_name(clusters):
-    return df_taxonomy.set_index("short_name").loc[clusters, "cluster_annotation_term_name"].to_list()
+    return df_taxonomy.set_index("short_name").loc[clusters, "cluster"].to_list()
 
 def flatten_annotations(df):
     return (df

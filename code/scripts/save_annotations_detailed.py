@@ -147,11 +147,6 @@ df_mean.query("0.03 < nucleus_fbeta < 0.1").to_csv("/results/nuclei_cluster_near
 # )
 # nuclei_to_cluster.to_csv("/results/annotations_from_fbeta_n2c_all.csv")
 
-df_taxonomy = abc._cluster_annotations.loc[lambda df: df["cluster_annotation_term_set_name"] == "cluster"].copy()
-df_taxonomy["short_name"] = df_taxonomy["cluster_annotation_term_name"].str[:4]
-def get_alias(clusters):
-    return df_taxonomy.set_index("cluster_annotation_term_name").loc[clusters, "cluster_alias"].to_list()
-
 top_by_cluster = df_mean.groupby("cluster")["nucleus_f1"].idxmax().to_list()
 top_by_region = df_mean.groupby("nucleus")["nucleus_f1"].idxmax().to_list()
 
@@ -165,5 +160,5 @@ top_by_region = df_mean.groupby("nucleus")["nucleus_f1"].idxmax().to_list()
 .rename("nuclei")
 .reset_index()
 # get cluster aliases
-.assign(cluster_alias=lambda df: get_alias(df["cluster"]))
+.assign(cluster_alias=lambda df: abc.get_alias_from_cluster_label(df["cluster"]))
 .to_csv("/results/annotations_c2n_auto.csv"))

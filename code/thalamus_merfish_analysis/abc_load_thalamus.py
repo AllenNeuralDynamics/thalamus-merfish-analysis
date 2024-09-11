@@ -1,4 +1,4 @@
-from functools import lru_cache
+from functools import cached_property, lru_cache
 from importlib_resources import files
 from itertools import chain
 
@@ -16,10 +16,14 @@ class ThalamusWrapper(AtlasWrapper):
     containing version/dataset-specific methods for loading, filtering, etc.
     """
 
-    # hardcoded class categories for v20230830
-    TH_ZI_CLASSES = ["12 HY GABA", "17 MH-LH Glut", "18 TH Glut"]
-    MB_CLASSES = ["19 MB Glut", "20 MB GABA"]  # midbrain
-    # cls.NN_CLASSES already defined in abc_load_base.py
+    @cached_property
+    def TH_ZI_CLASSES(self):
+        return map(self.get_taxonomy_class_by_name, ["HY GABA", "MH-LH Glut", "TH Glut"])
+
+    @cached_property
+    def MB_CLASSES(self):
+        return map(self.get_taxonomy_class_by_name, ["MB Glut", "MB GABA"])
+
     TH_SECTIONS = [x for x in np.arange(25, 42) if x not in [26, 30, 37]]
 
     def load_standard_thalamus(self, data_structure="adata"):
@@ -139,12 +143,11 @@ class ThalamusWrapper(AtlasWrapper):
 
         return adata
 
-    @classmethod
     @accept_anndata_input
     def filter_by_class_thalamus(
-        cls,
+        self,
         obs,
-        include=TH_ZI_CLASSES + MB_CLASSES,
+        include=None,
         exclude=None,
         display_filtered_classes=True,
     ):
@@ -157,7 +160,7 @@ class ThalamusWrapper(AtlasWrapper):
             anndata object or dataframe containing the ABC Atlas MERFISH dataset
         exclude : list of str, default=None
             list of classes to filter out
-        include : list of str, default=None
+        include : list of str, default=self.TH_ZI_CLASSES + self.MB_CLASSES
             if present, include ONLY cells in this list of classes (acts prior
             to 'exclude' and thus excludes any class not explicitly in this list)
         display_filtered_classes : bool, default=True
@@ -169,8 +172,10 @@ class ThalamusWrapper(AtlasWrapper):
             the dataset, filtered to only include cells from specific
             thalamic & zona incerta + optional (midbrain & nonneuronal) classes
         """
+        if include is None:
+            include = self.TH_ZI_CLASSES + self.MB_CLASSES
         classes_input = sorted(obs["class"].cat.remove_unused_categories().cat.categories.to_list())
-        obs = cls.filter_by_class(obs, exclude=exclude, include=include)
+        obs = self.filter_by_class(obs, exclude=exclude, include=include)
         classes_output = sorted(
             obs["class"].cat.remove_unused_categories().cat.categories.to_list()
         )
