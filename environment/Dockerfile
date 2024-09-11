@@ -1,4 +1,4 @@
-# hash:sha256:38467113a90e824633478e8410296ce0e63770625e39d157b4b0b119bf534be7
+# hash:sha256:92b204040591fb9955b6fbb540bcc78e2b52537751fb59a2fde4533399b57b95
 ARG REGISTRY_HOST
 FROM $REGISTRY_HOST/codeocean/jupyterlab:3.6.1-miniconda4.12.0-python3.9-ubuntu20.04
 
@@ -23,12 +23,14 @@ RUN pip install -U --no-cache-dir --upgrade-strategy=only-if-needed \
     geopandas==0.13.1 \
     hdbscan==0.8.33 \
     nibabel==5.1.0 \
+    openpyxl==3.1.5 \
     pydantic==2.7.1 \
     scanpy==1.9.3 \
     scikit-learn==1.2.2 \
     scipy==1.9.1 \
     seaborn==0.13.2 \
-    streamlit==1.35.0 \
+    streamlit==1.38.0 \
+    streamlit-aggrid==1.0.5 \
     zarr==2.17.0
 
 COPY postInstall /
