@@ -157,14 +157,15 @@ def export_to_quicknii(df, base_filename, img_label, img_coords,
             json.dump(data, f, indent=4)
     return data
 
-def preprocess_for_qn_export(df, nn_classes, img_coords, spatial_ref_index,
+def preprocess_for_qn_export(df, nn_classes, img_coords, spatial_ref_index=None,
                              subset_for_fine_labels=None,
                              slice_label='slice_int',
                              img_label='subclass_int'):
     """Process cell dataframe for export by subsetting to spatial bounds
     of reference dataset
     """
-    df = subset_to_ref_bounds(df, img_coords, spatial_ref_index)
+    if spatial_ref_index is not None:
+        df = subset_to_ref_bounds(df, img_coords, spatial_ref_index)
     subset_for_fine_labels = df.index.intersection(subset_for_fine_labels)
 
     working_label = "thal_class"
