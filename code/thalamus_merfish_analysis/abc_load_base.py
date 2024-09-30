@@ -613,7 +613,7 @@ class AtlasWrapper:
             names = sorted(list(set(ccf_labels.loc[th_zi_ind, :].values.flatten())))
         return np.unique(names)
 
-    def get_ccf_names(self, top_nodes=None, level=None):
+    def get_ccf_names(self, top_nodes=None, level=None, include_unassigned=True):
         """Get the names of all CCF regions that are children of the
         specified list of top-level regions
 
@@ -626,17 +626,24 @@ class AtlasWrapper:
             or None to return CCF labels at all levels,
             or 'devccf' to return labels from Kronman et al. 2023 parcellation,
             by default None
+        include_unassigned : bool, default=False
+            include 'unassigned' regions in the list of names
+            (these are generally substructures of a labelled region without
+            a more specific substructure name)
 
         Returns
         -------
             list of region names
         """
         if top_nodes is None:
-            return self.get_ccf_index(level=level).unique()
+            names = self.get_ccf_index(level=level).unique()
         if level == "devccf":
-            return self._get_devccf_names(top_nodes)
+            names = self._get_devccf_names(top_nodes)
         else:
-            return self._get_ccf_names(top_nodes, level=level)
+            names = self._get_ccf_names(top_nodes, level=level)
+        if not include_unassigned:
+            names = [x for x in names if "unassigned" not in x]
+        return names
 
     def get_ccf_index_reverse_lookup(self, level="substructure"):
         ccf_index = self.get_ccf_index(level=level)

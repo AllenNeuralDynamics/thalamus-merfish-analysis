@@ -5,8 +5,7 @@ from thalamus_merfish_analysis import de_genes as deg
 
 
 import streamlit_utils as stu
-from streamlit_utils import (abc, get_data, get_adata, get_sc_data, propagate_value_from_lookup, 
-th_subregion_names, palettes, th_sections)
+from streamlit_utils import abc, get_data, get_adata, get_sc_data, propagate_value_from_lookup, palettes, th_sections
 
 
 ss = st.session_state
@@ -36,8 +35,10 @@ with pane2:
         st_gp = st.form("gene_plot")
         gene = st_gp.selectbox("Select gene", merfish_genes, index=None, key="gp_gene_qp")
         nuclei = st_gp.multiselect(
-            "Nuclei to highlight", th_subregion_names, key="gp_regionlist_qp"
+            "Nuclei to highlight", ss.th_subregion_names, key="gp_regionlist_qp"
         )
+        if ss.devccf_qp:
+            nuclei = stu.get_devccf_matched_regions(nuclei)
         sections = st_gp.multiselect("Sections", th_sections, key="gp_sectionlist_qp")
         if len(sections) == 0:
             sections = None
@@ -93,7 +94,7 @@ with pane2:
         grouped_types = [0, 0]
         for i, box in enumerate(groups):
             regions = box.multiselect(
-                "By nucleus", th_subregion_names, key=f"de_regionlist{i}_qp"
+                "By nucleus", ss.th_subregion_names, key=f"de_regionlist{i}_qp"
             )
             types_by_annotation = abc.get_obs_from_annotated_clusters(
                 regions,
@@ -209,11 +210,13 @@ with pane1:
         )
         nuclei = st.multiselect(
             "Select individual nuclei", 
-            th_subregion_names, 
+            ss.th_subregion_names, 
             key="bn_regionlist_qp",
             on_change=propagate_value_from_lookup,
             args=("bn_regionlist_qp", "bn_typelist_qp", celltype_lookup),
         )
+        if ss.devccf_qp:
+            nuclei = stu.get_devccf_matched_regions(nuclei)
         celltypes = st.multiselect(
             "Select cell types",
             obs_th_neurons[taxonomy_level].unique(),

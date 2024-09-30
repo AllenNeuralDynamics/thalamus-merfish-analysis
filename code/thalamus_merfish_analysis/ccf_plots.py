@@ -964,7 +964,7 @@ def _get_sections_to_plot(obs, section_col, ccf_names, ccf_highlight, ccf_images
     else:
         sections = obs[section_col].unique()
     target_regions = ccf_highlight if len(ccf_highlight) > 0 else ccf_names
-    if target_regions is not None:
+    if target_regions is not None and len(target_regions) > 0:
         sections = set(sections).intersection(
             get_sections_for_ccf_regions(
                 ccf_images,

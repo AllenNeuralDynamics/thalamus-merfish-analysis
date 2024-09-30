@@ -1,4 +1,5 @@
 # Utility functions and non-user configurable defaults for the Streamlit app
+from warnings import catch_warnings
 import streamlit as st
 
 _suffix = "_qp"
@@ -18,7 +19,7 @@ def ss_from_qp():
 def ss_to_qp():
     qp_state = {k: v for k, v in st.session_state.items() if _suffix in k}
     qp_state = {k: v for k, v in qp_state.items() if v is not None}
-    st.query_params.from_dict(qp_state)
+    st.query_params.update(qp_state)
 
 ss = st.session_state
 def propagate_value_from_lookup(from_key, to_key, lookup_fcn):
@@ -46,7 +47,7 @@ th_sections = abc._section_metadata.set_index("section_index")["brain_section_la
 
 @st.cache_resource
 def get_adata(transform="cpm", version=version, realigned=False):
-    obs_th_neurons, _ = get_data(realigned, version=version, extend_borders=True)
+    obs_th_neurons = get_data(realigned, version=version, extend_borders=True)
     return abc.load_adata(transform=transform, from_metadata=obs_th_neurons)
 
 
@@ -76,12 +77,11 @@ def get_sc_data(
 def get_data(realigned, version=version, extend_borders=False):
     obs = abc.get_combined_metadata(realigned=has_realigned_asset, drop_unused=False)
     # remove non-neuronal and some other outlier non-thalamus types
-    obs_neurons = abc.filter_by_class_thalamus(obs, display_filtered_classes=False)
+    # obs_neurons = abc.filter_by_class_thalamus(obs, display_filtered_classes=False)
+    obs_neurons = abc.filter_by_class(obs)
     buffer = 5 if extend_borders else 0
     obs_th_neurons = abc.filter_by_thalamus_coords(obs_neurons, realigned=realigned, buffer=buffer)
     return obs_th_neurons
-
-th_subregion_names = []
 
 @st.cache_data
 def get_ccf_data(realigned, devccf=False, lump_structures=False, edge_width=1):
@@ -100,8 +100,11 @@ def get_ccf_data(realigned, devccf=False, lump_structures=False, edge_width=1):
     ccf_boundaries = cimg.sectionwise_label_erosion(
         ccf_images, edge_width, fill_val=0, return_edges=True, section_list=abc.TH_SECTIONS
     )
-    global th_subregion_names
-    th_subregion_names = [x for x in abc.get_thalamus_names(level='devccf' if devccf else 'structure') 
-                if "unassigned" not in x]
     return ccf_images, ccf_boundaries
 
+def get_devccf_matched_regions(nuclei):
+    with catch_warnings(record=True) as w:
+        nuclei = abc.get_devccf_matched_regions(nuclei)
+        for warn in w:
+            st.warning(warn.message)
+    return nuclei

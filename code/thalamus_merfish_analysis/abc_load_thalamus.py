@@ -1,6 +1,6 @@
 from functools import cached_property, lru_cache
 from importlib_resources import files
-from itertools import chain
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -18,11 +18,11 @@ class ThalamusWrapper(AtlasWrapper):
 
     @cached_property
     def TH_ZI_CLASSES(self):
-        return map(self.get_taxonomy_class_by_name, ["HY GABA", "MH-LH Glut", "TH Glut"])
+        return [self.get_taxonomy_class_by_name(x) for x in ["HY GABA", "MH-LH Glut", "TH Glut"]]
 
     @cached_property
     def MB_CLASSES(self):
-        return map(self.get_taxonomy_class_by_name, ["MB Glut", "MB GABA"])
+        return [self.get_taxonomy_class_by_name(x) for x in ["MB Glut", "MB GABA"]]
 
     TH_SECTIONS = [x for x in np.arange(25, 42) if x not in [26, 30, 37]]
 
@@ -233,11 +233,11 @@ class ThalamusWrapper(AtlasWrapper):
         return obs.query("5.0 <= z_section <= 8.2")
 
     @lru_cache
-    def get_thalamus_names(self, level=None):
+    def get_thalamus_names(self, level=None, include_unassigned=True):
         if level == "devccf":
-            return self.get_ccf_names(_DEVCCF_TOP_NODES_THALAMUS, level=level)
+            return self.get_ccf_names(_DEVCCF_TOP_NODES_THALAMUS, level=level, include_unassigned=include_unassigned)
         else:
-            return self.get_ccf_names(_CCF_TOP_NODES_THALAMUS, level=level)
+            return self.get_ccf_names(_CCF_TOP_NODES_THALAMUS, level=level, include_unassigned=include_unassigned)
 
     def get_thalamus_ccf_indices(self):
         th_ccf_names = self.get_thalamus_names(level="substructure")
@@ -359,6 +359,27 @@ class ThalamusWrapper(AtlasWrapper):
             files("thalamus_merfish_analysis.resources") / "cluster_palette_glasbey.csv"
         )
         return dict(zip(palette_df["Unnamed: 0"], palette_df["0"]))
+
+    @staticmethod
+    # @lru_cache
+    def _devccf_matches():
+        match_df = pd.read_csv(
+            files("thalamus_merfish_analysis.resources") / "devccf_matches.csv"
+        )
+        return match_df
+    
+    @staticmethod
+    def get_devccf_matched_regions(ccf_regions):
+        match_df = ThalamusWrapper._devccf_matches().set_index("ccf")
+        matched = match_df.index.intersection(ccf_regions)
+        unmatched = set(ccf_regions) - set(matched)
+        if unmatched:
+            warnings.warn(f"Regions {unmatched} not found in DevCCF parcellation.")
+        for ccf_region in matched:
+            match = match_df.loc[ccf_region]
+            if not match["one_to_one"]:
+                warnings.warn(f"{ccf_region} does not have a one-to-one match in DevCCF: using {match['devccf']}")
+        return match_df.loc[matched, "devccf"].tolist()
 
 
 DEFAULT_ATLAS_WRAPPER = ThalamusWrapper()
