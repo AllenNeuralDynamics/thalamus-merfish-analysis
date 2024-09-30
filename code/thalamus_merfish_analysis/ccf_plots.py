@@ -208,10 +208,10 @@ def get_sections_for_ccf_regions(
 ):
     """Get the sections that contain cells from a list of CCF regions."""
     structure_index = abc.get_ccf_index_reverse_lookup(level=ccf_level)
-    ccf_ids = structure_index[ccf_names] #.values
+    ccf_ids = structure_index[ccf_names].values
     sections = []
     for i in range(ccf_images.shape[2]):
-        if np.any(np.isin(ccf_images[:, :, i], ccf_ids)):
+        if any(x in ccf_images[:, :, i] for x in ccf_ids):
             sections.append(i)
     section_index = abc.get_section_index(section_col=section_col)
     ind = pd.Series(section_index.index.values, index=section_index)

@@ -3,7 +3,7 @@ Functions for loading (subsets of) the ABC Atlas MERFISH dataset.
 """
 
 from collections import defaultdict
-from functools import cached_property, wraps
+from functools import cached_property, wraps, lru_cache
 from itertools import chain
 from importlib_resources import files
 from pathlib import Path
@@ -803,8 +803,9 @@ class AtlasWrapper:
 
         return palette
 
-    @classmethod
-    def _get_devccf_metadata(cls):
+    @staticmethod
+    @lru_cache
+    def _get_devccf_metadata():
         devccf_index = pd.read_excel("/data/KimLabDevCCFv1/DevCCFv1_OntologyStructure.xlsx", header=[0,1])
         devccf_index = devccf_index["DevCCF"].set_index("ID16")
         return devccf_index
@@ -828,7 +829,5 @@ def _label_masked_cells(cells_df, mask_img, coords, resolutions, field_name="reg
     cells_df[field_name] = mask_img[image_index_from_coords(cells_df[coords], resolutions)]
     return cells_df
 
-
-# @lru_cache
 
 

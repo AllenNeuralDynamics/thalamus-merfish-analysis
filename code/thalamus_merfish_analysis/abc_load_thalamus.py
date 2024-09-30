@@ -373,7 +373,7 @@ class ThalamusWrapper(AtlasWrapper):
         return dict(zip(palette_df["Unnamed: 0"], palette_df["0"]))
 
     @staticmethod
-    # @lru_cache
+    @lru_cache
     def _devccf_matches():
         match_df = pd.read_csv(
             files("thalamus_merfish_analysis.resources") / "devccf_matches.csv"
