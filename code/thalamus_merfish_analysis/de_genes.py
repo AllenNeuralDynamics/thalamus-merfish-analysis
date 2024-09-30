@@ -42,8 +42,12 @@ def run_sc_deg_analysis(
         adata.obs[group_var] = adata.obs[taxonomy_level].astype(str)
         if combined_group:
             adata.obs, group = combine_groups(adata.obs, taxonomy_level, group_var, group)
+        else:
+            group = group[0]
         if combined_ref:
             adata.obs, reference = combine_groups(adata.obs, taxonomy_level, group_var, reference)
+        else:
+            reference = reference[0]
     else:
         group_var = taxonomy_level
         group = group[0]
