@@ -321,7 +321,7 @@ class ThalamusWrapper(AtlasWrapper):
                 raise UserWarning(error)
         cell_types = self.get_taxonomy_label_from_alias(anno.loc[all_names, "cluster_alias"],
                                                        taxonomy_level=taxonomy_level)
-        return cell_types
+        return list(set(cell_types))
     
     def get_obs_from_annotations(
         self,
