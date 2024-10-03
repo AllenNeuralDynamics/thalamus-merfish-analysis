@@ -1,4 +1,4 @@
-from importlib_resources import files
+from importlib.resources import files
 import sys
 
 sys.path.append("/code/")
@@ -24,10 +24,10 @@ slice_label = "slice_int"
 df[slice_label] = df["z_section"].apply(lambda x: int(x * 10))
 
 transforms_by_section = ccf.read_quicknii_file(
-    files("thalamus_merfish_analysis.resources") / "quicknii_refined_20240228.json", scale=25
+    files("thalamus_merfish_analysis")/"resources" / "quicknii_refined_20240228.json", scale=25
 )
 minmax = pd.read_csv(
-    files("thalamus_merfish_analysis.resources") / "brain3_thalamus_coordinate_bounds.csv",
+    files("thalamus_merfish_analysis")/"resources" / "brain3_thalamus_coordinate_bounds.csv",
     index_col=0,
 )
 

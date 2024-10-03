@@ -1,4 +1,3 @@
-from importlib_resources import files
 import numpy as np
 import pandas as pd
 import anndata as ad

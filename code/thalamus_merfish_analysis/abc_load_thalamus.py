@@ -1,5 +1,5 @@
 from functools import cached_property, lru_cache
-from importlib_resources import files
+from importlib.resources import files
 import warnings
 
 import numpy as np
@@ -251,11 +251,11 @@ class ThalamusWrapper(AtlasWrapper):
     # load cluster-nucleus annotations
     try:
         nuclei_df_manual = pd.read_csv(
-            files("thalamus_merfish_analysis.resources")/ "annotations_c2n_manual.csv",
+            files("thalamus_merfish_analysis")/"resources"/ "annotations_c2n_manual.csv",
             index_col="cluster"
         )
         nuclei_df_auto = pd.read_csv(
-            files("thalamus_merfish_analysis.resources") / "annotations_c2n_auto.csv",
+            files("thalamus_merfish_analysis")/"resources" / "annotations_c2n_auto.csv",
             index_col="cluster"
         )
         found_annotations = True
@@ -368,7 +368,7 @@ class ThalamusWrapper(AtlasWrapper):
     @lru_cache
     def get_thalamus_cluster_palette():
         palette_df = pd.read_csv(
-            files("thalamus_merfish_analysis.resources") / "cluster_palette_glasbey.csv"
+            files("thalamus_merfish_analysis")/"resources" / "cluster_palette_glasbey.csv"
         )
         return dict(zip(palette_df["Unnamed: 0"], palette_df["0"]))
 
@@ -376,7 +376,7 @@ class ThalamusWrapper(AtlasWrapper):
     @lru_cache
     def _devccf_matches():
         match_df = pd.read_csv(
-            files("thalamus_merfish_analysis.resources") / "devccf_matches.csv"
+            files("thalamus_merfish_analysis")/"resources" / "devccf_matches.csv"
         )
         return match_df
     

@@ -5,7 +5,7 @@ Functions for loading (subsets of) the ABC Atlas MERFISH dataset.
 from collections import defaultdict
 from functools import cached_property, wraps, lru_cache
 from itertools import chain
-from importlib_resources import files
+from importlib.resources import files
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -95,7 +95,7 @@ class AtlasWrapper:
     def NN_CLASSES(self):
         return self._cluster_annotations.loc[
             lambda df: df["subclass"].str.contains("NN"), "class"
-        ].unique()
+        ].unique().tolist()
     
     @cached_property
     def taxonomy_classes(self):
@@ -683,7 +683,7 @@ class AtlasWrapper:
 
     @cached_property
     def _section_metadata(self):
-        path = files("thalamus_merfish_analysis.resources") / self._section_metadata_file
+        path = files("thalamus_merfish_analysis")/"resources" / self._section_metadata_file
         if not path.is_file():
             raise FileNotFoundError(
                 f"Section metadata not saved for {self.dataset} version {self.version}"

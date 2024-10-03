@@ -1,4 +1,4 @@
-from importlib_resources import files
+from importlib.resources import files
 import sys
 
 sys.path.append("/code/")
@@ -9,7 +9,7 @@ from thalamus_merfish_analysis import ccf_registration as ccf
 
 df_full = abc.get_combined_metadata()
 minmax = pd.read_csv(
-    files("thalamus_merfish_analysis.resources") / "brain3_thalamus_coordinate_bounds.csv",
+    files("thalamus_merfish_analysis")/"resources" / "brain3_thalamus_coordinate_bounds.csv",
     index_col=0,
 )
 xx = minmax["x_section"].values
