@@ -16,16 +16,18 @@ def reload_aggrids(keys=ag_keys, overwrite=True):
     for key in keys:
         if overwrite or key not in ss:
             ss[key] = str(uuid.uuid4())
-    if overwrite:
-        st.rerun()
+    # if overwrite:
+    #     st.rerun()
 reload_aggrids(overwrite=False)
 
 th_names = abc.get_thalamus_names(level='structure', include_unassigned=False)
-nucleus = st.selectbox("Select nucleus", th_names)
+nucleus = st.selectbox("Select nucleus", th_names, key="nucleus_anno")
 nucleus_plot = abc.get_devccf_matched_regions([nucleus]) if ss.devccf_qp else [nucleus]
-include_shared = st.checkbox("Include shared clusters")
-if st.button("Load annotations"):
+include_shared = st.checkbox("Include shared clusters", key="shared_anno")
+def reload_anno():
+    ss.anno_df = pd.read_csv(anno_path, index_col=0)
     reload_aggrids()
+st.button("Reload annotations", on_click=reload_anno)
 
 palette = abc.get_thalamus_cluster_palette()
 kwargs_cluster_annotations = dict(
@@ -42,7 +44,7 @@ update_anno = ["cellValueChanged", "selectionChanged"]
 with current:
     st.markdown("## Working clusters")
     # this will use ss.anno_df
-    clusters = abc.get_annotated_clusters([nucleus], include_shared_clusters=include_shared, annotations_df=ss.anno_df)
+    clusters = abc.get_annotated_cell_types([nucleus], include_shared_clusters=include_shared, annotations_df=ss.anno_df)
     
     anno_current = ss.anno_df.loc[clusters].copy()
     options = {
@@ -59,27 +61,30 @@ with current:
         "defaultColDef": {"filter": True},
     }
     ag_current = AgGrid(anno_current.reset_index(), gridOptions=options, key=ss["ag_current"], update_on=update_anno, update_mode=GridUpdateMode.NO_UPDATE)
-    if st.button("Save changes"):
-        ss.anno_df.update(ag_current["data"].set_index("cluster"))
+    def save_changes(data):
+        ss.anno_df.update(data.set_index("cluster"))
         ss.anno_df.to_csv(anno_path)
-    if st.button("Copy selected to working list"):
+        # reload to clear removed clusters
+        reload_aggrids(["ag_current"])
+    def copy_to_tentative(selected):
         ss.tentative = pd.concat([
             ss.tentative, 
-            ag_current["selected_data"].set_index("cluster")
+            selected.set_index("cluster")
         ])
         reload_aggrids(["ag_tentative"])
+    st.button("Save changes", on_click=save_changes, args=(ag_current["data"],))
+    st.button("Copy selected to working list", on_click=copy_to_tentative, args=(ag_current["selected_data"],))
 
-    # in case of clusters not in saved palette...
-    plots = []
+    ss.plots = ss.get("plots", [])
     if st.button("Plot", key="plot_current"):
         obs_annot = obs_th_neurons.loc[obs_th_neurons["cluster"].isin(clusters)].copy()
-        plots = cplots.plot_ccf_overlay(
+        ss.plots = cplots.plot_ccf_overlay(
             obs_annot, 
             ccf_highlight=nucleus_plot,
             **kwargs_cluster_annotations,
             **ss.common_args,
         )
-    for plot in plots:
+    for plot in ss.plots:
         st.pyplot(plot)
 
 with tentative:
@@ -98,27 +103,33 @@ with tentative:
         ],
         "defaultColDef": {"filter": True},
     }
-    out = AgGrid(ss.tentative.reset_index(), options, key="test", update_on=update_anno, update_mode=GridUpdateMode.NO_UPDATE)
-    if st.button("Apply selected changes", key="apply_tentative"):
-        data = out["selected_data"].set_index("cluster")
+    out = AgGrid(ss.tentative.reset_index(), options, key=ss["ag_tentative"], update_on=update_anno, update_mode=GridUpdateMode.NO_UPDATE)
+    def apply_changes(selected):
+        if selected is None:
+            return
+        data = selected.set_index("cluster")
         ss.anno_df = ss.anno_df.reindex(ss.anno_df.index.union(data.index))
         ss.anno_df.update(data)
-        # ss.tentative = ss.anno_df.iloc[:0]
-        reload_aggrids()
-    if st.button("Remove selected", key="remove_tentative"):
-        ss.tentative = ss.tentative.drop(index=out["selected_data"]["cluster"])
-        reload_aggrids()
+        ss.tentative = ss.tentative.drop(index=selected["cluster"])
+        reload_aggrids(["ag_current", "ag_tentative"])
+    def remove_tentative(selected):
+        if selected is None:
+            return
+        ss.tentative = ss.tentative.drop(index=selected["cluster"])
+        reload_aggrids(["ag_tentative"])
+    st.button("Apply selected changes", key="apply_tentative", on_click=apply_changes, args=(out["selected_data"],))
+    st.button("Remove selected", key="remove_tentative", on_click=remove_tentative, args=(out["selected_data"],))
 
-    plots_2 = []
+    ss.plots_2 = ss.get("plots_2", [])
     if st.button("Plot", key="plot_tentative"):
         obs_annot = obs_th_neurons.loc[obs_th_neurons["cluster"].isin(ss.tentative.index)].copy()
-        plots_2 = cplots.plot_ccf_overlay(
+        ss.plots_2 = cplots.plot_ccf_overlay(
             obs_annot, 
             ccf_highlight=nucleus_plot,
             **kwargs_cluster_annotations,
             **ss.common_args,
         )
-    for plot in plots_2:
+    for plot in ss.plots_2:
         st.pyplot(plot)
 
 with unannotated:
@@ -151,16 +162,16 @@ with unannotated:
         ],
         "defaultColDef": {"filter": True},
     }
-    # with st.empty():
     out = AgGrid(unannotated_clusters.reset_index(), options, update_on=update_anno, key=ss["ag_unused"], update_mode=GridUpdateMode.NO_UPDATE)
-    selected = out["selected_data"]
-    if st.button("Move selected to working list") and selected is not None:
-        # rerun to retrieve aggrid data?
-        # st.rerun()
-        df = selected.set_index("cluster")[["nuclei"]]
-        df["nuclei"] = df["nuclei"].fillna("").apply(lambda x: nucleus if x=="" else x+" "+nucleus)
-        ss.tentative = pd.concat([
-            ss.tentative, 
-            df.assign(cluster_alias=abc.get_alias_from_cluster_label(df.index))
-        ])
-        reload_aggrids(["ag_tentative"])
+    def use_selected(selected):
+        if selected is not None:
+            # rerun to retrieve aggrid data?
+            # st.rerun()
+            df = selected.set_index("cluster")[["nuclei"]]
+            df["nuclei"] = df["nuclei"].fillna("").apply(lambda x: nucleus if x=="" else x+" "+nucleus)
+            ss.tentative = pd.concat([
+                ss.tentative, 
+                df.assign(cluster_alias=abc.get_alias_from_cluster_label(df.index))
+            ])
+            reload_aggrids(["ag_tentative"])
+    st.button("Move selected to working list", on_click=use_selected, args=(out["selected_data"],))
