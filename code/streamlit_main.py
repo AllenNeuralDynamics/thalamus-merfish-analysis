@@ -134,10 +134,12 @@ with pane2:
         else:
             st.write("Select groups of cell types to compare, then click 'Plot")
 
-
-from streamlit_profiler import Profiler
-p = Profiler()
-p.start()
+try:
+    from streamlit_profiler import Profiler
+    profile = Profiler()
+    profile.start()
+except ImportError:
+    profile = False
 
 with pane1:
     st.header("Cell type taxonomy spatial plots")
@@ -244,5 +246,6 @@ with pane1:
             )
             for plot in plots:
                 st.pyplot(plot)
-p.stop()
+if profile:                
+    p.stop()
 stu.ss_to_qp()
