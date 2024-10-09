@@ -777,11 +777,6 @@ class AtlasWrapper:
         label_list = df.set_index("cluster").loc[clusters, "cluster_alias"].to_list()
         return label_list
 
-    @cached_property
-    def _ccf_annotations(self):
-        df = pd.read_csv(self.files.ccf_metadata.local_path)
-        return df
-
     def get_ccf_palette(self, parcellation_level):
         """Get the published color dictionary for a given level of the Allen
         Reference Atlas (ARA) CCFv3 anatomical parcellation
@@ -797,7 +792,7 @@ class AtlasWrapper:
         color_dict : dict
             dictionary mapping parcellation labels to their official ARA hex colors
         """
-        df = self._ccf_annotations
+        df = self._ccf_metadata
         df = df[df["parcellation_term_set_name"] == parcellation_level]
         palette = df.set_index("parcellation_term_acronym")["color_hex_triplet"].to_dict()
 
