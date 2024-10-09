@@ -67,7 +67,7 @@ def map_image_to_slice(sdata, imdata, source, target, centered=True, scale=None,
     else:
         source_points, target_grid_transform = get_sample_points_square(sdata, source, target, scale, ngrid)
     # scipy.ndimage evaluates at integers not pixel centers
-    points = source_points[['z','y','x']].values.T - 0.5
+    points = source_points[['x','y','z']].values.T - 0.5
     target_img = map_coordinates(imdata, points, prefilter=False, order=0).reshape(ngrid, ngrid)
     # target_img = np.flipud(target_img)
     return target_img, target_grid_transform
