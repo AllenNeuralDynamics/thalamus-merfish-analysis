@@ -18,8 +18,13 @@ dynamic = ["version"]
 
 dependencies = [
     "anndata",
-    "fastparquet",
     "nibabel",
+    "pydantic",
+]
+
+[project.optional-dependencies]
+spatialdata = [
+    "spatialdata==0.2.3"
 ]
 
 [tool.setuptools.packages.find]
