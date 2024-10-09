@@ -433,7 +433,7 @@ class AtlasWrapper:
                 path = self.files.resampled_annotation.local_path
         elif not resampled and not realigned:
             if devccf:
-                path = "/data/KimLabDevCCFv1/P56/P56_DevCCF_Annotations_20um.nii.gz"
+                path = "/data/KimLabDevCCFv001/KimLabDevCCFv001_Annotations_ASL_Oriented_10um.nii.gz"
             else:
                 path = self.files.annotation_10.local_path
         elif resampled and realigned:
