@@ -76,12 +76,13 @@ def transform_section(section, imdata=None, fname=None):
 # from multiprocessing import Pool
 # import functools
 def save_resampled_image(imdata, fname):
+    dtype = np.int64
     img_transform = sd.transformations.Scale(10e-3 * np.ones(3), "xyz")
     labels = sd.models.Labels3DModel.parse(
         imdata, dims="xyz", transformations={"ccf": img_transform}
     )
     sdata.labels[fname] = labels
-    img_stack = np.zeros((ngrid, ngrid, nz))
+    img_stack = np.zeros((ngrid, ngrid, nz), dtype=dtype)
 
     for section in sdata.points.keys():
         target_img = transform_section(section, imdata=imdata, fname=fname)
@@ -94,7 +95,7 @@ def save_resampled_image(imdata, fname):
     #                 sdata.points.keys())
     # img_stack = np.stack(out, axis=-1)
 
-    nifti_img = nibabel.Nifti1Image(img_stack, affine=np.eye(4), dtype="int64")
+    nifti_img = nibabel.Nifti1Image(img_stack, affine=np.eye(4), dtype=dtype)
     nibabel.save(nifti_img, f"/results/{fname}.nii.gz")
 
 

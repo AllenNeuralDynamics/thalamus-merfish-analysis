@@ -446,8 +446,7 @@ class AtlasWrapper:
         if img_path is not None:
             path = img_path
         img = nibabel.load(path)
-        # could maybe keep the lazy dataobj and not convert to numpy?
-        imdata = np.array(img.dataobj).astype(int)
+        imdata = img.get_fdata(dtype=np.int64)
         if subset_to_left_hemi:
             # erase right hemisphere (can't drop or indexing won't work correctly)
             imdata[550:, :, :] = 0
