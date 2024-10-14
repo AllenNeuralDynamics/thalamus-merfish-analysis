@@ -2,9 +2,11 @@
   mount: abc_atlas
 - id: 6d6baa10-0d5d-47fb-b0cf-64dda2657132
   mount: realigned
-  - id: a8eef74d-baa8-4278-8f72-166abdc0c749
+- id: a8eef74d-baa8-4278-8f72-166abdc0c749
   mount: nsf_2000_adata
-# - id: cb57c804-240d-4e30-b55a-506ab77c84fa
-#   mount: merfish_ccf_eroded_temp
-# - id: 7d8c9fc4-9786-461e-9639-90272a30bc72
-#   mount: KimLabDevCCFv001
+- id: 062dbdf3-cba9-45dc-b329-e74f04776f0e
+  mount: merfish_638850_devccf_resampled
+- id: 7d8c9fc4-9786-461e-9639-90272a30bc72
+  mount: KimLabDevCCFv001
+- id: ae592f24-21cb-4e46-b475-1c1c49171cac
+  mount: KimLabDevCCFv1

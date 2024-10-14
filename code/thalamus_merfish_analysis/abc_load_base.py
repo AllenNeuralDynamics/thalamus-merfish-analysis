@@ -433,7 +433,7 @@ class AtlasWrapper:
                 path = self.files.resampled_annotation.local_path
         elif not resampled and not realigned:
             if devccf:
-                path = "/data/KimLabDevCCFv1/P56/P56_DevCCF_Annotations_20um.nii.gz"
+                path = "/data/KimLabDevCCFv001/KimLabDevCCFv001_Annotations_ASL_Oriented_10um.nii.gz"
             else:
                 path = self.files.annotation_10.local_path
         elif resampled and realigned:
@@ -446,8 +446,7 @@ class AtlasWrapper:
         if img_path is not None:
             path = img_path
         img = nibabel.load(path)
-        # could maybe keep the lazy dataobj and not convert to numpy?
-        imdata = np.array(img.dataobj).astype(int)
+        imdata = img.get_fdata(dtype=np.int64)
         if subset_to_left_hemi:
             # erase right hemisphere (can't drop or indexing won't work correctly)
             imdata[550:, :, :] = 0
@@ -777,11 +776,6 @@ class AtlasWrapper:
         label_list = df.set_index("cluster").loc[clusters, "cluster_alias"].to_list()
         return label_list
 
-    @cached_property
-    def _ccf_annotations(self):
-        df = pd.read_csv(self.files.ccf_metadata.local_path)
-        return df
-
     def get_ccf_palette(self, parcellation_level):
         """Get the published color dictionary for a given level of the Allen
         Reference Atlas (ARA) CCFv3 anatomical parcellation
@@ -797,7 +791,7 @@ class AtlasWrapper:
         color_dict : dict
             dictionary mapping parcellation labels to their official ARA hex colors
         """
-        df = self._ccf_annotations
+        df = self._ccf_metadata
         df = df[df["parcellation_term_set_name"] == parcellation_level]
         palette = df.set_index("parcellation_term_acronym")["color_hex_triplet"].to_dict()
 
