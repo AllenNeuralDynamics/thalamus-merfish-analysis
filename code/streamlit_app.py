@@ -15,7 +15,7 @@ ss_from_qp()
 ss = st.session_state
 pg = st.navigation([
     st.Page("streamlit_main.py", default=True), 
-    st.Page("streamlit_annotation.py")
+    # st.Page("streamlit_annotation.py")
 ])
 st.set_page_config(page_title="Thalamus MERFISH explorer", layout="wide")
 
