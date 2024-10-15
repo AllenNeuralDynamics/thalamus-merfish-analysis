@@ -2,7 +2,7 @@ import uuid
 import streamlit as st
 import pandas as pd
 from st_aggrid import AgGrid, GridUpdateMode
-from streamlit_utils import abc, get_data
+from streamlit_utils import abc, get_data, th_sections
 from thalamus_merfish_analysis import ccf_plots as cplots
 
 ss = st.session_state
@@ -21,7 +21,7 @@ def reload_aggrids(keys=ag_keys, overwrite=True):
 reload_aggrids(overwrite=False)
 
 th_names = abc.get_thalamus_names(level='structure', include_unassigned=False)
-nucleus = st.selectbox("Select nucleus", th_names, key="nucleus_anno")
+nucleus = st.selectbox("Select nucleus", th_names, key="nucleus_anno_qp", on_change=reload_aggrids)
 nucleus_plot = abc.get_devccf_matched_regions([nucleus]) if ss.devccf_qp else [nucleus]
 include_shared = st.checkbox("Include shared clusters", key="shared_anno")
 def reload_anno():
@@ -37,9 +37,10 @@ kwargs_cluster_annotations = dict(
     point_hue='cluster',
     point_palette=palette,
     min_group_count=0,
+    min_section_count=0,
 )
 current, tentative, unannotated = st.columns(3)
-update_anno = ["cellValueChanged", "selectionChanged"]
+update_anno = [("cellValueChanged", 500), ("selectionChanged", 500)]
 
 with current:
     st.markdown("## Working clusters")
@@ -49,6 +50,7 @@ with current:
     anno_current = ss.anno_df.loc[clusters].copy()
     options = {
         "rowSelection": "multiple",
+        "suppressRowClickSelection": True,
         "columnDefs": [
             {
                 "field": "cluster",
@@ -61,19 +63,19 @@ with current:
         "defaultColDef": {"filter": True},
     }
     ag_current = AgGrid(anno_current.reset_index(), gridOptions=options, key=ss["ag_current"], update_on=update_anno, update_mode=GridUpdateMode.NO_UPDATE)
-    def save_changes(data):
+    def save_changes(data, ss):
         ss.anno_df.update(data.set_index("cluster"))
         ss.anno_df.to_csv(anno_path)
         # reload to clear removed clusters
         reload_aggrids(["ag_current"])
-    def copy_to_tentative(selected):
+    def copy_to_tentative(selected, ss):
         ss.tentative = pd.concat([
             ss.tentative, 
             selected.set_index("cluster")
         ])
         reload_aggrids(["ag_tentative"])
-    st.button("Save changes", on_click=save_changes, args=(ag_current["data"],))
-    st.button("Copy selected to working list", on_click=copy_to_tentative, args=(ag_current["selected_data"],))
+    st.button("Save changes", on_click=save_changes, args=(ag_current["data"], ss))
+    st.button("Copy selected to working list", on_click=copy_to_tentative, args=(ag_current["selected_data"], ss))
 
     ss.plots = ss.get("plots", [])
     if st.button("Plot", key="plot_current"):
@@ -92,6 +94,7 @@ with tentative:
     ss.tentative = ss.get("tentative", ss.anno_df.iloc[:0])
     options = {
         "rowSelection": "multiple",
+        "suppressRowClickSelection": True,
         "columnDefs": [
             {
                 "field": "cluster",
@@ -104,7 +107,7 @@ with tentative:
         "defaultColDef": {"filter": True},
     }
     out = AgGrid(ss.tentative.reset_index(), options, key=ss["ag_tentative"], update_on=update_anno, update_mode=GridUpdateMode.NO_UPDATE)
-    def apply_changes(selected):
+    def apply_changes(selected, ss):
         if selected is None:
             return
         data = selected.set_index("cluster")
@@ -112,19 +115,19 @@ with tentative:
         ss.anno_df.update(data)
         ss.tentative = ss.tentative.drop(index=selected["cluster"])
         reload_aggrids(["ag_current", "ag_tentative"])
-    def remove_tentative(selected):
+    def remove_tentative(selected, ss):
         if selected is None:
             return
         ss.tentative = ss.tentative.drop(index=selected["cluster"])
         reload_aggrids(["ag_tentative"])
-    st.button("Apply selected changes", key="apply_tentative", on_click=apply_changes, args=(out["selected_data"],))
-    st.button("Remove selected", key="remove_tentative", on_click=remove_tentative, args=(out["selected_data"],))
+    st.button("Apply selected changes", key="apply_tentative", on_click=apply_changes, args=(out["selected_data"], ss))
+    st.button("Remove selected", key="remove_tentative", on_click=remove_tentative, args=(out["selected_data"], ss))
 
     ss.plots_2 = ss.get("plots_2", [])
     if st.button("Plot", key="plot_tentative"):
-        obs_annot = obs_th_neurons.loc[obs_th_neurons["cluster"].isin(ss.tentative.index)].copy()
+        obs_annot2 = obs_th_neurons.loc[obs_th_neurons["cluster"].isin(ss.tentative.index)].copy()
         ss.plots_2 = cplots.plot_ccf_overlay(
-            obs_annot, 
+            obs_annot2, 
             ccf_highlight=nucleus_plot,
             **kwargs_cluster_annotations,
             **ss.common_args,
@@ -139,6 +142,10 @@ with unannotated:
         unannotated_df = obs_th_neurons.loc[~obs_th_neurons["cluster"].isin(ss.anno_df.index)]
     else:
         unannotated_df = obs_th_neurons.loc[~obs_th_neurons["cluster"].isin(clusters)]
+    
+    sections = st.multiselect("Restrict to sections:", th_sections, key="gp_sectionlist_qp")
+    if len(sections) > 0:
+        unannotated_df = unannotated_df.loc[unannotated_df["brain_section_label"].isin(sections)]
     ccf_col = "parcellation_structure_realigned" if ss.realigned_qp else "parcellation_structure"
         
     unannotated_clusters = unannotated_df.groupby("cluster", observed=True)[["subclass", "supertype"]].first()
@@ -148,6 +155,7 @@ with unannotated:
     )
     options = {
         "rowSelection": "multiple",
+        "suppressRowClickSelection": True,
         "columnDefs": [
             {
                 "field": "cluster",
@@ -155,7 +163,7 @@ with unannotated:
                 "headerCheckboxSelectionFilteredOnly": True,
                 "checkboxSelection": True,
             },
-            {"field": "count"},
+            {"field": "count", "sort": "desc"},
             {"field": "nuclei"},
             {"field": "supertype"},
             {"field": "subclass"},
@@ -163,7 +171,7 @@ with unannotated:
         "defaultColDef": {"filter": True},
     }
     out = AgGrid(unannotated_clusters.reset_index(), options, update_on=update_anno, key=ss["ag_unused"], update_mode=GridUpdateMode.NO_UPDATE)
-    def use_selected(selected):
+    def use_selected(selected, ss):
         if selected is not None:
             # rerun to retrieve aggrid data?
             # st.rerun()
@@ -174,4 +182,4 @@ with unannotated:
                 df.assign(cluster_alias=abc.get_alias_from_cluster_label(df.index))
             ])
             reload_aggrids(["ag_tentative"])
-    st.button("Move selected to working list", on_click=use_selected, args=(out["selected_data"],))
+    st.button("Move selected to working list", on_click=use_selected, args=(out["selected_data"], ss))
