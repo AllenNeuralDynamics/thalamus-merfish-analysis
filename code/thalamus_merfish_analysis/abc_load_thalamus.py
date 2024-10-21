@@ -251,7 +251,7 @@ class ThalamusWrapper(AtlasWrapper):
     # load cluster-nucleus annotations
     try:
         nuclei_df_manual = pd.read_csv(
-            files("thalamus_merfish_analysis")/"resources"/ "annotations_c2n_manual.csv",
+            files("thalamus_merfish_analysis")/"resources"/ "annotations_c2n_combined.csv",
             index_col="cluster"
         )
         nuclei_df_auto = pd.read_csv(

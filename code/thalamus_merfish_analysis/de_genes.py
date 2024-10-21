@@ -36,22 +36,21 @@ def run_sc_deg_analysis(
     """
 
     combined_group = len(group) > 1
-    combined_ref = (reference != "rest") and len(reference) > 1
+    ref_rest = reference == "rest"
+    combined_ref = (not ref_rest) and len(reference) > 1
     if combined_group or combined_ref:
         group_var = f"combined_{taxonomy_level}"
         adata.obs[group_var] = adata.obs[taxonomy_level].astype(str)
         if combined_group:
             adata.obs, group = combine_groups(adata.obs, taxonomy_level, group_var, group)
-        else:
-            group = group[0]
         if combined_ref:
             adata.obs, reference = combine_groups(adata.obs, taxonomy_level, group_var, reference)
-        else:
-            reference = reference[0]
     else:
         group_var = taxonomy_level
+    if not combined_group:
         group = group[0]
-        reference = reference[0]
+    if not combined_ref:
+        reference = "rest" if ref_rest else reference[0]
     # rank genes
     scanpy.tl.rank_genes_groups(
         adata,
