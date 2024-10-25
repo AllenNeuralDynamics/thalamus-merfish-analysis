@@ -108,7 +108,8 @@ def plot_ccf_overlay(
     # Set variables not specified by user
     if sections is None:
         sections = _get_sections_to_plot(
-            obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level, n0=min_section_count
+            obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level, n0=min_section_count,
+            exclude_empty=bg_cells is None
         )
     obs = obs[obs[section_col].isin(sections)]
 
@@ -958,14 +959,17 @@ def preprocess_categorical_plot(
     return obs
 
 
-def _get_sections_to_plot(obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level, n0=0):
+def _get_sections_to_plot(obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level, exclude_empty=True):
     if n0 > 0:
         sections = obs[section_col].value_counts().loc[lambda x: x > n0].index
     else:
         sections = obs[section_col].unique()
     target_regions = ccf_highlight if len(ccf_highlight) > 0 else ccf_names
     if target_regions is not None and len(target_regions) > 0:
-        sections = set(sections).intersection(
+        # in some cases we want to plot sections with a region but no cells / vice versa
+        join = set.intersection if exclude_empty else set.union
+        sections = join(
+            sections,
             get_sections_for_ccf_regions(
                 ccf_images,
                 target_regions,
