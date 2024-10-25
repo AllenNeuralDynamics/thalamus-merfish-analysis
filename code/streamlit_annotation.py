@@ -29,15 +29,15 @@ def reload_anno():
     reload_aggrids()
 st.button("Reload annotations", on_click=reload_anno)
 
-palette = abc.get_thalamus_cluster_palette()
 kwargs_cluster_annotations = dict(
     bg_cells=obs_th_neurons,
     point_size=3,
     edge_color='silver',
     point_hue='cluster',
-    point_palette=palette,
+    # no palette here in case rare clusters are not in the palette
+    # point_palette=palette,
     min_group_count=0,
-    min_section_count=0,
+    min_section_count=5,
 )
 current, tentative, unannotated = st.columns(3)
 update_anno = [("cellValueChanged", 500), ("selectionChanged", 500)]
