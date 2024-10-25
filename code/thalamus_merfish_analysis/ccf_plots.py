@@ -108,7 +108,8 @@ def plot_ccf_overlay(
     # Set variables not specified by user
     if sections is None:
         sections = _get_sections_to_plot(
-            obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level, n0=min_section_count
+            obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level, n0=min_section_count,
+            exclude_empty=bg_cells is None
         )
     obs = obs[obs[section_col].isin(sections)]
 
@@ -472,6 +473,7 @@ def plot_hcr(
     figsize=(14, 2),
     ccf_images=None,
     boundary_img=None,
+    separate_figs=True,
     **kwargs
 ):
     """Display separate, and overlay, expression of multiple genes in multiple sections.
@@ -521,26 +523,35 @@ def plot_hcr(
     # plot
     figs = []
     counts_label = _get_counts_label(adata, genes[0])
-    for section in sections:
-        fig = plot_multichannel_overlay(
-            obs,
-            genes,
-            section,
-            section_col=section_col,
-            x_col=x_col,
-            y_col=y_col,
-            colors=colors,
-            dark_background=dark_background,
-            normalize_by=normalize_by,
-            colorbar=colorbar,
-            single_channel_subplots=True,
-            figsize=figsize,
-            ccf_images=ccf_images,
-            boundary_img=boundary_img,
-        )
-        with matplotlib.style.context("dark_background" if dark_background else "default"):
-            fig.suptitle(f"Section {section}\n{counts_label}", y=1.2)
-        figs.append(fig)
+    with matplotlib.style.context("dark_background" if dark_background else "default"):
+        if not separate_figs:
+            grid = _create_axis_grid(len(sections), n_rows=1, figsize=figsize)
+            # TODO: could use this pattern for other multi-section plots
+            # probably best to use a class to share code?
+        for i, section in enumerate(sections):
+            fig = plot_multichannel_overlay(
+                obs,
+                genes,
+                section,
+                section_col=section_col,
+                x_col=x_col,
+                y_col=y_col,
+                colors=colors,
+                dark_background=dark_background,
+                normalize_by=normalize_by,
+                colorbar=colorbar,
+                single_channel_subplots=separate_figs,
+                figsize=figsize,
+                ccf_images=ccf_images,
+                boundary_img=boundary_img,
+                ax=None if separate_figs else grid[i],
+                **kwargs
+            )
+            if separate_figs:
+                fig.suptitle(f"Section {section}\n{counts_label}", y=1.2)
+            figs.append(fig)
+        if not separate_figs:
+            _combine_subplot_legends(figs[0], title=counts_label)
     return figs
 
 
@@ -561,6 +572,10 @@ def plot_multichannel_overlay(
     normalize_by="channels",
     colorbar=False,
     point_size=5,
+    ax=None,
+    custom_xy_lims=None,
+    edge_color="darkgrey",
+    **kwargs_ccf
 ):
     """
     Display overlay of multiple channels in a single section.
@@ -652,7 +667,7 @@ def plot_multichannel_overlay(
             if colorbar:
                 # hide colorbar from overlay plot
                 _format_image_axes(ax.cax)
-        else:
+        elif ax is None:
             _, ax = plt.subplots(figsize=figsize)
         c = cu.combine_scaled_colors(colors[:n_channel], coeffs)
         ax.scatter(
@@ -664,19 +679,20 @@ def plot_multichannel_overlay(
         )
         if legend:
             for i in range(n_channel):
-                plt.scatter([], [], color=colors[i], label=columns[i])
+                ax.scatter([], [], color=colors[i], label=columns[i])
             ax.legend(markerscale=1.5)
         if ccf_images is not None:
             plot_ccf_section(
                 ccf_images,
                 section=section,
                 section_col=section_col,
-                edge_color="darkgrey",
+                edge_color=edge_color,
                 boundary_img=boundary_img,
                 legend=False,
                 ax=ax,
+                **kwargs_ccf
             )
-        _format_image_axes(ax)
+        _format_image_axes(ax, custom_xy_lims=custom_xy_lims)
         if single_channel_subplots:
             ax.set_title("Overlay")
             ax.figure.suptitle(f"Section {section}", color="white")
@@ -958,14 +974,17 @@ def preprocess_categorical_plot(
     return obs
 
 
-def _get_sections_to_plot(obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level, n0=0):
+def _get_sections_to_plot(obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level, exclude_empty=True):
     if n0 > 0:
         sections = obs[section_col].value_counts().loc[lambda x: x > n0].index
     else:
         sections = obs[section_col].unique()
     target_regions = ccf_highlight if len(ccf_highlight) > 0 else ccf_names
     if target_regions is not None and len(target_regions) > 0:
-        sections = set(sections).intersection(
+        # in some cases we want to plot sections with a region but no cells / vice versa
+        join = set.intersection if exclude_empty else set.union
+        sections = join(
+            sections,
             get_sections_for_ccf_regions(
                 ccf_images,
                 target_regions,

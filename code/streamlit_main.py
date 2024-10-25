@@ -82,11 +82,11 @@ with pane2:
             sc_data = dataset != "MERFISH"
             load_genes = st.form_submit_button("Load gene data", on_click=stu.ss_to_qp)
 
-        de_form = st.form("plot_de_genes")
-        taxonomy_level = de_form.selectbox(
+        taxonomy_level = st.selectbox(
             "Taxonomy level", ["cluster", "supertype", "subclass"], key="de_tax_qp"
         )
-        manual_annotations, include_shared_clusters, _ = annotation_details_input(context=de_form, prefix="de")
+        manual_annotations, include_shared_clusters, _ = annotation_details_input(prefix="de")
+        de_form = st.form("plot_de_genes")
         groups = [
             de_form.expander("Select group 1", expanded=True),
             de_form.expander("Select reference, empty to compare to rest of thalamus (slow)", expanded=False),
@@ -225,7 +225,7 @@ with pane1:
             nuclei = stu.get_devccf_matched_regions(nuclei)
         celltypes = st.multiselect(
             "Select cell types",
-            obs_th_neurons[taxonomy_level].unique(),
+            obs_th_neurons[celltype_label].unique(),
             key="bn_typelist_qp",
         )
 
