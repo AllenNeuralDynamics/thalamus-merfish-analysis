@@ -42,7 +42,7 @@ def plot_ccf_overlay(
     bg_cells=None,
     # shape props
     face_palette=None,
-    edge_color="grey",
+    edge_color="lightgrey",
     # shape selection
     ccf_names=None,
     ccf_highlight=(),
@@ -298,7 +298,7 @@ def plot_section_overlay(
     if legend is not None:
         # cell type names require more horizontal space
         # TODO: detect this from label text
-        _add_legend(ax, ncols=4 if (legend == "ccf") else 2, title=label, markerscale=2)
+        _add_legend(ax, ncols=4 if (legend == "ccf") else 2, title=label, markerscale=4)
     if colorbar:
         _add_colorbar(ax, **cb_args)
 
@@ -974,7 +974,7 @@ def preprocess_categorical_plot(
     return obs
 
 
-def _get_sections_to_plot(obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level, exclude_empty=True):
+def _get_sections_to_plot(obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level, exclude_empty=True, n0=0):
     if n0 > 0:
         sections = obs[section_col].value_counts().loc[lambda x: x > n0].index
     else:
@@ -984,13 +984,13 @@ def _get_sections_to_plot(obs, section_col, ccf_names, ccf_highlight, ccf_images
         # in some cases we want to plot sections with a region but no cells / vice versa
         join = set.intersection if exclude_empty else set.union
         sections = join(
-            sections,
-            get_sections_for_ccf_regions(
+            set(sections),
+            set(get_sections_for_ccf_regions(
                 ccf_images,
                 target_regions,
                 ccf_level=ccf_level,
                 section_col=section_col,
-            )
+            ))
         )
     return sorted(sections)
 
