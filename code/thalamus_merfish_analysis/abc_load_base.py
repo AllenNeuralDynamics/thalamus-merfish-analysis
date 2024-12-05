@@ -295,9 +295,8 @@ class AtlasWrapper:
             self.files.scrnaseq_metadata.local_path,
             dtype=dtype,
             usecols=usecols,
-            index_col="cell_label",
             engine="pyarrow",
-        )
+        ).set_index("cell_label")
         return cells_df
 
     def get_combined_metadata(
@@ -373,18 +372,16 @@ class AtlasWrapper:
                     self.files.cell_metadata.local_path,
                     dtype=dtype,
                     usecols=usecols,
-                    index_col="cell_label",
                     engine="pyarrow",
-                )
+                ).set_index("cell_label")
                 cells_df = old_df.join(cells_df[cells_df.columns.difference(old_df.columns)])
         else:
             cells_df = pd.read_csv(
                 self.files.cell_metadata.local_path,
                 dtype=dtype,
                 usecols=usecols,
-                index_col="cell_label",
                 engine="pyarrow",
-            )
+            ).set_index("cell_label")
         if flip_y:
             cells_df[["y_section", "y_reconstructed"]] *= -1
         if round_z:
