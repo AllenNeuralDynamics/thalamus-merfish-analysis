@@ -5,7 +5,6 @@ Functions for loading (subsets of) the ABC Atlas MERFISH dataset.
 from collections import defaultdict
 from functools import cached_property, wraps, lru_cache
 from itertools import chain
-from importlib.resources import files
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -22,7 +21,10 @@ from .ccf_images import (
     sectionwise_closing,
     sectionwise_fill_holes,
 )
-
+try:
+    from importlib.resources import files
+except (ImportError, ModuleNotFoundError):
+    from importlib_resources import files
 ABC_ROOT = Path("/data/abc_atlas/")
 CURRENT_VERSION = "20230830"
 BRAIN_LABEL = "C57BL6J-638850"

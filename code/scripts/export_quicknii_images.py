@@ -1,11 +1,13 @@
-from importlib.resources import files
 import sys
 
 sys.path.append("/code/")
 import pandas as pd
 from thalamus_merfish_analysis import abc_load as abc
 from thalamus_merfish_analysis import ccf_registration as ccf
-
+try:
+    from importlib.resources import files
+except (ImportError, ModuleNotFoundError):
+    from importlib_resources import files
 
 df_full = abc.get_combined_metadata()
 minmax = pd.read_csv(

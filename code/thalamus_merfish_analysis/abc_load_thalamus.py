@@ -1,12 +1,14 @@
 from functools import cached_property, lru_cache
-from importlib.resources import files
 import warnings
 
 import numpy as np
 import pandas as pd
 
 from .abc_load_base import AtlasWrapper, accept_anndata_input
-
+try:
+    from importlib.resources import files
+except (ImportError, ModuleNotFoundError):
+    from importlib_resources import files
 _DEVCCF_TOP_NODES_THALAMUS = ["p3A", "Th"]
 _CCF_TOP_NODES_THALAMUS = ["TH", "ZI"]
 
