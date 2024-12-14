@@ -1,4 +1,3 @@
-from importlib.resources import files
 import subprocess
 
 subprocess.run(["pip", "install", "spatialdata==0.2.3"])
@@ -14,7 +13,10 @@ from thalamus_merfish_analysis import abc_load as abc
 from thalamus_merfish_analysis import ccf_registration as ccf
 from thalamus_merfish_analysis import ccf_transforms as ccft
 from thalamus_merfish_analysis import ccf_images as ccfi
-
+try:
+    from importlib.resources import files
+except (ImportError, ModuleNotFoundError):
+    from importlib_resources import files
 df_full = abc.get_combined_metadata(drop_unused=False)
 # permissive spatial subset using published alignment
 # (previously using manual subset)

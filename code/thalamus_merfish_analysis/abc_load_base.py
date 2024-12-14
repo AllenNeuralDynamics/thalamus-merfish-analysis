@@ -5,7 +5,6 @@ Functions for loading (subsets of) the ABC Atlas MERFISH dataset.
 from collections import defaultdict
 from functools import cached_property, wraps, lru_cache
 from itertools import chain
-from importlib.resources import files
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -22,7 +21,10 @@ from .ccf_images import (
     sectionwise_closing,
     sectionwise_fill_holes,
 )
-
+try:
+    from importlib.resources import files
+except (ImportError, ModuleNotFoundError):
+    from importlib_resources import files
 ABC_ROOT = Path("/data/abc_atlas/")
 CURRENT_VERSION = "20230830"
 BRAIN_LABEL = "C57BL6J-638850"
@@ -293,9 +295,8 @@ class AtlasWrapper:
             self.files.scrnaseq_metadata.local_path,
             dtype=dtype,
             usecols=usecols,
-            index_col="cell_label",
             engine="pyarrow",
-        )
+        ).set_index("cell_label")
         return cells_df
 
     def get_combined_metadata(
@@ -371,18 +372,16 @@ class AtlasWrapper:
                     self.files.cell_metadata.local_path,
                     dtype=dtype,
                     usecols=usecols,
-                    index_col="cell_label",
                     engine="pyarrow",
-                )
+                ).set_index("cell_label")
                 cells_df = old_df.join(cells_df[cells_df.columns.difference(old_df.columns)])
         else:
             cells_df = pd.read_csv(
                 self.files.cell_metadata.local_path,
                 dtype=dtype,
                 usecols=usecols,
-                index_col="cell_label",
                 engine="pyarrow",
-            )
+            ).set_index("cell_label")
         if flip_y:
             cells_df[["y_section", "y_reconstructed"]] *= -1
         if round_z:
