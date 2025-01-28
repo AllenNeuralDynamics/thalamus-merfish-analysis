@@ -256,7 +256,10 @@ def plot_section_overlay(
     if scatter_args is None:
         scatter_args = {}
     fig, ax = _get_figure_handles(ax, figsize=figsize)
-    secdata = obs.loc[lambda df: (df[section_col] == section)]
+    if section_col in obs.columns:
+        secdata = obs.loc[lambda df: (df[section_col] == section)]
+    else:
+        secdata = obs
     if custom_xy_lims is not None:
         # TODO: apply at dataset level instead?
         secdata = _filter_by_xy_lims(secdata, x_col, y_col, custom_xy_lims)
@@ -794,9 +797,12 @@ def plot_ccf_section(
     section_index = abc.get_section_index(section_col=section_col)
     _, ax = _get_figure_handles(ax)
     # subset to just this section
-    section_i = section_index[section]
-    img = ccf_img[:, :, section_i].T
-    boundary_img = boundary_img[:, :, section_i].T if boundary_img is not None else None
+    if section is not None:
+        section_i = section_index[section]
+        img = ccf_img[:, :, section_i].T
+        boundary_img = boundary_img[:, :, section_i].T if boundary_img is not None else None
+    else:
+        img = ccf_img
 
     # select CCF regions to plot
     # TODO: could allow names from other levels and translate all to specified level...
@@ -897,7 +903,7 @@ def plot_ccf_shapes(
     """
     _, ax = _get_figure_handles(ax)
     # TODO: use xarray for applying palette, plotting, storing boundaries
-    extent = resolution * (np.array([0, imdata.shape[0], imdata.shape[1], 0]) - 0.5)
+    extent = resolution * (np.array([0, imdata.shape[1], imdata.shape[0], 0]) - 0.5)
     imshow_args = dict(extent=extent, interpolation="none", alpha=alpha)
 
     # Plot face shapes of CCF regions
