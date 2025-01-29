@@ -21,12 +21,19 @@ dependencies = [
     "nibabel",
     "pydantic",
     "pyarrow",
+    "scipy",
     "importlib_resources; python_version < '3.9'"
 ]
 
 [project.optional-dependencies]
 spatialdata = [
     "spatialdata==0.2.3"
+]
+plot = [
+    "matplotlib",
+    "seaborn",
+    "colorcet",
+    "colour-science"
 ]
 
 [tool.setuptools.packages.find]
