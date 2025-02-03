@@ -202,8 +202,12 @@ def plot_ordered_similarity_heatmap(
     ax.tick_params(axis="x", labelrotation=90)
     # colorbar formatting
     cbar = ax.collections[0].colorbar
-    cbar.set_ticks([0, 0.25, 0.5, 0.75, 1])
-    cbar.set_ticklabels(["0", "", "0.5", "", "1"])
+    cbar.set_ticks([vmin, 
+                    (vmax - vmin) / 4 ,
+                    (vmax - vmin) / 2, 
+                    3*(vmax - vmin) / 4, 
+                    vmax])
+    cbar.set_ticklabels([f"{vmin}", "", f"{(vmax-vmin)/2}", "", f"{vmax}"])
     cbar.ax.tick_params(axis="y", direction="in")
     cbar.set_label(label, rotation=-90, labelpad=10)
 
