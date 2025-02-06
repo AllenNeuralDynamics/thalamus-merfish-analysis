@@ -14,7 +14,7 @@ TH_DIVERSITY_REGIONS = ['AD', 'AV', 'AM', 'CL', 'CM', 'IAD', 'IMD',
                         'VAL', 'VM', 'VPL', 'VPM', 'VPMpc'
                         ]
 
-plt.rcParams.update({'font.size': 14})
+plt.rcParams.update({'font.size': 7})
 
 
 def barplot_dual_y_count_frac(th_metrics, taxonomy_level, gt5_only=True):
@@ -245,12 +245,15 @@ def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
 
     # display the number of non-zero, non-other categories above each region's bar
     for i, region in enumerate(proportions_df.index):
+        n_all = th_ccf_metrics.loc[region, f'count_{taxonomy_level}']
         n_nonzero = (proportions_df.loc[region, proportions_df.columns!='other']>0).sum()
         if orientation=='horizontal':
-            ax.text(1.02, i, n_nonzero, verticalalignment='center',
+            ax.text(1.02, i, f'{n_all} ({n_nonzero})', verticalalignment='center',
                     horizontalalignment='left')
+            # ax.text(1.02, i, f'{n_all}', verticalalignment='center',
+            #         horizontalalignment='left')
         else:
-            ax.text(i, 1.02, n_nonzero, horizontalalignment='center')
+            ax.text(i, 1.02, f'{n_all}/n({n_nonzero})', horizontalalignment='center')
 
     return fig
 

@@ -5,6 +5,24 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
+# purple-like cubehelix colormap, but with white at zero
+CMAP_PURPLES_256 = sns.cubehelix_palette(256, start=-0.2, rot=0.6, dark=0.1, light=1.0, as_cmap=True)
+
+
+def plot_cmap_lightness(
+    colormap
+):
+    cmap_values = colormap(np.linspace(0, 1, 256))
+    cmap_index = np.linspace(0, 255, 256)
+    lightness = 0.2126 * cmap_values[:, 0] + 0.7152 * cmap_values[:, 1] + 0.0722 * cmap_values[:, 2]
+    
+    fig, ax = plt.subplots()
+    ax.scatter(cmap_index, lightness, c=cmap_values)
+    ax.set_xlabel("colormap index")
+    ax.set_ylabel("lightness (perceptual)")
+    ax.set_title("perceptual lightness of colormap")
+    plt.show()
+    
 
 def cluster_distances_from_labels(
     obs_df, y_col, x_col=None, y_names=None, x_names=None, metric="braycurtis"
@@ -135,7 +153,7 @@ def plot_ordered_similarity_heatmap(
     triangular=False,
     vmin=0,
     vmax=1,
-    label="similarity (Bray-Curtis)",
+    label="Similarity index",
     cmap="rocket_r",
     **kwargs,
 ):

@@ -718,6 +718,35 @@ class AtlasWrapper:
                 f"Section index already saved for {self.dataset} version {self.version}"
             )
         section_index.to_csv(path, header=True, index=True)
+        
+        
+    def convert_section_list(
+        self,
+        section_list,
+        query_col="z_reconstructed",
+        target_col="brain_section_label",
+    ):
+        '''Converts a list of sections from one column to another using the saved section index csv.
+        Column options: {'z_section', 'z_reconstructed', 'brain_section_label'}
+        '''
+        # make section index csv if not already saved
+        path = Path("/code/thalamus_merfish_analysis/resources") / self._section_metadata_file
+        if not path.exists():
+            self.save_section_index()
+            
+        # use saved section index to convert section list
+        sec_metadata_df = pd.read_csv(path)
+        converted_list = []
+        for section in section_list:
+            converted_list.append(
+                sec_metadata_df.loc[sec_metadata_df[query_col]==section, target_col].values[0]
+            )
+        if len(converted_list)==0:
+            query_col_values = sec_metadata_df[query_col].unique()
+            raise ValueError(f'Items in section_list did not match any values in query_col={query_col}: {query_col_values}')
+            
+        return converted_list
+            
 
     @cached_property
     def _cluster_annotations(self):
