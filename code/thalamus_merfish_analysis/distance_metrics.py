@@ -8,6 +8,14 @@ import numpy as np
 # purple-like cubehelix colormap, but with white at zero
 CMAP_PURPLES_256 = sns.cubehelix_palette(256, start=-0.2, rot=0.6, dark=0.1, light=1.0, as_cmap=True)
 
+TH_PARCELLATION_STRUCTURES = [    
+    'AD', 'AM', 'AV', 'CL', 'CM', 'Eth', 'IAD', 'IAM', 'IGL', 'IMD', 
+    'IntG', 'LD', 'LGd', 'LGv', 'LH', 'LP', 'MD', 'MG', 'MH', 'PCN',
+    'PF', 'PIL', 'PO', 'POL', 'PP', 'PR', 'PT', 'PVT', 'PoT', 'RE', 
+    'RH', 'RT', 'SGN', 'SMT', 'SPA', 'SPFm', 'SPFp', 'SubG', 'VAL', 'VM', 
+    'VPL', 'VPLpc', 'VPM', 'VPMpc', 'Xi', 'ZI'
+]
+
 
 def plot_cmap_lightness(
     colormap

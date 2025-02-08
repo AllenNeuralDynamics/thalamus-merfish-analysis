@@ -1,7 +1,9 @@
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import numpy as np
 import pandas as pd
 from colorcet import glasbey_light
+import plotly.graph_objects as go
 from scipy.interpolate import LinearNDInterpolator
 
 from . import abc_load as abc
@@ -248,10 +250,8 @@ def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
         n_all = th_ccf_metrics.loc[region, f'count_{taxonomy_level}']
         n_nonzero = (proportions_df.loc[region, proportions_df.columns!='other']>0).sum()
         if orientation=='horizontal':
-            ax.text(1.02, i, f'{n_all} ({n_nonzero})', verticalalignment='center',
+            ax.text(1.02, i, f'{n_nonzero}', verticalalignment='center',
                     horizontalalignment='left')
-            # ax.text(1.02, i, f'{n_all}', verticalalignment='center',
-            #         horizontalalignment='left')
         else:
             ax.text(i, 1.02, f'{n_all}/n({n_nonzero})', horizontalalignment='center')
 
@@ -314,3 +314,137 @@ def calculate_level_proportions(obs,
     proportions_df = counts_df.div(counts_df.sum(axis=1), axis=0)
 
     return proportions_df
+
+
+def sankey_diagram(
+    obs, 
+    source_col, 
+    target_col,
+    source_cats_to_plot=None, 
+    target_cats_to_plot=None,
+    source_color_dict=None,
+    target_color_dict=None,
+):
+    '''Plot a Sankey diagram for two cell metadata columns.
+    
+    Parameters
+    ----------
+    obs : pd.DataFrame
+        DataFrame or AnnData.obs containing the source and target columns
+    source_col : str
+        Column name for source nodes
+    target_col : str
+        Column name for target nodes
+    source_cats_to_plot : list of str, optional
+        List of source categories to plot. If None, all used categories are plotted.
+    target_cats_to_plot : list of str, optional
+        List of target categories to plot. If None, all used categories are plotted.
+    source_color_dict : dict, optional
+        Dictionary mapping source categories to colors. If None, glasbey_light colormap is used.
+    target_color_dict : dict, optional
+        Dictionary mapping target categories to colors. If None, all target nodes are set to a neutral gray.
+    
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+    
+    '''
+    # ----- DATA CLEANING ------------------------------------------------------
+    # Extract the two columns & set to categorical
+    obs = obs[[source_col, target_col]].copy().dropna()
+    obs[source_col] = obs[source_col].astype('category')
+    obs[target_col] = obs[target_col].astype('category')
+    
+    # Filter the dataframe to include only the specified regions
+    if source_cats_to_plot is not None:
+        obs = obs[obs[source_col].isin(source_cats_to_plot)]
+    if target_cats_to_plot is not None:
+        obs = obs[obs[target_col].isin(target_cats_to_plot)]
+        
+    # Remove unused categories from the columns
+    obs[source_col] = obs[source_col].cat.remove_unused_categories()
+    obs[target_col] = obs[target_col].cat.remove_unused_categories()
+
+
+    # ----- PREPARE DATA FOR SANKEY DIAGRAM ------------------------------------
+    # Count occurrences of pair-wise transitions (aka links) from source node to target node
+    transition_counts = obs.groupby([source_col, target_col]).size().reset_index(name='count')
+
+    # Generate a unique identifier index for each label (node) 
+    # - source and target nodes indexed together
+    unique_node_labels = pd.concat([obs[source_col], obs[target_col]]).unique()
+    label_to_index_map = {label: i for i, label in enumerate(unique_node_labels)}
+
+    # Create source, target, and value lists for Sankey link dict
+    # Sankey expects:
+    # - values = count for each pairwise transition (link)
+    # - sources = source index for each pairwise transition (link)
+    # - targets = target index for each pairwise transition (link)
+    # - len(sources)==len(targets)==len(values)
+    values = transition_counts['count'].tolist()
+    sources = transition_counts[source_col].map(label_to_index_map).tolist()
+    targets = transition_counts[target_col].map(label_to_index_map).tolist()
+    
+    # ----- CREATE COLOR DICTIONARIES ------------------------------------------
+    # Generate source_colors list 
+    if source_color_dict is None:
+        # use default Glasbey color palette as default
+        source_color_dict = {label: glasbey_light[i] for i, label in enumerate(obs[source_col].cat.categories)}
+    else:
+        # check that we have hex colors in the provided dict
+        if not all(isinstance(v, str) and v.startswith('#') for v in source_color_dict.values()):
+            raise ValueError("source_color_dict values must be hex color strings.")
+    
+    # Create source color list from the dict
+    source_colors_hex = [source_color_dict[x] for x in unique_node_labels if x in source_color_dict]  
+      
+    # Convert the dict of hex colors to rgba str colors to later generate transition/link colors
+    source_color_dict_rgba_tuple = {k: mcolors.to_rgba(v) for k, v in source_color_dict.items()}
+    source_color_dict_rbga_str = {label: f"rgba({int(r*255)}, {int(g*255)}, {int(b*255)}, 0.8)"
+                                    for label, (r, g, b, a) in source_color_dict_rgba_tuple.items()}
+    
+    # Generate target_colors from the provided dict or default to a neutral gray
+    if target_color_dict is not None:
+        if all(isinstance(v, str) and v.startswith('#') for v in target_color_dict.values()):
+            target_colors_hex = [target_color_dict[x] for x in unique_node_labels if x in target_color_dict]
+        else:
+            raise ValueError("target_color_dict values must be hex color strings.")
+    else:
+        target_colors_hex = ['#AAAAAA' for _ in obs[target_col].cat.categories]
+        
+    # Generate link colors to match source node colors
+    link_colors_rgba = [
+        source_color_dict_rbga_str[src_label].replace("0.8)", "0.4)") 
+        for src_label in transition_counts[source_col]
+    ]
+    
+    # ----- PLOT SANKEY DIAGRAM ------------------------------------------------
+    # Build Sankey diagram using plotly.graph_objects
+    fig = go.Figure(go.Sankey(
+        node=dict(
+            pad=15,
+            thickness=20,
+            label=list(unique_node_labels),
+            color=source_colors_hex + target_colors_hex
+        ),
+        link=dict(
+            source=sources,
+            target=targets,
+            value=values,
+            # color="rgba(150, 150, 150, 0.3)",  # Neutral link color
+            color=link_colors_rgba,
+        )
+    ))
+
+    # Adjust figure size based on number of unique labels
+    width = max(300, len(unique_node_labels) * 10)
+    height = max(200, len(unique_node_labels) * 20)
+    fig.update_layout(
+        title_text=f"Sankey Diagram: {source_col} → {target_col}",
+        font_size=10,
+        width=width,
+        height=height
+    )
+    fig.show()
+    
+    return fig
