@@ -10,12 +10,6 @@ from . import abc_load as abc
 from .ccf_plots import plot_ccf_section, _format_image_axes
 
 
-TH_DIVERSITY_REGIONS = ['AD', 'AV', 'AM', 'CL', 'CM', 'IAD', 'IMD',
-                        'LD', 'LGd', 'LH', 'LP', 'MD', 'MH', 
-                        'PCN', 'PF', 'PO', 'PVT', 'RE', 'RT', 'SPA',
-                        'VAL', 'VM', 'VPL', 'VPM', 'VPMpc'
-                        ]
-
 plt.rcParams.update({'font.size': 7})
 
 
@@ -133,7 +127,7 @@ def plot_local_metric_ccf_section(obs_ccf, cellwise_metrics_df, ccf_images,
 
 
 def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
-                                ccf_regions=TH_DIVERSITY_REGIONS,
+                                ccf_regions=None,
                                 legend=True, palette=None,
                                 min_cell_frac=0.01,
                                 min_cell_count=None,
@@ -150,8 +144,8 @@ def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
         ABC Atlas taxonomy level to plot
     th_ccf_metrics : pd.DataFrame
         DataFrame made with diversity_metrics.calculate_diversity_metrics()
-    ccf_regions : list of str, default=TH_DIVERSITY_REGIONS
-        list of CCF regions to plot
+    ccf_regions : list of str, default=None
+        list of CCF regions to restrict the plot to
     legend : bool, default=True
         whether to display the legend
     palette : dict, default=None
@@ -186,6 +180,10 @@ def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
                                                  taxonomy_level, 
                                                  min_count=min_cell_count, 
                                                  min_frac=min_cell_frac)
+    if ccf_regions is None:
+        ccf_regions = proportions_df.index
+    else:
+        ccf_regions = list(set(ccf_regions) & set(proportions_df.index))                                                
     # filter to only the regions of interest
     proportions_df = proportions_df.loc[ccf_regions]
     # clean up category columns that now are all zeros post-filtering
@@ -197,7 +195,7 @@ def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
         nonzero_counts = (proportions_df.drop(columns=['other'])!=0).sum(axis=1)
         nonzero_counts.name = 'nonzero_counts'
         inverse_simpsons = th_ccf_metrics.loc[
-                                TH_DIVERSITY_REGIONS,
+                                ccf_regions,
                                 f'inverse_simpsons_{taxonomy_level}']
         # combine two metrics into a df that we can sort by
         metrics_to_sort_by = pd.concat([nonzero_counts, inverse_simpsons], axis=1)

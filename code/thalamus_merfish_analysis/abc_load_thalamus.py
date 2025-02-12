@@ -27,6 +27,19 @@ class ThalamusWrapper(AtlasWrapper):
         return [self.get_taxonomy_class_by_name(x) for x in ["MB Glut", "MB GABA"]]
 
     TH_SECTIONS = [x for x in np.arange(25, 42) if x not in [26, 30, 37]]
+    TH_PARCELLATION_STRUCTURES = [    
+        'AD', 'AM', 'AV', 'CL', 'CM', 'Eth', 'IAD', 'IAM', 'IGL', 'IMD', 
+        'IntG', 'LD', 'LGd', 'LGv', 'LH', 'LP', 'MD', 'MG', 'MH', 'PCN',
+        'PF', 'PIL', 'PO', 'POL', 'PP', 'PR', 'PT', 'PVT', 'PoT', 'RE', 
+        'RH', 'RT', 'SGN', 'SMT', 'SPA', 'SPFm', 'SPFp', 'SubG', 'VAL', 'VM', 
+        'VPL', 'VPLpc', 'VPM', 'VPMpc', 'Xi', 'ZI'
+    ]
+    TH_DIVERSITY_STRUCTURES = [
+        'AD', 'AV', 'AM', 'CL', 'CM', 'IAD', 'IMD',
+        'LD', 'LGd', 'LH', 'LP', 'MD', 'MH', 
+        'PCN', 'PF', 'PO', 'PVT', 'RE', 'RT', 'SPA',
+        'VAL', 'VM', 'VPL', 'VPM', 'VPMpc'
+    ]
 
     def load_standard_thalamus(self, data_structure="adata"):
         """Loads a preprocessed, neuronal thalamus subset of the ABC Atlas MERFISH dataset.
