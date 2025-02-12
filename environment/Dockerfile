@@ -1,4 +1,4 @@
-# hash:sha256:23afd30d7c9b6d074d850adec48730eea0fb5db9db57dd8179185100a3c2cdc5
+# hash:sha256:f5bdaf5819a6f3fb31d95b0cb71333e7b2f28b2aae5b1cadab5823091f54c8e3
 ARG REGISTRY_HOST
 FROM $REGISTRY_HOST/codeocean/jupyterlab:3.6.1-miniconda4.12.0-python3.9-ubuntu20.04
 
@@ -16,12 +16,9 @@ ARG GIT_ACCESS_TOKEN
 COPY git-askpass /
 
 RUN pip install -U --no-cache-dir \
-    anndata==0.8.0 \
+    anndata==0.10.9 \
     colorcet==3.0.1 \
     colour-science==0.4.4 \
-    geojson==3.0.1 \
-    geopandas==0.13.1 \
-    hdbscan==0.8.33 \
     nibabel==5.1.0 \
     openpyxl==3.1.5 \
     plotly==6.0.0 \
