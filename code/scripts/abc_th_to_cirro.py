@@ -2,13 +2,9 @@ import numpy as np
 import pandas as pd
 import anndata as ad
 import scanpy as sc
-import seaborn as sns
 import colorcet as cc
 
-from .abc_load import (load_adata_thalamus, 
-                       filter_by_class_thalamus,
-                       filter_by_thalamus_coords,
-                       get_taxonomy_palette)
+from thalamus_merfish_analysis import abc_load as abc
 
 def export_h5ad_for_cirro(generate_umap_tsne=True):
     ''' Load thalamus subset of ABC Atlas, modify for Cirrocumulus compatibility,
@@ -52,10 +48,10 @@ def load_adata_for_cirro():
     to display the brain sections in their proper orientation in Cirrocumulus.
     '''
     # load with inverted y coord so sections appear in correct coronal orientation
-    adata = load_adata_thalamus(flip_y=True)
+    adata = abc.load_adata_thalamus(flip_y=True)
 
     # filter by class
-    adata = filter_by_class_thalamus(adata)
+    adata = abc.filter_by_class_thalamus(adata)
 
     return adata
 
@@ -170,7 +166,7 @@ def add_colors_to_uns(adata):
             palette_df = abc.get_thalamus_cluster_palette()
         else:
             # get the official ABC color palette for all other taxonomy levels
-            abc_color_dict = get_taxonomy_palette(level)
+            abc_color_dict = abc.get_taxonomy_palette(level)
 
         # get the categories that exist in this dataset
         # MUST be kept in the order returned by .cat.categories
