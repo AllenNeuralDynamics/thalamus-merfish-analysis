@@ -9,6 +9,8 @@ try:
     from importlib.resources import files
 except (ImportError, ModuleNotFoundError):
     from importlib_resources import files
+package_files = files(__package__)
+
 _DEVCCF_TOP_NODES_THALAMUS = ["p3A", "Th"]
 _CCF_TOP_NODES_THALAMUS = ["TH", "ZI"]
 
@@ -26,6 +28,14 @@ class ThalamusWrapper(AtlasWrapper):
     def MB_CLASSES(self):
         return [self.get_taxonomy_class_by_name(x) for x in ["MB Glut", "MB GABA"]]
 
+    # thalamus-specific constants
+    TH_EXAMPLE_SECTION_LABELS = [
+        "C57BL6J-638850.44",
+        "C57BL6J-638850.40",
+        "C57BL6J-638850.36",
+    ]  # anterior to posterior order
+    TH_EXAMPLE_Z_SECTIONS = [8.0, 7.2, 6.4]  # anterior to posterior order
+    XY_LIMS_TH_LEFT_HEMI = [2.8, 5.8, 7, 4]  # limits plots to thalamus left hemisphere
     TH_SECTIONS = [x for x in np.arange(25, 42) if x not in [26, 30, 37]]
     TH_PARCELLATION_STRUCTURES = [    
         'AD', 'AM', 'AV', 'CL', 'CM', 'Eth', 'IAD', 'IAM', 'IGL', 'IMD', 
@@ -40,6 +50,7 @@ class ThalamusWrapper(AtlasWrapper):
         'PCN', 'PF', 'PO', 'PVT', 'RE', 'RT', 'SPA',
         'VAL', 'VM', 'VPL', 'VPM', 'VPMpc'
     ]
+    realigned_cell_metadata_path="/data/realigned/abc_realigned_metadata_thalamus-boundingbox.parquet"
 
     def load_standard_thalamus(self, data_structure="adata"):
         """Loads a preprocessed, neuronal thalamus subset of the ABC Atlas MERFISH dataset.
@@ -266,11 +277,11 @@ class ThalamusWrapper(AtlasWrapper):
     # load cluster-nucleus annotations
     try:
         nuclei_df_manual = pd.read_csv(
-            files("thalamus_merfish_analysis")/"resources"/ "annotations_c2n_combined.csv",
+            package_files/"resources"/ "annotations_c2n_combined.csv",
             index_col="cluster"
         )
         nuclei_df_auto = pd.read_csv(
-            files("thalamus_merfish_analysis")/"resources" / "annotations_c2n_auto.csv",
+            package_files/"resources" / "annotations_c2n_auto.csv",
             index_col="cluster"
         )
         found_annotations = True
@@ -383,7 +394,7 @@ class ThalamusWrapper(AtlasWrapper):
     @lru_cache
     def get_thalamus_cluster_palette():
         palette_df = pd.read_csv(
-            files("thalamus_merfish_analysis")/"resources" / "cluster_palette_glasbey.csv"
+            package_files/"resources" / "cluster_palette_glasbey.csv"
         )
         return dict(zip(palette_df["Unnamed: 0"], palette_df["0"]))
 
@@ -391,7 +402,7 @@ class ThalamusWrapper(AtlasWrapper):
     @lru_cache
     def _devccf_matches():
         match_df = pd.read_csv(
-            files("thalamus_merfish_analysis")/"resources" / "devccf_matches.csv"
+            package_files/"resources" / "devccf_matches.csv"
         )
         return match_df
     

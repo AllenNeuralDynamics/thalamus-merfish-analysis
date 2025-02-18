@@ -144,7 +144,6 @@ def sectionwise_label_erosion(label_img, distance_px, fill_val=0,
     if section_list is None:
         section_list = range(label_img.shape[2])
     for i in section_list:
-        # TODO: could restrict range to thal indices
         result_img[:,:,i] = label_erosion(label_img[:,:,i], distance_px, 
                                           fill_val=fill_val,
                                           return_edges=return_edges)

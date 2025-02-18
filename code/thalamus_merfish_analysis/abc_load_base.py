@@ -21,10 +21,13 @@ from .ccf_images import (
     sectionwise_closing,
     sectionwise_fill_holes,
 )
+
 try:
     from importlib.resources import files
 except (ImportError, ModuleNotFoundError):
     from importlib_resources import files
+package_files = files(__package__)
+
 ABC_ROOT = Path("/data/abc_atlas/")
 CURRENT_VERSION = "20230830"
 BRAIN_LABEL = "C57BL6J-638850"
@@ -35,7 +38,7 @@ def accept_anndata_input(f):
     def wrapper(*args, **kwargs):
         # check first two args for AnnData in case this is an instance or class method
         for i, arg in enumerate(args):
-            if i<=1 and isinstance(arg, ad.AnnData):
+            if i <= 1 and isinstance(arg, ad.AnnData):
                 adata = arg.copy()
                 result = f(*args[:i], adata.obs, *args[i + 1 :], **kwargs)
                 result = adata[result.index, :]
@@ -43,7 +46,9 @@ def accept_anndata_input(f):
         else:
             result = f(*args, **kwargs)
         return result
+
     return wrapper
+
 
 class AtlasWrapper:
     """
@@ -66,6 +71,7 @@ class AtlasWrapper:
         self.dataset = dataset
         self.version = version
         self.manifest = manifest
+        self.realigned_cell_metadata_path = None
         self.files = SimpleNamespace(
             adata_raw=manifest.get_file_attributes(directory=_data, file_name=f"{dataset}/raw"),
             adata_log2=manifest.get_file_attributes(directory=_data, file_name=f"{dataset}/log2"),
@@ -93,12 +99,15 @@ class AtlasWrapper:
                 directory="WMB-10X", file_name="cell_metadata_with_cluster_annotation"
             ),
         )
+
     @cached_property
     def NN_CLASSES(self):
-        return self._cluster_annotations.loc[
-            lambda df: df["subclass"].str.contains("NN"), "class"
-        ].unique().tolist()
-    
+        return (
+            self._cluster_annotations.loc[lambda df: df["subclass"].str.contains("NN"), "class"]
+            .unique()
+            .tolist()
+        )
+
     @cached_property
     def taxonomy_classes(self):
         return self._cluster_annotations["class"].unique()
@@ -364,9 +373,9 @@ class AtlasWrapper:
 
         if realigned:
             # TODO: add version to the data asset mount point to allow multiple
-            cells_df = pd.read_parquet(
-                "/data/realigned/abc_realigned_metadata_thalamus-boundingbox.parquet"
-            )
+            if self.realigned_cell_metadata_path is None:
+                raise ValueError("Realigned metadata not available for this dataset")
+            cells_df = pd.read_parquet(self.realigned_cell_metadata_path)
             if self.version != CURRENT_VERSION:
                 old_df = pd.read_csv(
                     self.files.cell_metadata.local_path,
@@ -391,10 +400,19 @@ class AtlasWrapper:
         cells_df["left_hemisphere"] = cells_df["z_ccf"] < 5.7
         if realigned:
             cells_df["left_hemisphere_realigned"] = cells_df["z_ccf_realigned"] < 5.7
-        cells_df["parcellation_substructure"] = cells_df["parcellation_substructure"].cat.rename_categories({"ZI-unassigned": "ZI"})
+        cells_df["parcellation_substructure"] = cells_df[
+            "parcellation_substructure"
+        ].cat.rename_categories({"ZI-unassigned": "ZI"})
         return cells_df
 
-    def get_ccf_labels_image(self, resampled=True, realigned=False, devccf=False, subset_to_left_hemi=False, img_path=None):
+    def get_ccf_labels_image(
+        self,
+        resampled=True,
+        realigned=False,
+        devccf=False,
+        subset_to_left_hemi=False,
+        img_path=None,
+    ):
         """Loads rasterized image volumes of the CCF parcellation as 3D numpy array.
 
         Voxels are labelled with assigned brain structure parcellation ID #.
@@ -432,7 +450,9 @@ class AtlasWrapper:
                 path = self.files.resampled_annotation.local_path
         elif not resampled and not realigned:
             if devccf:
-                path = "/data/KimLabDevCCFv001/KimLabDevCCFv001_Annotations_ASL_Oriented_10um.nii.gz"
+                path = (
+                    "/data/KimLabDevCCFv001/KimLabDevCCFv001_Annotations_ASL_Oriented_10um.nii.gz"
+                )
             else:
                 path = self.files.annotation_10.local_path
         elif resampled and realigned:
@@ -507,7 +527,7 @@ class AtlasWrapper:
         include_children : bool, default=True
             include all subregions of the specified ccf_regions
         flip_y : bool, default=False
-            flip y-axis orientation of th_mask so coronal section is right-side up.
+            flip y-axis orientation of mask so coronal section is right-side up.
             This MUST be set to true if flip_y=True in get_combined_metadata() so
             the cell coordinates and binary mask have the same y-axis orientation
         distance_px : int, default=20
@@ -547,33 +567,12 @@ class AtlasWrapper:
         # to get a list of all indices
         if include_children:
             ccf_regions = self.get_ccf_names(top_nodes=ccf_regions, level=ccf_level)
-        reverse_lookup = self.get_ccf_index_reverse_lookup(level=ccf_level)
-        index_values = reverse_lookup.loc[ccf_regions]
-
-        ##### Create binary mask to use for filtering cells #####
-        # generate binary mask
-        th_mask = np.isin(ccf_img, index_values)  # takes about 5 sec
+        mask_img = self.get_ccf_image_mask(
+            ccf_img, ccf_regions, ccf_level, distance_px, fill_holes_in_mask, cleanup_mask
+        )
         # flip y-axis to match flipped cell y-coordinates
         if flip_y:
-            th_mask = np.flip(th_mask, axis=1)
-
-        # fills internal holes in the mask (usually, internal white matter tracts)
-        if fill_holes_in_mask:
-            # TODO allow for different distance_px selections; this default has
-            # only been tested for the TH+ZI subset
-            dist_for_TH = 2
-            th_mask = sectionwise_fill_holes(sectionwise_closing(th_mask, distance_px=dist_for_TH))
-
-        # dilate mask, if specified, to ensure inclusion of cells along misaligned edges
-        if distance_px == 0:
-            mask_img = th_mask
-        else:
-            mask_img = sectionwise_dilation(th_mask, distance_px, true_radius=False)
-
-        # remove too-small mask regions that are likely mistaken parcellations
-        if cleanup_mask:
-            mask_img = cleanup_mask_regions(mask_img, area_ratio_thresh=0.1)
-
+            mask_img = np.flip(mask_img, axis=1)
         ##### Label & Filter Cells #####
         # label cells that fall within dilated mask
         cells_df = _label_masked_cells(
@@ -585,6 +584,51 @@ class AtlasWrapper:
         else:
             return cells_df, mask_img
 
+    def get_ccf_image_mask(
+        self,
+        ccf_img,
+        ccf_regions,
+        ccf_level="substructure",
+        distance_px=20,
+        fill_holes_in_mask=False,
+        cleanup_mask=True,
+    ):
+        """Creates a binary mask from a rasterized image volume of the CCF parcellation.
+        The mask is dilated to ensure coverage of edges despite possible misalignment.
+        Optionally removes any regions whose area ratio, as compared to the largest region
+        in the binary mask, is lower than 0.1.
+        """
+        is_2d = len(ccf_img.shape) == 2
+        if is_2d:
+            ccf_img = ccf_img[:, None]
+        # get index values for specified regions
+        reverse_lookup = self.get_ccf_index_reverse_lookup(level=ccf_level)
+        index_values = reverse_lookup.loc[ccf_regions]
+
+        ##### Create binary mask to use for filtering cells #####
+        # generate binary mask
+        mask = np.isin(ccf_img, index_values)  # takes about 5 sec
+
+        # fills internal holes in the mask (usually, internal white matter tracts)
+        if fill_holes_in_mask:
+            # TODO allow for different distance_px selections; this default has
+            # only been tested for the TH+ZI subset
+            dist_for_TH = 2
+            mask = sectionwise_fill_holes(sectionwise_closing(mask, distance_px=dist_for_TH))
+
+        # dilate mask, if specified, to ensure inclusion of cells along misaligned edges
+        if distance_px == 0:
+            mask_img = mask
+        else:
+            mask_img = sectionwise_dilation(mask, distance_px, true_radius=False)
+
+        # remove too-small mask regions that are likely mistaken parcellations
+        if cleanup_mask:
+            mask_img = cleanup_mask_regions(mask_img, area_ratio_thresh=0.1)
+        if is_2d:
+            mask_img = mask_img[:, 0]
+        return mask_img
+
     @cached_property
     def _ccf_metadata(self):
         # TODO: set categorical dtypes?
@@ -594,7 +638,7 @@ class AtlasWrapper:
 
     def _get_ccf_names(self, top_nodes, level=None):
         ccf_df = self._ccf_metadata
-        th_zi_ind = np.hstack(
+        ccf_ind = np.hstack(
             [
                 ccf_df.loc[ccf_df["parcellation_term_acronym"] == x, "parcellation_index"].unique()
                 for x in top_nodes
@@ -606,9 +650,9 @@ class AtlasWrapper:
             columns="parcellation_term_set_name",
         )
         if level is not None:
-            names = sorted(ccf_labels.loc[th_zi_ind, level].values)
+            names = sorted(ccf_labels.loc[ccf_ind, level].values)
         else:
-            names = sorted(list(set(ccf_labels.loc[th_zi_ind, :].values.flatten())))
+            names = sorted(list(set(ccf_labels.loc[ccf_ind, :].values.flatten())))
         return np.unique(names)
 
     def get_ccf_names(self, top_nodes=None, level=None, include_unassigned=True):
@@ -681,7 +725,7 @@ class AtlasWrapper:
 
     @cached_property
     def _section_metadata(self):
-        path = files("thalamus_merfish_analysis")/"resources" / self._section_metadata_file
+        path = package_files / "resources" / self._section_metadata_file
         if not path.is_file():
             raise FileNotFoundError(
                 f"Section metadata not saved for {self.dataset} version {self.version}"
@@ -712,41 +756,41 @@ class AtlasWrapper:
         section_index["section_index"] = section_index[z_col].apply(
             lambda x: int(np.rint(x / self.Z_RESOLUTION))
         )
-        path = Path("/code/thalamus_merfish_analysis/resources") / self._section_metadata_file
+        path = Path("/code/abc_merfish_analysis/resources") / self._section_metadata_file
         if path.exists() and not overwrite:
             raise FileExistsError(
                 f"Section index already saved for {self.dataset} version {self.version}"
             )
         section_index.to_csv(path, header=True, index=True)
-        
-        
+
     def convert_section_list(
         self,
         section_list,
         query_col="z_reconstructed",
         target_col="brain_section_label",
     ):
-        '''Converts a list of sections from one column to another using the saved section index csv.
+        """Converts a list of sections from one column to another using the saved section index csv.
         Column options: {'z_section', 'z_reconstructed', 'brain_section_label'}
-        '''
+        """
         # make section index csv if not already saved
-        path = Path("/code/thalamus_merfish_analysis/resources") / self._section_metadata_file
+        path = Path("/code/abc_merfish_analysis/resources") / self._section_metadata_file
         if not path.exists():
             self.save_section_index()
-            
+
         # use saved section index to convert section list
         sec_metadata_df = pd.read_csv(path)
         converted_list = []
         for section in section_list:
             converted_list.append(
-                sec_metadata_df.loc[sec_metadata_df[query_col]==section, target_col].values[0]
+                sec_metadata_df.loc[sec_metadata_df[query_col] == section, target_col].values[0]
             )
-        if len(converted_list)==0:
+        if len(converted_list) == 0:
             query_col_values = sec_metadata_df[query_col].unique()
-            raise ValueError(f'Items in section_list did not match any values in query_col={query_col}: {query_col_values}')
-            
+            raise ValueError(
+                f"Items in section_list did not match any values in query_col={query_col}: {query_col_values}"
+            )
+
         return converted_list
-            
 
     @cached_property
     def _cluster_annotations(self):
@@ -779,7 +823,7 @@ class AtlasWrapper:
         palette = df.set_index("cluster_annotation_term_name")["color_hex_triplet"].to_dict()
         return palette
 
-    def get_taxonomy_label_from_alias(self, aliases, taxonomy_level='cluster'):
+    def get_taxonomy_label_from_alias(self, aliases, taxonomy_level="cluster"):
         """Given a list of cluster aliases, returns the corresponding cell type
         labels at a given taxonomy level
 
@@ -798,7 +842,7 @@ class AtlasWrapper:
         df = self._cluster_annotations
         label_list = df.set_index("cluster_alias").loc[aliases, taxonomy_level].to_list()
         return label_list
-    
+
     def get_alias_from_cluster_label(self, clusters):
         df = self._cluster_annotations
         label_list = df.set_index("cluster").loc[clusters, "cluster_alias"].to_list()
@@ -828,10 +872,11 @@ class AtlasWrapper:
     @staticmethod
     @lru_cache
     def _get_devccf_metadata():
-        devccf_index = pd.read_excel("/data/KimLabDevCCFv1/DevCCFv1_OntologyStructure.xlsx", header=[0,1])
+        devccf_index = pd.read_excel(
+            "/data/KimLabDevCCFv1/DevCCFv1_OntologyStructure.xlsx", header=[0, 1]
+        )
         devccf_index = devccf_index["DevCCF"].set_index("ID16")
         return devccf_index
-
 
     @classmethod
     def _get_devccf_names(cls, top_nodes, filter=True):
@@ -839,10 +884,18 @@ class AtlasWrapper:
         ids = devccf_index.loc[top_nodes, "ID16"].astype(str)
         if filter:
             devccf_index = devccf_index.query("P56")
-        names = list(set(chain(
-            *(devccf_index.loc[lambda df: df["Structure ID Path16"].str.contains(x)].index for x in ids)
-        )))
+        names = list(
+            set(
+                chain(
+                    *(
+                        devccf_index.loc[lambda df: df["Structure ID Path16"].str.contains(x)].index
+                        for x in ids
+                    )
+                )
+            )
+        )
         return names
+
 
 DEFAULT_ATLAS_WRAPPER = AtlasWrapper()
 
@@ -850,6 +903,3 @@ DEFAULT_ATLAS_WRAPPER = AtlasWrapper()
 def _label_masked_cells(cells_df, mask_img, coords, resolutions, field_name="region_mask"):
     cells_df[field_name] = mask_img[image_index_from_coords(cells_df[coords], resolutions)]
     return cells_df
-
-
-

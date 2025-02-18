@@ -7,7 +7,7 @@ from multiprocessing import Pool
 
 def calculate_diversity_metrics(obs_ccf, 
                                 ccf_label='parcellation_structure_eroded'):
-    ''' Calculate a set of diversity metrics for each region in the thalamus.
+    ''' Calculate a set of diversity metrics for each region.
 
     Parameters
     ----------
@@ -18,12 +18,12 @@ def calculate_diversity_metrics(obs_ccf,
 
     Returns
     -------
-    th_ccf_metrics_df : pd.DataFrame
-        dataframe with diversity metrics for each region in the thalamus
+    ccf_metrics_df : pd.DataFrame
+        dataframe with diversity metrics for each region
     '''
 
     # calculate a pre-selected set of diversity metrics for each CCF region
-    th_ccf_metrics_df = pd.concat([
+    ccf_metrics_df = pd.concat([
         # number of unique categories (e.g. clusters) found in each region
         get_region_metric(obs_ccf, count_unique, "count", ccf_label=ccf_label),
         # fraction of all possible categories (e.g. clusters) uniquely found in each region
@@ -47,9 +47,9 @@ def calculate_diversity_metrics(obs_ccf,
         #                   norm_fcn=lambda x: np.log2(len(x.unique()))
         ], axis=1)
 
-    th_ccf_metrics_df['count_cells'] = obs_ccf[ccf_label].value_counts()
+    ccf_metrics_df['count_cells'] = obs_ccf[ccf_label].value_counts()
 
-    return th_ccf_metrics_df
+    return ccf_metrics_df
 
 
 def get_region_metric(obs_ccf,
@@ -59,7 +59,7 @@ def get_region_metric(obs_ccf,
                       exclude=['unassigned','TH-unassigned'],
                       norm_fcn=None,
                       levels=['cluster','supertype','subclass']):
-    ''' Calculate a metric for each region in the thalamus.
+    ''' Calculate a metric for each region.
 
     Parameters
     ----------
@@ -80,20 +80,20 @@ def get_region_metric(obs_ccf,
 
     Returns
     -------
-    th_metric : pd.DataFrame
-        dataframe with the metric for each region in the thalamus
+    metric : pd.DataFrame
+        dataframe with the metric for each region
     '''
     # calculate metric per region, for each level
-    th_metric = (obs_ccf.loc[lambda df: ~df[ccf_label].isin(exclude)]  # filter out unassigned regions
+    metric = (obs_ccf.loc[lambda df: ~df[ccf_label].isin(exclude)]  # filter out unassigned regions
                         .groupby(ccf_label, observed=True)[levels]  # groupby ccf_label col, keep only levels columns
                         .aggregate(function)  # apply function to each (region, level) pair
                         .rename(columns=lambda x: "_".join([metric_name, x])))  # rename columns to '[metric_name]_[level]'
     
     # normalize metric if norm_fcn is provided
     if norm_fcn is not None:
-        th_metric = th_metric / obs_ccf[levels].apply(norm_fcn).values[None,:]
+        metric = metric / obs_ccf[levels].apply(norm_fcn).values[None,:]
     
-    return th_metric
+    return metric
 
 
 def count_unique(x):

@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from mpl_toolkits.axes_grid1 import ImageGrid
+from scipy.interpolate import LinearNDInterpolator
 
 from . import abc_load as abc
 from . import ccf_images as cci
@@ -11,14 +12,6 @@ from . import color_utils as cu
 
 CCF_REGIONS_DEFAULT = None
 
-# thalamus-specific constants
-TH_EXAMPLE_SECTION_LABELS = [
-    "C57BL6J-638850.44",
-    "C57BL6J-638850.40",
-    "C57BL6J-638850.36",
-]  # anterior to posterior order
-TH_EXAMPLE_Z_SECTIONS = [8.0, 7.2, 6.4]  # anterior to posterior order
-XY_LIMS_TH_LEFT_HEMI = [2.8, 5.8, 7, 4]  # limits plots to thalamus left hemisphere
 
 # TODO: make plotting class to cache indices, col names, etc?
 
@@ -108,8 +101,14 @@ def plot_ccf_overlay(
     # Set variables not specified by user
     if sections is None:
         sections = _get_sections_to_plot(
-            obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level, n0=min_section_count,
-            exclude_empty=bg_cells is None
+            obs,
+            section_col,
+            ccf_names,
+            ccf_highlight,
+            ccf_images,
+            ccf_level,
+            n0=min_section_count,
+            exclude_empty=bg_cells is None,
         )
     obs = obs[obs[section_col].isin(sections)]
 
@@ -427,7 +426,9 @@ def plot_expression_ccf(
     cb_args = dict(cmap=cmap, cb_vmin_vmax=cb_vmin_vmax, label=label, fraction=0.046, pad=0.01)
 
     if sections is None:
-        sections = _get_sections_to_plot(obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level)
+        sections = _get_sections_to_plot(
+            obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level
+        )
 
     # Plot
     figs = []
@@ -477,7 +478,7 @@ def plot_hcr(
     ccf_images=None,
     boundary_img=None,
     separate_figs=True,
-    **kwargs
+    **kwargs,
 ):
     """Display separate, and overlay, expression of multiple genes in multiple sections.
 
@@ -548,7 +549,7 @@ def plot_hcr(
                 ccf_images=ccf_images,
                 boundary_img=boundary_img,
                 ax=None if separate_figs else grid[i],
-                **kwargs
+                **kwargs,
             )
             if separate_figs:
                 fig.suptitle(f"Section {section}\n{counts_label}", y=1.2)
@@ -578,7 +579,7 @@ def plot_multichannel_overlay(
     ax=None,
     custom_xy_lims=None,
     edge_color="darkgrey",
-    **kwargs_ccf
+    **kwargs_ccf,
 ):
     """
     Display overlay of multiple channels in a single section.
@@ -693,7 +694,7 @@ def plot_multichannel_overlay(
                 boundary_img=boundary_img,
                 legend=False,
                 ax=ax,
-                **kwargs_ccf
+                **kwargs_ccf,
             )
         _format_image_axes(ax, custom_xy_lims=custom_xy_lims)
         if single_channel_subplots:
@@ -740,6 +741,48 @@ def plot_metrics_ccf(
         _format_image_axes(ax=ax, show_axes=show_axes)
         figs.append(fig)
     return figs
+
+
+def plot_local_metric_ccf_section(
+    obs_ccf,
+    ccf_images,
+    section,
+    metric_name,
+    section_col="z_section",
+    coords="reconstructed",
+    cmap="Oranges",
+    resolution=10e-3,
+    label=None,
+    ax=None,
+):
+    obs = obs_ccf.loc[lambda df: df[section_col] == section]
+    section_index = abc.get_section_index(section_col=section_col)
+    fig, ax = _get_figure_handles(ax)
+    section_ind = section_index[section]
+
+    # interpolate the metric onto a grid defined by the CCF image volume
+    interp = LinearNDInterpolator(obs[["x_" + coords, "y_" + coords]], obs[metric_name])
+    grid = np.ix_(
+        np.arange(ccf_images[:, :, 0].shape[0]) * abc.X_RESOLUTION,
+        np.arange(ccf_images[:, :, 0].shape[1]) * abc.Y_RESOLUTION,
+    )
+    imdata = interp(*grid)
+
+    extent = resolution * (np.array([0, imdata.shape[0], imdata.shape[1], 0]) - 0.5)
+    # set non-TH voxels to NaN
+    sec_img = ccf_images[:, :, section_ind]
+    th_ccf_mask = abc.get_ccf_image_mask(sec_img, ccf_regions=CCF_REGIONS_DEFAULT, distance_px=0)
+    imdata[~th_ccf_mask] = np.nan
+    # imdata = gaussian_filter(imdata, 2)
+
+    im = ax.imshow(imdata.T, cmap=cmap, extent=extent, interpolation="none", vmin=0, vmax=15)
+
+    # add boundaries
+    plot_ccf_section(ccf_images, section, section_col=section_col, ccf_names=None, ax=ax)
+    _format_image_axes(ax)
+    label = label or metric_name
+    plt.colorbar(im, label=label)
+    return fig
 
 
 # TODO: make multi-section option?
@@ -972,15 +1015,15 @@ def preprocess_categorical_plot(
     # Set to the minimum so user can set min_group_count=0 to see all groups
     min_group_count_section = min(min_group_count_section, min_group_count)
     obs = obs.groupby(section_col, group_keys=False, observed=False).apply(
-        lambda x: abc.label_outlier_celltypes(
-            x, type_col, min_group_count=min_group_count_section
-        )
+        lambda x: abc.label_outlier_celltypes(x, type_col, min_group_count=min_group_count_section)
     )
     obs[type_col] = obs[type_col].cat.remove_unused_categories()
     return obs
 
 
-def _get_sections_to_plot(obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level, exclude_empty=True, n0=0):
+def _get_sections_to_plot(
+    obs, section_col, ccf_names, ccf_highlight, ccf_images, ccf_level, exclude_empty=True, n0=0
+):
     if n0 > 0:
         sections = obs[section_col].value_counts().loc[lambda x: x > n0].index
     else:
@@ -991,12 +1034,14 @@ def _get_sections_to_plot(obs, section_col, ccf_names, ccf_highlight, ccf_images
         join = set.intersection if exclude_empty else set.union
         sections = join(
             set(sections),
-            set(get_sections_for_ccf_regions(
-                ccf_images,
-                target_regions,
-                ccf_level=ccf_level,
-                section_col=section_col,
-            ))
+            set(
+                get_sections_for_ccf_regions(
+                    ccf_images,
+                    target_regions,
+                    ccf_level=ccf_level,
+                    section_col=section_col,
+                )
+            ),
         )
     return sorted(sections)
 
@@ -1084,7 +1129,7 @@ def _format_image_axes(ax, show_axes=False, set_lims="whole", custom_xy_lims=Non
         sns.despine(left=True, bottom=True)
         ax.set_xticks([])
         ax.set_yticks([])
-        
+
     ax.set_xlabel(None)
     ax.set_ylabel(None)
     # (set_lims==True) is for backwards compatibility

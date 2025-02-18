@@ -168,7 +168,7 @@ def preprocess_for_qn_export(df, nn_classes, img_coords, spatial_ref_index=None,
         df = subset_to_ref_bounds(df, img_coords, spatial_ref_index)
     subset_for_fine_labels = df.index.intersection(subset_for_fine_labels)
 
-    working_label = "thal_class"
+    working_label = "focus_class"
     df[slice_label] = df['z_section'].apply(lambda x: str(int(x*10)))
 
     df[working_label] = df["class"].astype('string')

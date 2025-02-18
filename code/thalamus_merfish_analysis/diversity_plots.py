@@ -1,63 +1,60 @@
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-import numpy as np
 import pandas as pd
 from colorcet import glasbey_light
 import plotly.graph_objects as go
-from scipy.interpolate import LinearNDInterpolator
 
 from . import abc_load as abc
-from .ccf_plots import plot_ccf_section, _format_image_axes
 
 
 plt.rcParams.update({'font.size': 7})
 
 
-def barplot_dual_y_count_frac(th_metrics, taxonomy_level, gt5_only=True):
-    ''' Plot a barplot with both count and fraction of cells in each thalamic region.
+def barplot_dual_y_count_frac(metrics_df, taxonomy_level, gt5_only=True):
+    ''' Plot a barplot with both count and fraction of cells in each region.
 
     Parameters
     ----------
-    th_metrics : pd.DataFrame
+    metrics_df : pd.DataFrame
         DataFrame made with diversity_metrics.calculate_diversity_metrics()
     taxonomy_level : str, {'cluster', 'supertype', 'subclass'}
         ABC Atlas taxonomy level to plot
     gt5_only : bool
         If True, use the _gt5 columns for count and fraction
     '''
-    # set th_metrics col based on thresholding to >5 cells or not
+    # set metrics_df col based on thresholding to >5 cells or not
     count_col = f'count_gt5_{taxonomy_level}' if gt5_only else f'count_{taxonomy_level}'
     frac_col = f'frac_gt5_{taxonomy_level}' if gt5_only else f'frac_{taxonomy_level}'
     
     # sort regions so they're displayed low to high count, L to R
-    th_metrics_sorted = th_metrics.sort_values(by=count_col, ascending=True)
+    metrics_df = metrics_df.sort_values(by=count_col, ascending=True)
     
     fig, ax1 = plt.subplots(figsize=(8,4))
     # Plot the absolute counts on the left y-axis
-    ax1.scatter(th_metrics_sorted.index, th_metrics_sorted[count_col], 
+    ax1.scatter(metrics_df.index, metrics_df[count_col], 
                 color='#5DA7E5', alpha=0)
     ax1.set_ylabel(f'unique {taxonomy_level} count', color='k')
     ax1.tick_params(axis='y', labelcolor='k')
-    ax1.set_xticks(th_metrics_sorted.index)
-    ax1.set_xticklabels(th_metrics_sorted.index, rotation=90)
-    ax1.set_xlabel('CCF thalamic subregions')
-    ax1.set_ylim(0, th_metrics_sorted[count_col].max()*1.05)
+    ax1.set_xticks(metrics_df.index)
+    ax1.set_xticklabels(metrics_df.index, rotation=90)
+    ax1.set_xlabel('CCF subregions')
+    ax1.set_ylim(0, metrics_df[count_col].max()*1.05)
     plt.grid(visible=True, axis='y')
 
     # Plot the fraction values on the right y-axis
     ax2 = ax1.twinx()
-    ax2.bar(th_metrics_sorted.index, th_metrics_sorted[frac_col], 
+    ax2.bar(metrics_df.index, metrics_df[frac_col], 
             color='#5DA7E5', label=taxonomy_level)
     # ntot = obs_neurons_ccf[taxonomy_level].value_counts().loc[lambda x: x>5].shape[0]
     ax2.set_ylabel(f'fraction of total {taxonomy_level} count', color='k', rotation=270, labelpad=15)
-    ax2.set_ylim(0, th_metrics_sorted[frac_col].max()*1.05)
+    ax2.set_ylim(0, metrics_df[frac_col].max()*1.05)
     ax2.tick_params(axis='y', labelcolor='k')
     
 
-    plt.title(f'{taxonomy_level} count per thalamic CCF structure')
+    plt.title(f'{taxonomy_level} count per CCF structure')
     return fig
 
-def plot_metric_multiple_levels(th_metrics, 
+def plot_metric_multiple_levels(metrics_df, 
                                 metric, 
                                 taxonomy_levels=['cluster','supertype','subclass'],
                                 ylabel=None):
@@ -69,64 +66,29 @@ def plot_metric_multiple_levels(th_metrics,
     
     if taxonomy_levels==None:
         # enable plotting of a single metric
-        th_metrics_sorted = th_metrics.sort_values(by=metric, ascending=True)
-        ax1.scatter(th_metrics_sorted.index, th_metrics_sorted[metric], zorder=2)
+        metrics_df = metrics_df.sort_values(by=metric, ascending=True)
+        ax1.scatter(metrics_df.index, metrics_df[metric], zorder=2)
     else:
         # sort by the metric of the first item in taxonomy_levels list
-        th_metrics_sorted = th_metrics.sort_values(by="_".join([metric, 
+        metrics_df = metrics_df.sort_values(by="_".join([metric, 
                                                                 taxonomy_levels[0]]), 
                                                    ascending=True)
         for level in taxonomy_levels[::-1]:
-            ax1.scatter(th_metrics_sorted.index, 
-                        th_metrics_sorted["_".join([metric, level])], 
+            ax1.scatter(metrics_df.index, 
+                        metrics_df["_".join([metric, level])], 
                         label=level, zorder=2) 
         ax1.legend()
 
-    ax1.set_xticks(th_metrics_sorted.index)
-    ax1.set_xticklabels(th_metrics_sorted.index, rotation=90)
+    ax1.set_xticks(metrics_df.index)
+    ax1.set_xticklabels(metrics_df.index, rotation=90)
     ax1.set_xlabel('CCF structures')
     ax1.set_ylabel(ylabel)
     plt.grid(visible=True, axis='both', zorder=0, color='whitesmoke')
     
     return fig
 
-# TODO: generalize to any metric and move to ccf_plots
-# TODO: use section index
-def plot_local_metric_ccf_section(obs_ccf, cellwise_metrics_df, ccf_images, 
-                                  section, metric_name, section_col='z_section', 
-                                  coords='reconstructed', cmap='Oranges'):
 
-    # combine obs_ccf with cellwise_metrics for easier plotting
-    obs = obs_ccf.join(cellwise_metrics_df).loc[lambda df: df[section_col]==section]
-    
-    # interpolate the metric onto a grid defined by the CCF image volume
-    interp = LinearNDInterpolator(obs[['x_'+coords, 'y_'+coords]], obs[metric_name])
-    grid = np.ix_(np.arange(ccf_images[:,:,0].shape[0])* abc.X_RESOLUTION, 
-                  np.arange(ccf_images[:,:,0].shape[1])* abc.Y_RESOLUTION) 
-    imdata = interp(*grid)
-
-    extent = abc.X_RESOLUTION * (np.array([0, imdata.shape[0], imdata.shape[1], 0]) - 0.5)
-    # set non-TH voxels to NaN
-    sec_img = ccf_images[:,:,int(np.rint(section/abc.Z_RESOLUTION))]
-    th_ccf_mask = np.any(np.stack([sec_img==i for i in abc.get_thalamus_ccf_indices()]), 
-                         axis=0)
-    imdata[~th_ccf_mask] = np.nan
-    # imdata = gaussian_filter(imdata, 2)
-
-    fig, ax = plt.subplots()
-    im = ax.imshow(imdata.T, cmap=cmap, extent=extent, interpolation="none", 
-                   vmin=0, vmax=15)
-
-    plot_ccf_section(ccf_images, section, section_col=section_col,
-                     ccf_names=None, ax=ax)
-    _format_image_axes(ax)
-    plt.colorbar(im, label="Inverse Simpson's index")
-
-    return fig
-
-
-
-def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
+def barplot_stacked_proportions(obs, taxonomy_level, ccf_metrics,
                                 ccf_regions=None,
                                 legend=True, palette=None,
                                 min_cell_frac=0.01,
@@ -142,7 +104,7 @@ def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
         dataframe of cells with CCF annotations & mapped taxonomy levels
     taxonomy_level : str, {'cluster', 'supertype', 'subclass'}
         ABC Atlas taxonomy level to plot
-    th_ccf_metrics : pd.DataFrame
+    ccf_metrics : pd.DataFrame
         DataFrame made with diversity_metrics.calculate_diversity_metrics()
     ccf_regions : list of str, default=None
         list of CCF regions to restrict the plot to
@@ -166,11 +128,10 @@ def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
     """
     # Set the palette
     if palette is None:
-        if (taxonomy_level=='subclass') | (taxonomy_level=='supertype'):
+        try:
             palette = abc.get_taxonomy_palette(taxonomy_level)
-        elif taxonomy_level=='cluster':
-            palette = abc.get_thalamus_cluster_palette()
-        else:
+        except ValueError:
+            # if the level is not in the atlas, use glasbey_light
             palette = glasbey_light
     # add 'other' to the palette
     palette['other'] = 'lightgrey'
@@ -194,7 +155,7 @@ def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
         # Sort ccf_regions by # of non-zero categories & Inverse Simpson's Index
         nonzero_counts = (proportions_df.drop(columns=['other'])!=0).sum(axis=1)
         nonzero_counts.name = 'nonzero_counts'
-        inverse_simpsons = th_ccf_metrics.loc[
+        inverse_simpsons = ccf_metrics.loc[
                                 ccf_regions,
                                 f'inverse_simpsons_{taxonomy_level}']
         # combine two metrics into a df that we can sort by
@@ -245,7 +206,7 @@ def barplot_stacked_proportions(obs, taxonomy_level, th_ccf_metrics,
 
     # display the number of non-zero, non-other categories above each region's bar
     for i, region in enumerate(proportions_df.index):
-        n_all = th_ccf_metrics.loc[region, f'count_{taxonomy_level}']
+        n_all = ccf_metrics.loc[region, f'count_{taxonomy_level}']
         n_nonzero = (proportions_df.loc[region, proportions_df.columns!='other']>0).sum()
         if orientation=='horizontal':
             ax.text(1.02, i, f'{n_nonzero}', verticalalignment='center',
