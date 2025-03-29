@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import streamlit as st
-from thalamus_merfish_analysis import ccf_plots as cplots
-from thalamus_merfish_analysis import de_genes as deg
+from abc_merfish_analysis import ccf_plots as cplots
+from abc_merfish_analysis import de_genes as deg
 
 
 import streamlit_utils as stu

@@ -8,7 +8,7 @@ from streamlit_utils import (
     ss_to_qp,
     ss_from_qp,
 )
-from thalamus_merfish_analysis import ccf_plots as cplots
+from abc_merfish_analysis import ccf_plots as cplots
 
 ss_to_qp()
 ss_from_qp()

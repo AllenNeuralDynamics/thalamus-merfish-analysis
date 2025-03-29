@@ -4,7 +4,7 @@ import anndata as ad
 import scanpy as sc
 import colorcet as cc
 
-from thalamus_merfish_analysis import abc_load as abc
+from abc_merfish_analysis import abc_load as abc
 
 def export_h5ad_for_cirro(generate_umap_tsne=True):
     ''' Load thalamus subset of ABC Atlas, modify for Cirrocumulus compatibility,
@@ -234,7 +234,7 @@ def add_spagcn_to_adata(adata, domains_to_add='res1pt4', spagcn_col='spagcn'):
     # load in SpaGCN domain results
     # temporarily a static file in '../code/resources' until I get a reproducible run setup for the spagcn capsule
     # TODO: move this file to an asset
-    spagcn_df = pd.read_parquet('/code/resources/spagcn_predicated_domains.parquet')
+    spagcn_df = pd.read_parquet('/data/spagcn/spagcn_predicted_domains.parquet')
 
     for col in spagcn_df.columns:
         # preserve numerical order when converting values to str, then column to categorical

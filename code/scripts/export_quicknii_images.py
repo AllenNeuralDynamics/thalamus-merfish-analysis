@@ -1,17 +1,15 @@
-import sys
-
-sys.path.append("/code/")
 import pandas as pd
-from thalamus_merfish_analysis import abc_load as abc
-from thalamus_merfish_analysis import ccf_registration as ccf
+from abc_merfish_analysis import abc_load as abc
+from abc_merfish_analysis import ccf_registration as ccf
 try:
     from importlib.resources import files
 except (ImportError, ModuleNotFoundError):
     from importlib_resources import files
+package_files = files(abc_merfish_analysis)
 
 df_full = abc.get_combined_metadata()
 minmax = pd.read_csv(
-    files("thalamus_merfish_analysis")/"resources" / "brain3_thalamus_coordinate_bounds.csv",
+    package_files/"resources" / "brain3_thalamus_coordinate_bounds.csv",
     index_col=0,
 )
 xx = minmax["x_section"].values

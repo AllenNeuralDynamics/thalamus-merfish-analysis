@@ -6,11 +6,14 @@ if [ -n "$CUSTOM_KEY" ]; then
     sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/bin/ init $CUSTOM_KEY --apply
 fi
 
-# move VS code data directory into capsule, so it persists between cloud workstation runs
-ln -s /root/capsule/code/.vscode/ /.vscode
+# move VS code extensions directory into capsule, so they persist across rebuilds
+# (this may cause issues on the first run that will be solved by reloading VS code
+# if extensions continue to have issues, try commenting out these lines)
+echo "mkdir -p /root/capsule/.vscode/extensions" >> /root/.profile
+ln -s /root/capsule/.vscode /.vscode
 
 # install updated version of code-server
-VERSION=4.20.1
+VERSION=4.96.4
 mkdir /.code-server
 cd /.code-server
 curl -fL "https://github.com/coder/code-server/releases/download/v$VERSION/code-server-$VERSION-linux-amd64.tar.gz" \

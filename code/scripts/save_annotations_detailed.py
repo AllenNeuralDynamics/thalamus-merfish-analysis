@@ -1,10 +1,7 @@
 # %%
-import sys
-
-sys.path.append("/code/")
 import pandas as pd
-from thalamus_merfish_analysis import abc_load as abc
-from thalamus_merfish_analysis.ccf_erode import label_cells_by_eroded_ccf
+from abc_merfish_analysis import abc_load as abc
+from abc_merfish_analysis.ccf_erode import label_cells_by_eroded_ccf
 
 
 obs = abc.get_combined_metadata(realigned=True)

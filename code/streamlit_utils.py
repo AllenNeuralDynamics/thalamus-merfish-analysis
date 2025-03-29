@@ -31,8 +31,8 @@ def propagate_value_from_lookup(from_key, to_key, lookup_fcn):
 
 import os
 from pathlib import Path
-from thalamus_merfish_analysis import ccf_images as cimg
-from thalamus_merfish_analysis.abc_load_thalamus import ThalamusWrapper
+from abc_merfish_analysis import ccf_images as cimg
+from abc_merfish_analysis.abc_load_thalamus import ThalamusWrapper
 from anndata import read_h5ad
 
 version = "20230830"

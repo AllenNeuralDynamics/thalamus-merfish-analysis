@@ -1,7 +1,5 @@
-import sys
-sys.path.append("/code/")
 import pandas as pd
-from thalamus_merfish_analysis import abc_load as abc
+from abc_merfish_analysis import abc_load as abc
 
 df_taxonomy = abc._cluster_annotations.copy()
 df_taxonomy["short_name"] = df_taxonomy["cluster"].str[:4]
@@ -9,7 +7,7 @@ def get_alias(clusters):
     return df_taxonomy.set_index("cluster").loc[clusters, "cluster_alias"].to_list()
 # Manual annotations
 
-df_manual = pd.read_csv("/root/capsule/code/thalamus_merfish_analysis/resources/prong1_cluster_annotations_by_nucleus.csv")
+df_manual = pd.read_csv("/root/capsule/code/abc_merfish_analysis/resources/prong1_cluster_annotations_by_nucleus.csv")
 cluster = "cluster_ids_CNN20230720"
 nucleus = "nuclei"
 
@@ -36,7 +34,7 @@ anno_manual = pd.concat(
 ).set_index("cluster")
 anno_manual.to_csv("/scratch/annotations_c2n_manual.csv")
 
-anno_auto = pd.read_csv("/code/thalamus_merfish_analysis/resources/annotations_c2n_auto.csv", index_col=0).set_index("cluster")
+anno_auto = pd.read_csv("/code/abc_merfish_analysis/resources/annotations_c2n_auto.csv", index_col=0).set_index("cluster")
 
 # remove complete nuclei from auto annotations
 complete_nuclei = df_manual.loc[lambda df: (df["checked"]==1) & ~df["nuclei"].str.contains(" "), "nuclei"]

@@ -1,6 +1,6 @@
 impot pandas as pd
-from thalamus_merfish_analysis import abc_load as abc
-from thalamus_merfish_analysis import ccf_erode as cerd
+from abc_merfish_analysis import abc_load as abc
+from abc_merfish_analysis import ccf_erode as cerd
 from collections import defaultdict
 from itertools import chain
 

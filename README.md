@@ -7,7 +7,7 @@ Code Ocean capsule for sharing analysis of thalamus MERFISH data, primarily in j
 
 To create your own working copy on Code Ocean, select **Duplicate** from the **Capsule** menu and use the default option ("Link to git repository"). You can then make your own changes and sync back and forth from our shared github repository (https://github.com/AllenNeuralDynamics/thalamus-merfish-analysis) via git. You can use git functions either in the **Reproducibility** panel on the right-hand side of the capsule view, or within the cloud workstation (more flexibility).
 
-As a package: install the core functionality as a package directly from github via pip: `pip install git+https://github.com/AllenNeuralDynamics/thalamus-merfish-analysis`
+As a package: install the core functionality as a package directly from github via pip: `pip install git+https://github.com/AllenNeuralDynamics/abc-merfish-analysis`
 
 As a streamlit app: start a Code Ocean cloud workstation in streamlit mode (or from the terminal on another cloud workstation, run `streamlit run /code/streamlit_app.py`)
 

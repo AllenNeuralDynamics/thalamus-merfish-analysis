@@ -1,22 +1,20 @@
 import subprocess
 
 subprocess.run(["pip", "install", "spatialdata==0.2.3"])
-import sys
-
-sys.path.append("/code/")
 
 import spatialdata as sd
 import pandas as pd
 import numpy as np
 import nibabel
-from thalamus_merfish_analysis import abc_load as abc
-from thalamus_merfish_analysis import ccf_registration as ccf
-from thalamus_merfish_analysis import ccf_transforms as ccft
-from thalamus_merfish_analysis import ccf_images as ccfi
+from abc_merfish_analysis import abc_load as abc
+from abc_merfish_analysis import ccf_registration as ccf
+from abc_merfish_analysis import ccf_transforms as ccft
+from abc_merfish_analysis import ccf_images as ccfi
 try:
     from importlib.resources import files
 except (ImportError, ModuleNotFoundError):
     from importlib_resources import files
+package_files = files(abc_merfish_analysis)
 df_full = abc.get_combined_metadata(drop_unused=False)
 # permissive spatial subset using published alignment
 # (previously using manual subset)
@@ -27,11 +25,11 @@ slice_label = "slice_int"
 df[slice_label] = df["z_section"].apply(lambda x: int(x * 10))
 
 transforms_by_section = ccf.read_quicknii_file(
-    files("thalamus_merfish_analysis") / "resources" / "quicknii_refined_20240228.json",
+    package_files / "resources" / "quicknii_refined_20240228.json",
     scale=25,
 )
 minmax = pd.read_csv(
-    files("thalamus_merfish_analysis")
+    package_files
     / "resources"
     / "brain3_thalamus_coordinate_bounds.csv",
     index_col=0,
