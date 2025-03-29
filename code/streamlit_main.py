@@ -17,9 +17,9 @@ def annotation_details_input(context=st, prefix=""):
         expander.radio("Annotation source", ["automated", "manual"], key=f"{prefix}_anno_qp") == "manual"
     )
     expander.write("Manually-reviewed annotations are higher accuracy but don't cover all nuclei.")
-    include_shared_clusters = expander.checkbox("Include shared clusters", key=f"{prefix}_shared_qp")
-    expander.write("Shared clusters are found across multiple nuclei, not focused on the selected nuclei.")
-    return manual_annotations, include_shared_clusters, expander
+    core_clusters_only = expander.checkbox("Core clusters only", key=f"{prefix}_coreonly_qp")
+    expander.write("Core clusters are those primarily found in the selected nuclei.")
+    return manual_annotations, core_clusters_only, expander
 
 pane1, pane2 = st.columns(2)
 with pane2:
@@ -85,7 +85,7 @@ with pane2:
         taxonomy_level = st.selectbox(
             "Taxonomy level", ["cluster", "supertype", "subclass"], key="de_tax_qp"
         )
-        manual_annotations, include_shared_clusters, _ = annotation_details_input(prefix="de")
+        manual_annotations, core_clusters_only, _ = annotation_details_input(prefix="de")
         de_form = st.form("plot_de_genes")
         groups = [
             de_form.expander("Select group 1", expanded=True),
@@ -99,7 +99,7 @@ with pane2:
             types_by_annotation = abc.get_obs_from_annotations(
                 regions,
                 obs_th_neurons,
-                include_shared_clusters=include_shared_clusters,
+                core_clusters_only=core_clusters_only,
                 manual_annotations=manual_annotations,
             )[taxonomy_level].unique()
             box.write("OR")
@@ -179,7 +179,7 @@ with pane1:
             "Auditory": ["MG", "MG"],
         }
         anno_details = st.container()
-        manual_annotations, include_shared_clusters, expander = annotation_details_input(anno_details, prefix="bn")
+        manual_annotations, core_clusters_only, expander = annotation_details_input(anno_details, prefix="bn")
         show_borders = st.checkbox("Show all boundaries", key="bn_borders_qp")
 
         celltype_label = st.selectbox(
@@ -192,7 +192,7 @@ with pane1:
             return abc.get_annotated_cell_types(
                 nuclei,
                 taxonomy_level=celltype_label,
-                include_shared_clusters=include_shared_clusters,
+                core_clusters_only=core_clusters_only,
                 manual_annotations=manual_annotations,
             )
         expander.button("Apply", on_click=propagate_value_from_lookup,
