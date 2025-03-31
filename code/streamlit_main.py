@@ -28,8 +28,8 @@ with pane2:
         "Transform", ["log2cpt", "log2cpm", "log2cpv", "raw"], index=0, key="transform_qp"
     )
     merfish_genes = abc.get_gene_metadata()["gene_symbol"].values
-    single_gene, multi_gene, de_genes = st.tabs(
-        ["Single gene plots", "Multiple gene overlay", "Differential expression"]
+    de_genes, single_gene, multi_gene = st.tabs(
+        ["Differential expression", "Single gene plots", "Multiple gene overlay"]
     )
     with single_gene:
         st_gp = st.form("gene_plot")
