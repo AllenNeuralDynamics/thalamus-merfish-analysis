@@ -1,6 +1,6 @@
 {
 	"name": "Code Ocean capsule",
-    "dockerComposeFile": "../environment/docker-compose.yml",
+    "dockerComposeFile": "docker-compose.yml",
     "service": "devcontainer",
     "workspaceFolder": "/root/capsule",
     "overrideCommand": true,

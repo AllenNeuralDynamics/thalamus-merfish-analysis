@@ -1,17 +1,14 @@
 services:
-  streamlit:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8501:8501"
-    volumes:
-      - ..:/root/capsule:cached
-      - /mnt/data:/data/abc_atlas
+  devcontainer:
     depends_on:
       - rclone
-    command: streamlit run /root/capsule/code/streamit_app.py
-    
+    volumes:
+    - ..:/root/capsule:cached
+    - /mnt/data:/data/abc_atlas
+    build:
+      context: .
+      dockerfile: ../environment/Dockerfile
+      
   rclone:
     image: rclone/rclone:latest
     volumes:
@@ -36,4 +33,4 @@ services:
       "--no-checksum", 
       "--poll-interval", "0", 
       "--checkers", "36"
-    ]
+      ]
