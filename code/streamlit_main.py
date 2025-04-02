@@ -63,6 +63,18 @@ with pane2:
         gene_set = st_mg.multiselect("Select genes", merfish_genes, key="mg_genelist_qp")
         sections = st_mg.multiselect("Sections", th_sections, key="mg_sectionlist_qp")
         dark_background = st_mg.checkbox("Dark background", key="mg_dark_qp")
+        nuclei = st_mg.multiselect(
+            "Nuclei to highlight", ss.th_subregion_names, key="mg_regionlist_qp"
+        )
+        if ss.devccf_qp:
+            nuclei = stu.get_devccf_matched_regions(nuclei)
+        focus_plot = (
+            st_mg.checkbox("Focus on selected nuclei", key="mg_focus_qp") and len(nuclei) > 0
+        )
+        ccf_args = dict(
+            ccf_highlight=nuclei,
+            zoom_to_highlighted=focus_plot,
+        )
         if st_mg.form_submit_button("Plot multi-gene expression", on_click=stu.ss_to_qp):
             adata = get_adata(transform=transform)
             plots = cplots.plot_hcr(
@@ -70,6 +82,7 @@ with pane2:
                 gene_set,
                 sections=sections,
                 dark_background=dark_background,
+                **ccf_args,
                 **ss.common_args,
             )
             for plot in plots:

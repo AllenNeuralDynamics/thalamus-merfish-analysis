@@ -42,7 +42,6 @@ ss.th_subregion_names = abc.get_thalamus_names('structure', include_unassigned=F
 ccf_images, ccf_boundaries = get_ccf_data(realigned, devccf=devccf)
 coords = "section" if realigned else "reconstructed"
 ss.common_args = dict(
-    section_col="brain_section_label",
     x_col="x_" + coords,
     y_col="y_" + coords,
     boundary_img=ccf_boundaries,
